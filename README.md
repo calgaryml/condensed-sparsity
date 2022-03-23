@@ -1,1 +1,1 @@
-# condensed_compute
+# condensed-sparsity
