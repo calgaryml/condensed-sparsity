@@ -47,9 +47,10 @@ class LinearCondensed(nn.Module):
     in_features: int
     out_features: int
     weight: torch.Tensor
+    indx_seqs: torch.Tensor
 
-    def __init__(self, in_features: int, out_features: int, indx_seqs: torch.Tensor, bias: bool = True,
-                 device=None, dtype=None) -> None:
+    def __init__(self, in_features: int, out_features: int, bias: bool, 
+                 input_len: int, fan_out_const: bool, device=None, dtype=None) -> None:
         factory_kwargs = {'device': device, 'dtype': dtype}
         super(LinearCondensed, self).__init__()
         self.in_features = in_features
@@ -61,6 +62,13 @@ class LinearCondensed(nn.Module):
             self.register_parameter('bias', None)
         self.reset_parameters()
 
+        # ===== INDICES FOR RECOMBS =====
+        self.indx_seqs= torch.LongTensor( 
+                            gen_indx_seqs(num_in=in_features, num_out=out_features, input_len=input_len, 
+                                fan_out_const=fan_out_const
+                                ) 
+                            )
+
     def reset_parameters(self) -> None:
         # Setting a=sqrt(5) in kaiming_uniform is the same as initializing with
         # uniform(-1/sqrt(in_features), 1/sqrt(in_features)). For details, see
@@ -71,8 +79,8 @@ class LinearCondensed(nn.Module):
             bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
             nn.init.uniform_(self.bias, -bound, bound)
 
-    def forward(self, input: torch.Tensor, indx_seqs: torch.Tensor) -> torch.Tensor:
-        output= torch.sum(self.weight * input[:, indx_seqs], axis=2) + self.bias
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        output= torch.sum(self.weight * input[:, self.indx_seqs], axis=2) + self.bias
         return output
 
     def extra_repr(self) -> str:
@@ -164,7 +172,7 @@ class Net(nn.Module):
 #######################################################
 
 class CondNet(nn.Module):
-    def __init__(self, num_layers, num_in, num_out, num_mid, fan_in, fan_out_const, make_linear=False, add_bias=False, individ_indx_seqs=False, indx_seqs=None):
+    def __init__(self, num_layers, num_in, num_out, num_mid, fan_in, fan_out_const, make_linear=False, add_bias=False):
         super(CondNet, self).__init__()
         
         """
@@ -174,58 +182,29 @@ class CondNet(nn.Module):
             All hidden layers have the same width. 
 
             - inLayer:    num_in  x num_mid
-            - midLayers:  num_mid x num_mid -- CONDENSED TYPE
+            - midLayers:  fan_in  x num_mid -- CONDENSED TYPE
             - outLayer:   num_mid x num_out
         """
 
         self.printout= True
         self.init_distrib= 'normal'
         self.make_linear= make_linear
-        self.individ_indx_seqs= individ_indx_seqs
-
 
         num_cond_layers= num_layers-2
-        
-        # ===== INDICES FOR RECOMBS =====
-        if indx_seqs is not None:
-            self.indx_seqs= indx_seqs
-        else:
-            if individ_indx_seqs:
-                self.indx_seqs={}
-                for i in range(num_cond_layers):
-                    self.indx_seqs[i]= torch.LongTensor( 
-                                gen_indx_seqs(num_in=fan_in, num_out=num_mid, input_len= num_mid, 
-                                    fan_out_const=fan_out_const
-                                    ) 
-                                )
-            else:
-                self.indx_seqs= torch.LongTensor( 
-                                gen_indx_seqs(num_in=fan_in, num_out=num_mid, input_len= num_mid, 
-                                    fan_out_const=fan_out_const
-                                    ) 
-                                )
-
-        #output_dir= 'output'
-        #torch.save(self.indx_seqs, f'{output_dir}/indx_seqs.pt')
 
         # ===== LAYERS =====
         self.inLayer = nn.Linear(num_in, num_mid, bias=add_bias)
         self.outLayer= nn.Linear(num_mid, num_out, bias=add_bias)
-
-        if individ_indx_seqs:
-            self.midLayers= nn.ModuleList([LinearCondensed(fan_in, num_mid, bias=add_bias, indx_seqs=self.indx_seqs[i]) for i in range(num_cond_layers)])
-        else:
-            self.midLayers= nn.ModuleList([LinearCondensed(fan_in, num_mid, bias=add_bias, indx_seqs=self.indx_seqs) for i in range(num_cond_layers)])
-
+        self.midLayers= nn.ModuleList([
+                LinearCondensed(in_features=fan_in, out_features=num_mid, 
+                                bias=add_bias, input_len=num_mid, 
+                                fan_out_const=fan_out_const) 
+                        for i in range(num_cond_layers)])
 
         if self.printout:
             print(f'inLayer {self.inLayer.weight.shape}')
             for i in range(num_cond_layers):
                 print(f'midLayers[{i}] {self.midLayers[i].weight.shape}')
-            if individ_indx_seqs:
-                print('individ_indx_seqs= True')
-            else:
-                print('individ_indx_seqs= False')
             print(f'outLayer {self.outLayer.weight.shape}')
 
 
@@ -249,11 +228,7 @@ class CondNet(nn.Module):
         if self.make_linear==False: out= self.activation_funct(out)
         
         for i, cond_layer in enumerate(self.midLayers):
-            if self.individ_indx_seqs:
-                out= cond_layer(out, self.indx_seqs[i])
-            else:
-                out= cond_layer(out, self.indx_seqs)
-
+            out= cond_layer(out)
             if self.make_linear==False: out= self.activation_funct(out)
 
         out= self.outLayer(out)
@@ -361,122 +336,122 @@ class SparseNet(nn.Module):
 
 
 
-from utils import get_layer_dims_for_simpleCNN2
+#from utils import get_layer_dims_for_simpleCNN2
 
 
-class simpleCNN2(nn.Module):
-    def __init__(self, input_img_size, num_classes, num_channels, 
-                 num_out_conv1, num_out_conv2, num_out_fc, fan_in, fan_out_const=False):
-        super(simpleCNN2, self).__init__()
+# class simpleCNN2(nn.Module):
+#     def __init__(self, input_img_size, num_classes, num_channels, 
+#                  num_out_conv1, num_out_conv2, num_out_fc, fan_in, fan_out_const=False):
+#         super(simpleCNN2, self).__init__()
 
-        """
-            This is a minimal CNN with 2 convolutional layers and one fully-connected layer. 
-            The fully-connected layer is a special "condensed" layer.
-            - convLayer1 gets the input; num_channels in, num_out_conv1 out
+#         """
+#             This is a minimal CNN with 2 convolutional layers and one fully-connected layer. 
+#             The fully-connected layer is a special "condensed" layer.
+#             - convLayer1 gets the input; num_channels in, num_out_conv1 out
 
-            -- after flattening, the output is of length num_out_conv*pooled_img_size**2 (see utils for details)
-            - FCcondLayer is an implicitly sparse layer represented by a dense ("condensed") matrix of shape fan_in x num_out_fc
-            - outLayer maps from num_out_fc to num_classes
-        """
-        self.printout= True
-        self.init_distrib= 'normal'
+#             -- after flattening, the output is of length num_out_conv*pooled_img_size**2 (see utils for details)
+#             - FCcondLayer is an implicitly sparse layer represented by a dense ("condensed") matrix of shape fan_in x num_out_fc
+#             - outLayer maps from num_out_fc to num_classes
+#         """
+#         self.printout= True
+#         self.init_distrib= 'normal'
 
-        # ===== LAYERS =====
-        num_in, num_out, pooled_img_size= get_layer_dims_for_simpleCNN2(
-            num_out_conv1=num_out_conv1, 
-            num_out_conv2=num_out_conv2, 
-            num_out_fc=num_out_fc, 
-            fan_in= fan_in, 
-            input_img_size=input_img_size, 
-            num_channels=num_channels, 
-            num_classes=num_classes
-            )
+#         # ===== LAYERS =====
+#         num_in, num_out, pooled_img_size= get_layer_dims_for_simpleCNN2(
+#             num_out_conv1=num_out_conv1, 
+#             num_out_conv2=num_out_conv2, 
+#             num_out_fc=num_out_fc, 
+#             fan_in= fan_in, 
+#             input_img_size=input_img_size, 
+#             num_channels=num_channels, 
+#             num_classes=num_classes
+#             )
 
-        lkeys= {'convLayer1', 'convLayer2', 'FCcondLayer', 'outLayer'}
+#         lkeys= {'convLayer1', 'convLayer2', 'FCcondLayer', 'outLayer'}
 
-        # ===== ACTIVATION FUNCTION =====
-        self.activation_funct= nn.ReLU()
+#         # ===== ACTIVATION FUNCTION =====
+#         self.activation_funct= nn.ReLU()
 
-        #=== CONV layer 1
-        lkey='convLayer1'
-        self.convLayer1= nn.Conv2d(num_in[lkey], num_out[lkey], kernel_size=3, stride=1, padding=1)
-        self.bn1= nn.BatchNorm2d(num_out[lkey])
+#         #=== CONV layer 1
+#         lkey='convLayer1'
+#         self.convLayer1= nn.Conv2d(num_in[lkey], num_out[lkey], kernel_size=3, stride=1, padding=1)
+#         self.bn1= nn.BatchNorm2d(num_out[lkey])
         
-        # #=== CONV layer 2
-        lkey='convLayer2'
-        self.convLayer2= nn.Conv2d(num_in[lkey], num_out[lkey], kernel_size=3, stride=1, padding=1)
-        self.bn2= nn.BatchNorm2d(num_out[lkey])
+#         # #=== CONV layer 2
+#         lkey='convLayer2'
+#         self.convLayer2= nn.Conv2d(num_in[lkey], num_out[lkey], kernel_size=3, stride=1, padding=1)
+#         self.bn2= nn.BatchNorm2d(num_out[lkey])
 
-        #=== pooling, used after each conv layer
-        self.pooling= nn.MaxPool2d(kernel_size=2)
+#         #=== pooling, used after each conv layer
+#         self.pooling= nn.MaxPool2d(kernel_size=2)
 
-        #=== FC-COND layer
-        lkey='FCcondLayer'
-        self.FCcondLayer= nn.Linear(num_in[lkey], num_out[lkey])
+#         #=== FC-COND layer
+#         lkey='FCcondLayer'
+#         self.FCcondLayer= nn.Linear(num_in[lkey], num_out[lkey])
 
-        #=== CLASSIFIER
-        lkey='outLayer'
-        self.outLayer= nn.Linear(num_in[lkey], num_out[lkey])
-
-
-        if self.printout:
-            print('-=- Layers and Sizes: -=-')
-            for lkey in lkeys:
-                layer= getattr(self,lkey)
-                print(f'{lkey}: {layer.weight.shape}')
+#         #=== CLASSIFIER
+#         lkey='outLayer'
+#         self.outLayer= nn.Linear(num_in[lkey], num_out[lkey])
 
 
-        # ===== INITIALIZATION ADJUSTMENT =====
-        if self.init_distrib== 'normal':
-            if self.printout: print('Adjusting init distrib to normal...')
-            for lkey in ['FCcondLayer','outLayer']:
-                layer= getattr(self,lkey)
-                stddev= 1/np.sqrt(layer.weight.shape[-1])
-                self.reinit_parameters(layer, stddev)
+#         if self.printout:
+#             print('-=- Layers and Sizes: -=-')
+#             for lkey in lkeys:
+#                 layer= getattr(self,lkey)
+#                 print(f'{lkey}: {layer.weight.shape}')
 
 
-        # ===== INDICES FOR RECOMBS =====
-        self.indx_seqs= torch.LongTensor( 
-                            gen_indx_seqs(self.FCcondLayer.weight.data, num_out_conv2*pooled_img_size**2, fan_out_const) 
-                            )
+#         # ===== INITIALIZATION ADJUSTMENT =====
+#         if self.init_distrib== 'normal':
+#             if self.printout: print('Adjusting init distrib to normal...')
+#             for lkey in ['FCcondLayer','outLayer']:
+#                 layer= getattr(self,lkey)
+#                 stddev= 1/np.sqrt(layer.weight.shape[-1])
+#                 self.reinit_parameters(layer, stddev)
 
-    def forward(self, x):
-        # conv layer 1
-        out= self.convLayer1(x)
-        out= self.bn1(out)
-        out= self.activation_funct(out)
-        out= self.pooling(out)
+
+#         # ===== INDICES FOR RECOMBS =====
+#         self.indx_seqs= torch.LongTensor( 
+#                             gen_indx_seqs(self.FCcondLayer.weight.data, num_out_conv2*pooled_img_size**2, fan_out_const) 
+#                             )
+
+#     def forward(self, x):
+#         # conv layer 1
+#         out= self.convLayer1(x)
+#         out= self.bn1(out)
+#         out= self.activation_funct(out)
+#         out= self.pooling(out)
         
-        # conv layer 2
-        out= self.convLayer2(out)
-        out= self.bn2(out)
-        out= self.activation_funct(out)
-        out= self.pooling(out)
+#         # conv layer 2
+#         out= self.convLayer2(out)
+#         out= self.bn2(out)
+#         out= self.activation_funct(out)
+#         out= self.pooling(out)
         
-        out= out.reshape(out.size(0), -1)
+#         out= out.reshape(out.size(0), -1)
 
-        # fc layer
-        # <!> special op: condensed-mat-mult happens here <!>
-        out= spe_matmul(inputs=out, weights=self.FCcondLayer.weight.data, indx_seqs=self.indx_seqs)
-        out= out+self.FCcondLayer.bias.data
-        out= self.activation_funct(out)
+#         # fc layer
+#         # <!> special op: condensed-mat-mult happens here <!>
+#         out= spe_matmul(inputs=out, weights=self.FCcondLayer.weight.data, indx_seqs=self.indx_seqs)
+#         out= out+self.FCcondLayer.bias.data
+#         out= self.activation_funct(out)
 
-        # classifier
-        out= self.outLayer(out)
+#         # classifier
+#         out= self.outLayer(out)
 
-        return out
+#         return out
 
-    def reinit_parameters(self, layer, stddev): 
-        if self.init_distrib=='normal':
-            if self.printout: print(f'distribution: {self.init_distrib}')
-            if self.printout: print(f'stddev={stddev}') 
-            nn.init.normal_(layer.weight, mean=0.0, std=stddev)
-            if layer.bias is not None:
-                nn.init.normal_(layer.bias, mean=0.0, std=stddev)
-        elif self.init_distrib=='uniform':
-            nn.init.uniform_(layer.weight, -stddev, stddev)
-            if layer.bias is not None:
-                nn.init.uniform_(layer.bias, -stddev, stddev)
+#     def reinit_parameters(self, layer, stddev): 
+#         if self.init_distrib=='normal':
+#             if self.printout: print(f'distribution: {self.init_distrib}')
+#             if self.printout: print(f'stddev={stddev}') 
+#             nn.init.normal_(layer.weight, mean=0.0, std=stddev)
+#             if layer.bias is not None:
+#                 nn.init.normal_(layer.bias, mean=0.0, std=stddev)
+#         elif self.init_distrib=='uniform':
+#             nn.init.uniform_(layer.weight, -stddev, stddev)
+#             if layer.bias is not None:
+#                 nn.init.uniform_(layer.bias, -stddev, stddev)
 
 
 

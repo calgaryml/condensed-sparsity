@@ -48,9 +48,9 @@ if __name__ == '__main__':
     parser.add_argument('--no-bias', default=False, action='store_true', help='don\'t use biases')
     parser.add_argument('--num-layers', type=int, help='total number of layers', default=1)
     parser.add_argument('--num-mid', type=int, help='width of the hidden layer(s)', default=0)
-    # parser.add_argument('--fan-in', type=int, help='fan-in for condLayer', default=0)
+    parser.add_argument('--fan-in', type=int, help='fan-in for condLayer', default=0)
     parser.add_argument('--fan-out-const', type=str, default="True", choices=["True","False"], help='use same fan-out for all units in sparse (condensed) layer')
-    parser.add_argument('--individ-indx-seqs', default=False, action='store_true', help='individual indx seqs for each cond layer')
+    #parser.add_argument('--individ-indx-seqs', default=False, action='store_true', help='individual indx seqs for each cond layer')
     parser.add_argument('--make-linear', type=str, default="True", choices=["True","False"], help='disable non-linear (ReLU) activation functions')
 
     parser.add_argument('--sparsity-type', type=str, default='none', choices=["none","per_neuron", "per_layer"], help='sparsity type for SparseNet')
@@ -76,10 +76,10 @@ if __name__ == '__main__':
 
     # ========== paths and dirs ==========
     # ====================================
-    if args.model_type=='Net':
-        args.fan_in= args.num_mid
-    else:
-        args.fan_in= int(args.num_mid/(args.num_layers-2))
+    # if args.model_type=='Net':
+    #     args.fan_in= args.num_mid
+    # else:
+    #     args.fan_in= int(args.num_mid/(args.num_layers-2))
     output_dir= make_outputdirname(args)
     os.makedirs(output_dir, exist_ok=True)
 
@@ -149,8 +149,7 @@ if __name__ == '__main__':
         model= CondNet(num_layers=num_layers, 
             num_in=input_size, num_out=num_classes, 
             num_mid=num_mid, fan_in=fan_in, fan_out_const=fan_out_const, 
-            make_linear=make_linear, add_bias=add_bias, 
-            individ_indx_seqs=args.individ_indx_seqs).to(device)
+            make_linear=make_linear, add_bias=add_bias).to(device)
     else:
         print(f'Model type {model_type} unknown!')
 
