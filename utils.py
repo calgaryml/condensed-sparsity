@@ -32,7 +32,7 @@ def make_outputdirname(args):
         if args.num_layers>2:
             output_dir+= f'_nmid_{args.num_mid}_k_{args.fan_in}'
         output_dir+= f'_n{args.num_layers}_{output_size}'
-        if args.individ_indx_seqs: output_dir+=f'_individ_indx_seqs'
+        #if args.individ_indx_seqs: output_dir+=f'_individ_indx_seqs'
         if args.model_type=='SparseNet':
             output_dir+= f'_{args.sparsity_type}_{args.connect_type}'
 
@@ -84,15 +84,13 @@ def gen_indx_seqs(num_in, num_out, input_len, fan_out_const):
         length of each recomb.vector = num_out (= n2)
 
     Args:
-        weights: 2d array, condensed weight matrix, shape (num_out, num_in)
+        num_out, num_in= CondLayer.weight.shape
         input_len: int, length of the input vector
         fan_out_const: bool, if True, nearly constant fan-out will be ensured
         
     Returns:
-        A 2d array of indices of the same shape as weights.
+        A 2d array of indices of the same shape as the weight matrix.
     """
-    
-    #num_out, num_in= weights.shape
 
     # init index sequences
     #indx_seqs= np.zeros((weights.shape))
