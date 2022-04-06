@@ -14,7 +14,8 @@ torch.manual_seed(1)
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
-max_iters = 50000
+# max_iters = 50000 # Too slow on github actions
+max_iters = 500
 
 model = torch.hub.load("pytorch/vision:v0.6.0", "resnet50", pretrained=False).to(device)
 # model = torch.nn.DataParallel(model).to(device)
