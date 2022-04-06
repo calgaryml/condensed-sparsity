@@ -6,3 +6,10 @@ homepage = "https://github.com/calgaryml/condensed-sparsity/"
 
 [tool.black]
 line-length = 120
+
+[tool.pytest.ini_options]
+addopts = "--cov=src --cov-report html --cov-branch"
+markers = [
+    "integration",
+    "slow"
+]

@@ -7,6 +7,7 @@ import torch.distributed as dist
 
 from rigl_torch.RigL import RigLScheduler
 from rigl_torch.util import get_W
+import pytest
 
 
 # set up environment
@@ -18,7 +19,7 @@ arch = "resnet50"
 image_dimensionality = (3, 224, 224)
 num_classes = 1000
 # max_iters = 15
-max_iters = 3
+max_iters = 1
 T_end = int(max_iters * 0.75)
 delta = 3
 dense_allocation = 0.1
@@ -184,10 +185,7 @@ class TestRigLScheduler:
     def test_checkpoint_saving(self):
         scheduler = get_new_scheduler()
         torch.save(
-            {
-                "scheduler": scheduler.state_dict(),
-                "model": scheduler.model,
-            },
+            {"scheduler": scheduler.state_dict(), "model": scheduler.model},
             checkpoint_fn,
         )
 
@@ -254,9 +252,11 @@ def assert_sparse_gradients_remain_zeros_DISTRIBUTED(rank, static_topo):
 
 
 class TestRigLSchedulerDistributed:
+    @pytest.mark.slow
     def test_initial_sparsity(self):
         mp.spawn(assert_actual_sparsity_is_valid_DISTRIBUTED, nprocs=WORLD_SIZE)
 
+    @pytest.mark.slow
     def test_sparse_momentum_remain_zeros_STATIC_TOPO(self):
         mp.spawn(
             assert_sparse_momentum_remain_zeros_DISTRIBUTED,
@@ -264,6 +264,7 @@ class TestRigLSchedulerDistributed:
             args=(True,),
         )
 
+    @pytest.mark.slow
     def test_sparse_momentum_remain_zeros_RIGL_TOPO(self):
         mp.spawn(
             assert_sparse_momentum_remain_zeros_DISTRIBUTED,
@@ -271,6 +272,7 @@ class TestRigLSchedulerDistributed:
             args=(False,),
         )
 
+    @pytest.mark.slow
     def test_sparse_elements_remain_zeros_STATIC_TOPO(self):
         mp.spawn(
             assert_sparse_elements_remain_zeros_DISTRIBUTED,
@@ -278,6 +280,7 @@ class TestRigLSchedulerDistributed:
             args=(True,),
         )
 
+    @pytest.mark.slow
     def test_sparse_elements_remain_zeros_RIGL_TOPO(self):
         mp.spawn(
             assert_sparse_elements_remain_zeros_DISTRIBUTED,
@@ -285,6 +288,7 @@ class TestRigLSchedulerDistributed:
             args=(False,),
         )
 
+    @pytest.mark.slow
     def test_sparse_gradients_remain_zeros_STATIC_TOPO(self):
         mp.spawn(
             assert_sparse_gradients_remain_zeros_DISTRIBUTED,
@@ -292,6 +296,7 @@ class TestRigLSchedulerDistributed:
             args=(True,),
         )
 
+    @pytest.mark.slow
     def test_sparse_gradients_remain_zeros_RIGL_TOPO(self):
         mp.spawn(
             assert_sparse_gradients_remain_zeros_DISTRIBUTED,

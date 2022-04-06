@@ -44,7 +44,7 @@ jobs:
         run: python -m flake8 .
 
       - name: Test with pytest
-        run: pytest tests
+        run: pytest tests -vs
 
       - name: Formatter check with black
         run: python run black --check .
