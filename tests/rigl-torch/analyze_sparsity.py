@@ -5,22 +5,31 @@ import torchvision.datasets as datasets
 import argparse
 
 parser = argparse.ArgumentParser(
-    description="Test for analyzing the consistency of sparsity values throughout training."
+    description=(
+        "Test for analyzing the consistency of sparsity values throughout "
+        "training."
+    )
 )
 parser.add_argument("--data-path", help="path to dataset", required=True)
 args = parser.parse_args()
 
 torch.manual_seed(1)
 
-device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+device = (
+    torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+)
 
 # max_iters = 50000 # Too slow on github actions
 max_iters = 1
 
-model = torch.hub.load("pytorch/vision:v0.6.0", "resnet50", pretrained=False).to(device)
+model = torch.hub.load(
+    "pytorch/vision:v0.6.0", "resnet50", pretrained=False
+).to(device)
 # model = torch.nn.DataParallel(model).to(device)
 optimizer = torch.optim.SGD(model.parameters(), 0.1)
-scheduler = RigLScheduler(model, optimizer, dense_allocation=0.1, T_end=int(max_iters * 0.75), delta=2)
+scheduler = RigLScheduler(
+    model, optimizer, dense_allocation=0.1, T_end=int(max_iters * 0.75), delta=2
+)
 
 print(scheduler)
 print("---------------------------------------")
@@ -36,7 +45,9 @@ dataset = datasets.ImageFolder(
         ]
     ),
 )
-dataloader = torch.utils.data.DataLoader(dataset, batch_size=2)  # , num_workers=24)
+dataloader = torch.utils.data.DataLoader(
+    dataset, batch_size=2
+)  # , num_workers=24)
 
 # calculate gradients once (so we can do the tests without failure)
 criterion = torch.nn.CrossEntropyLoss()

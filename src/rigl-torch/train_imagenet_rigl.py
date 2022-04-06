@@ -1,12 +1,8 @@
 """
-
-
 Note: This is the exact same script as found here:
 https://github.com/pytorch/examples/blob/0f0c9131ca5c79d1332dce1f4c06fe942fbdc665/imagenet/main.py#L1
-The only difference is there are a few parser arguments added and the mandatory rigl-torch code (creating the prune
-scheduler).
-
-
+The only difference is there are a few parser arguments added and the mandatory
+rigl-torch code (creating the prune scheduler).
 """
 
 import argparse
@@ -33,19 +29,28 @@ import torchvision.models as models
 from rigl_torch.RigL import RigLScheduler
 
 model_names = sorted(
-    name for name in models.__dict__ if name.islower() and not name.startswith("__") and callable(models.__dict__[name])
+    name
+    for name in models.__dict__
+    if name.islower()
+    and not name.startswith("__")
+    and callable(models.__dict__[name])
 )
 
 parser = argparse.ArgumentParser(description="PyTorch ImageNet Training")
 
 
 default_data_dir = os.environ.get("SM_CHANNEL_TRAINING", None)
-parser.add_argument("--data", metavar="DIR", default=default_data_dir, help="path to dataset")
+parser.add_argument(
+    "--data", metavar="DIR", default=default_data_dir, help="path to dataset"
+)
 parser.add_argument(
     "--run-extract-script",
     default=0,
     type=int,
-    help="if 1, run the extract.sh file (used for sagemaker example + s3 bucket containing 1000 .tar files.",
+    help=(
+        "if 1, run the extract.sh file (used for sagemaker example + s3 bucket"
+        " containing 1000 .tar files."
+    ),
 )
 parser.add_argument("--output-dir", default=None)
 parser.add_argument("--checkpoint-dir", default=None)
@@ -55,22 +60,31 @@ parser.add_argument(
     metavar="ARCH",
     default="resnet18",
     choices=model_names,
-    help="model architecture: " + " | ".join(model_names) + " (default: resnet18)",
+    help="model architecture: "
+    + " | ".join(model_names)
+    + " (default: resnet18)",
 )
 parser.add_argument(
     "--dense-allocation",
     default=None,
     type=float,
-    help="percentage of dense parameters allowed. if None, pruning will not be used. must be on the interval (0, 1]",
+    help=(
+        "percentage of dense parameters allowed. if None, pruning will not be "
+        "used. must be on the interval (0, 1]"
+    ),
 )
-parser.add_argument("--delta", default=100, type=int, help="delta param for pruning")
+parser.add_argument(
+    "--delta", default=100, type=int, help="delta param for pruning"
+)
 parser.add_argument(
     "--grad-accumulation-n",
     default=1,
     type=int,
     help="number of gradients to accumulate before scoring for rigl",
 )
-parser.add_argument("--alpha", default=0.3, type=float, help="alpha param for pruning")
+parser.add_argument(
+    "--alpha", default=0.3, type=float, help="alpha param for pruning"
+)
 parser.add_argument(
     "--static-topo",
     default=0,
@@ -85,7 +99,13 @@ parser.add_argument(
     metavar="N",
     help="number of data loading workers (default: 4)",
 )
-parser.add_argument("--epochs", default=90, type=int, metavar="N", help="number of total epochs to run")
+parser.add_argument(
+    "--epochs",
+    default=90,
+    type=int,
+    metavar="N",
+    help="number of total epochs to run",
+)
 parser.add_argument(
     "--T-end-percent",
     default=0.8,
@@ -130,18 +150,21 @@ parser.add_argument(
     default=None,
     type=int,
     metavar="LR_WARMUP_END",
-    help="If not None, use linear warmup\
-                                               up to the provided integer value",
+    help="If not None, use linear warmup up to the provided integer value",
 )
 parser.add_argument(
     "--lr-scaling-stop",
     default=90,
     type=int,
     metavar="LR_WARMUP_END",
-    help="If None, never stop scaling the \
-                                                   learning rate, otherwise stop @ provided",
+    help=(
+        "If None, never stop scaling the learning rate, otherwise stop @ "
+        "provided"
+    ),
 )
-parser.add_argument("--momentum", default=0.9, type=float, metavar="M", help="momentum")
+parser.add_argument(
+    "--momentum", default=0.9, type=float, metavar="M", help="momentum"
+)
 parser.add_argument(
     "--wd",
     "--weight-decay",
@@ -173,7 +196,12 @@ parser.add_argument(
     action="store_true",
     help="evaluate model on validation set",
 )
-parser.add_argument("--pretrained", dest="pretrained", action="store_true", help="use pre-trained model")
+parser.add_argument(
+    "--pretrained",
+    dest="pretrained",
+    action="store_true",
+    help="use pre-trained model",
+)
 default_hosts = os.environ.get("SM_HOSTS", None)
 if default_hosts is None:
     default_world_size = -1
@@ -181,18 +209,30 @@ else:
     default_hosts = json.loads(default_hosts)
     default_world_size = len(default_hosts)
 parser.add_argument("--hosts", type=list, default=default_hosts)
-parser.add_argument("--current-host", type=str, default=os.environ.get("SM_CURRENT_HOST", None))
+parser.add_argument(
+    "--current-host", type=str, default=os.environ.get("SM_CURRENT_HOST", None)
+)
 parser.add_argument(
     "--world-size",
     default=default_world_size,
     type=int,
     help="number of nodes for distributed training",
 )
-parser.add_argument("--rank", default=-1, type=int, help="node rank for distributed training")
-# parser.add_argument('--dist-url', default='tcp://224.66.41.62:23456', type=str,
-# help='url used to set up distributed training')
-parser.add_argument("--dist-backend", default="nccl", type=str, help="distributed backend")
-parser.add_argument("--seed", default=None, type=int, help="seed for initializing training. ")
+parser.add_argument(
+    "--rank", default=-1, type=int, help="node rank for distributed training"
+)
+# parser.add_argument(
+#     "--dist-url",
+#     default="tcp://224.66.41.62:23456",
+#     type=str,
+#     help="url used to set up distributed training",
+# )
+parser.add_argument(
+    "--dist-backend", default="nccl", type=str, help="distributed backend"
+)
+parser.add_argument(
+    "--seed", default=None, type=int, help="seed for initializing training. "
+)
 parser.add_argument("--gpu", default=None, type=int, help="GPU id to use.")
 parser.add_argument(
     "--multiprocessing-distributed",
@@ -231,7 +271,10 @@ def main():
         )
 
     if args.gpu is not None:
-        warnings.warn("You have chosen a specific GPU. This will completely " "disable data parallelism.")
+        warnings.warn(
+            "You have chosen a specific GPU. This will completely "
+            "disable data parallelism."
+        )
 
     # if args.dist_url == "env://" and args.world_size == -1:
     # args.world_size = int(os.environ["WORLD_SIZE"])
@@ -245,7 +288,9 @@ def main():
         args.world_size = ngpus_per_node * args.world_size
         # Use torch.multiprocessing.spawn to launch distributed processes: the
         # main_worker process function
-        mp.spawn(main_worker, nprocs=ngpus_per_node, args=(ngpus_per_node, args))
+        mp.spawn(
+            main_worker, nprocs=ngpus_per_node, args=(ngpus_per_node, args)
+        )
     else:
         # Simply call main_worker function
         main_worker(args.gpu, ngpus_per_node, args)
@@ -297,8 +342,12 @@ def main_worker(gpu, ngpus_per_node, args):
             # DistributedDataParallel, we need to divide the batch size
             # ourselves based on the total number of GPUs we have
             args.batch_size = int(args.batch_size / ngpus_per_node)
-            args.workers = int((args.workers + ngpus_per_node - 1) / ngpus_per_node)
-            model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
+            args.workers = int(
+                (args.workers + ngpus_per_node - 1) / ngpus_per_node
+            )
+            model = torch.nn.parallel.DistributedDataParallel(
+                model, device_ids=[args.gpu]
+            )
         else:
             model.cuda()
             # DistributedDataParallel will divide and allocate batch_size to all
@@ -329,7 +378,9 @@ def main_worker(gpu, ngpus_per_node, args):
     pruner_state_dict = None
     if args.resume or args.checkpoint_dir is not None:
         if args.checkpoint_dir is not None:
-            args.resume = os.path.join(args.checkpoint_dir, "checkpoint.pth.tar")
+            args.resume = os.path.join(
+                args.checkpoint_dir, "checkpoint.pth.tar"
+            )
 
         if os.path.isfile(args.resume):
             print("=> loading checkpoint '{}'".format(args.resume))
@@ -347,7 +398,11 @@ def main_worker(gpu, ngpus_per_node, args):
                 best_acc1 = best_acc1.to(args.gpu)
             model.load_state_dict(checkpoint["state_dict"])
             optimizer.load_state_dict(checkpoint["optimizer"])
-            print("=> loaded checkpoint '{}' (epoch {})".format(args.resume, checkpoint["epoch"]))
+            print(
+                "=> loaded checkpoint '{}' (epoch {})".format(
+                    args.resume, checkpoint["epoch"]
+                )
+            )
         else:
             print("=> no checkpoint found at '{}'".format(args.resume))
 
@@ -356,17 +411,26 @@ def main_worker(gpu, ngpus_per_node, args):
     # Data loading code
     traindir = os.path.join(args.data, "train")
     valdir = os.path.join(args.data, "val")
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    normalize = transforms.Normalize(
+        mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+    )
 
     train_dataset = datasets.ImageFolder(
         traindir,
         transforms.Compose(
-            [transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip(), transforms.ToTensor(), normalize]
+            [
+                transforms.RandomResizedCrop(224),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                normalize,
+            ]
         ),
     )
 
     if args.distributed:
-        train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+        train_sampler = torch.utils.data.distributed.DistributedSampler(
+            train_dataset
+        )
     else:
         train_sampler = None
 
@@ -382,7 +446,14 @@ def main_worker(gpu, ngpus_per_node, args):
     val_loader = torch.utils.data.DataLoader(
         datasets.ImageFolder(
             valdir,
-            transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224), transforms.ToTensor(), normalize]),
+            transforms.Compose(
+                [
+                    transforms.Resize(256),
+                    transforms.CenterCrop(224),
+                    transforms.ToTensor(),
+                    normalize,
+                ]
+            ),
         ),
         batch_size=args.eval_batch_size,
         shuffle=False,
@@ -413,7 +484,10 @@ def main_worker(gpu, ngpus_per_node, args):
             grad_accumulation_n=args.grad_accumulation_n,
             state_dict=pruner_state_dict,
         )
-        print("pruning with dense allocation: %f & T_end=%i" % (args.dense_allocation, T_end))
+        print(
+            "pruning with dense allocation: %f & T_end=%i"
+            % (args.dense_allocation, T_end)
+        )
         print(pruner)
 
     for epoch in range(args.start_epoch, args.epochs):
@@ -422,7 +496,15 @@ def main_worker(gpu, ngpus_per_node, args):
         adjust_learning_rate(optimizer, epoch, args)
 
         # train for one epoch
-        train(train_loader, model, criterion, optimizer, epoch, args, pruner=pruner)
+        train(
+            train_loader,
+            model,
+            criterion,
+            optimizer,
+            epoch,
+            args,
+            pruner=pruner,
+        )
 
         # evaluate on validation set
         acc1 = validate(val_loader, model, criterion, args)
@@ -507,7 +589,9 @@ def validate(val_loader, model, criterion, args):
     losses = AverageMeter("Loss", ":.4e")
     top1 = AverageMeter("Acc@1", ":6.2f")
     top5 = AverageMeter("Acc@5", ":6.2f")
-    progress = ProgressMeter(len(val_loader), [batch_time, losses, top1, top5], prefix="Test: ")
+    progress = ProgressMeter(
+        len(val_loader), [batch_time, losses, top1, top5], prefix="Test: "
+    )
 
     # switch to evaluate mode
     model.eval()
@@ -538,12 +622,18 @@ def validate(val_loader, model, criterion, args):
                 progress.display(i)
 
         # TODO: this should also be done with the ProgressMeter
-        print(" * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}".format(top1=top1, top5=top5))
+        print(
+            " * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}".format(
+                top1=top1, top5=top5
+            )
+        )
 
     return top1.avg
 
 
-def save_checkpoint(state, is_best, parent_dir=None, filename="checkpoint.pth.tar"):
+def save_checkpoint(
+    state, is_best, parent_dir=None, filename="checkpoint.pth.tar"
+):
     if parent_dir is not None:
         filename = os.path.join(parent_dir, filename)
         if not os.path.exists(parent_dir):
@@ -607,7 +697,7 @@ def adjust_learning_rate(optimizer, epoch, args):
         m = (epoch + 1) / args.lr_warmup_end
         lr = args.lr * m
     else:
-        """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
+        # Sets the learning rate to the initial LR decayed by 10 every 30 epochs
         lr = args.lr * (0.1 ** (epoch // 30))
 
     print("using LR:", lr)
@@ -616,7 +706,9 @@ def adjust_learning_rate(optimizer, epoch, args):
 
 
 def accuracy(output, target, topk=(1,)):
-    """Computes the accuracy over the k top predictions for the specified values of k"""
+    """Computes the accuracy over the k top predictions for the specified value
+    of k
+    """
     with torch.no_grad():
         maxk = max(topk)
         batch_size = target.size(0)

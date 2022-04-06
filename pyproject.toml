@@ -5,7 +5,15 @@ authors = []
 homepage = "https://github.com/calgaryml/condensed-sparsity/"
 
 [tool.black]
-line-length = 120
+line-length = 80
+exclude ='''
+^/(
+    utils.py
+    | main.py
+    | models.py
+)
+'''
+
 
 [tool.pytest.ini_options]
 addopts = "--cov=src --cov-report html --cov-branch"

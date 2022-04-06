@@ -169,4 +169,4 @@ cython_debug/
 *.pt
 *.png
 *.ipynb
-.vscode
+# .vscode # We will share .vscode for this project.

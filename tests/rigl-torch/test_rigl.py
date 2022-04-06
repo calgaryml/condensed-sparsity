@@ -12,7 +12,9 @@ import pytest
 
 # set up environment
 # torch.manual_seed(1)
-device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+device = (
+    torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+)
 
 # hyperparameters
 arch = "resnet50"
@@ -27,11 +29,15 @@ criterion = torch.nn.functional.cross_entropy
 
 
 def test_lengths_of_W():
-    resnet18 = torch.hub.load("pytorch/vision:v0.6.0", "resnet18", pretrained=False)
+    resnet18 = torch.hub.load(
+        "pytorch/vision:v0.6.0", "resnet18", pretrained=False
+    )
     resnet18_W = get_W(resnet18)
     assert len(resnet18_W) == 21, 'resnet18 should have 21 "weight" matrices'
 
-    resnet50 = torch.hub.load("pytorch/vision:v0.6.0", "resnet50", pretrained=False)
+    resnet50 = torch.hub.load(
+        "pytorch/vision:v0.6.0", "resnet50", pretrained=False
+    )
     resnet50_W = get_W(resnet50)
     assert len(resnet50_W) == 54, 'resnet50 should have 54 "weight" matrices'
 
@@ -44,9 +50,13 @@ def get_dummy_dataloader():
     return dataloader
 
 
-def get_new_scheduler(static_topo=False, use_ddp=False, state_dict=None, model=None):
+def get_new_scheduler(
+    static_topo=False, use_ddp=False, state_dict=None, model=None
+):
     if model is None:
-        model = torch.hub.load("pytorch/vision:v0.6.0", arch, pretrained=False).to(device)
+        model = torch.hub.load(
+            "pytorch/vision:v0.6.0", arch, pretrained=False
+        ).to(device)
 
     if use_ddp:
         model = torch.nn.parallel.DistributedDataParallel(model)
@@ -68,7 +78,9 @@ def get_new_scheduler(static_topo=False, use_ddp=False, state_dict=None, model=N
 
 
 def assert_actual_sparsity_is_valid(scheduler, verbose=False):
-    for l, (W, target_S, N, mask) in enumerate(zip(scheduler.W, scheduler.S, scheduler.N, scheduler.backward_masks)):
+    for l, (W, target_S, N, mask) in enumerate(
+        zip(scheduler.W, scheduler.S, scheduler.N, scheduler.backward_masks)
+    ):
         target_zeros = int(target_S * N)
         actual_zeros = torch.sum(W == 0).item()
         sum_of_zeros = torch.sum(W[mask == 0]).item()
@@ -89,7 +101,9 @@ def assert_actual_sparsity_is_valid(scheduler, verbose=False):
         assert sum_of_zeros == 0
 
 
-def assert_sparse_elements_remain_zeros(static_topo, use_ddp=False, verbose=False, scheduler=None):
+def assert_sparse_elements_remain_zeros(
+    static_topo, use_ddp=False, verbose=False, scheduler=None
+):
     if scheduler is None:
         scheduler = get_new_scheduler(static_topo, use_ddp=use_ddp)
 
@@ -134,10 +148,15 @@ def assert_sparse_momentum_remain_zeros(static_topo, use_ddp=False):
             is_rigl_step = False
             optimizer.step()
 
-        print("iteration: %i\trigl steps completed: %i\tis_rigl_step=%s" % (i, scheduler.rigl_steps, str(is_rigl_step)))
+        print(
+            "iteration: %i\trigl steps completed: %i\tis_rigl_step=%s"
+            % (i, scheduler.rigl_steps, str(is_rigl_step))
+        )
 
         # check momentum
-        for l, (w, mask) in enumerate(zip(scheduler.W, scheduler.backward_masks)):
+        for l, (w, mask) in enumerate(
+            zip(scheduler.W, scheduler.backward_masks)
+        ):
             param_state = optimizer.state[w]
             assert "momentum_buffer" in param_state
             buf = param_state["momentum_buffer"]
@@ -164,10 +183,15 @@ def assert_sparse_gradients_remain_zeros(static_topo, use_ddp=False):
             is_rigl_step = False
             optimizer.step()
 
-        print("iteration: %i\trigl steps completed: %i\tis_rigl_step=%s" % (i, scheduler.rigl_steps, str(is_rigl_step)))
+        print(
+            "iteration: %i\trigl steps completed: %i\tis_rigl_step=%s"
+            % (i, scheduler.rigl_steps, str(is_rigl_step))
+        )
 
         # check gradients
-        for l, (w, mask) in enumerate(zip(scheduler.W, scheduler.backward_masks)):
+        for l, (w, mask) in enumerate(
+            zip(scheduler.W, scheduler.backward_masks)
+        ):
             grads = w.grad
             sum_zeros = torch.sum(grads[mask == 0]).item()
             print("layer %i" % l)
@@ -194,7 +218,9 @@ class TestRigLScheduler:
         scheduler_state_dict = ckpt["scheduler"]
         model = ckpt["model"]
         original_model = deepcopy(model)
-        scheduler = get_new_scheduler(state_dict=scheduler_state_dict, model=model)
+        scheduler = get_new_scheduler(
+            state_dict=scheduler_state_dict, model=model
+        )
         os.remove(checkpoint_fn)
 
         # first make sure the original model is the same as the loaded one
@@ -231,23 +257,31 @@ init_method = "file://%s/distributed_test" % os.getcwd()
 
 
 def assert_actual_sparsity_is_valid_DISTRIBUTED(rank, static_topo=False):
-    dist.init_process_group(BACKEND, init_method=init_method, rank=rank, world_size=WORLD_SIZE)
+    dist.init_process_group(
+        BACKEND, init_method=init_method, rank=rank, world_size=WORLD_SIZE
+    )
     scheduler = get_new_scheduler(static_topo=static_topo, use_ddp=True)
     assert_actual_sparsity_is_valid(scheduler)
 
 
 def assert_sparse_momentum_remain_zeros_DISTRIBUTED(rank, static_topo):
-    dist.init_process_group(BACKEND, init_method=init_method, rank=rank, world_size=WORLD_SIZE)
+    dist.init_process_group(
+        BACKEND, init_method=init_method, rank=rank, world_size=WORLD_SIZE
+    )
     assert_sparse_momentum_remain_zeros(static_topo, use_ddp=True)
 
 
 def assert_sparse_elements_remain_zeros_DISTRIBUTED(rank, static_topo):
-    dist.init_process_group(BACKEND, init_method=init_method, rank=rank, world_size=WORLD_SIZE)
+    dist.init_process_group(
+        BACKEND, init_method=init_method, rank=rank, world_size=WORLD_SIZE
+    )
     assert_sparse_elements_remain_zeros(static_topo, use_ddp=True)
 
 
 def assert_sparse_gradients_remain_zeros_DISTRIBUTED(rank, static_topo):
-    dist.init_process_group(BACKEND, init_method=init_method, rank=rank, world_size=WORLD_SIZE)
+    dist.init_process_group(
+        BACKEND, init_method=init_method, rank=rank, world_size=WORLD_SIZE
+    )
     assert_sparse_gradients_remain_zeros(static_topo, use_ddp=True)
 
 

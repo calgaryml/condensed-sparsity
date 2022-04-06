@@ -59,12 +59,17 @@ class RigLScheduler:
         state_dict=None,
     ):
         if dense_allocation <= 0 or dense_allocation > 1:
-            raise Exception("Dense allocation must be on the interval (0, 1]. Got: %f" % dense_allocation)
+            raise Exception(
+                "Dense allocation must be on the interval (0, 1]. Got: %f"
+                % dense_allocation
+            )
 
         self.model = model
         self.optimizer = optimizer
 
-        self.W, self._linear_layers_mask = get_W(model, return_linear_layers_mask=True)
+        self.W, self._linear_layers_mask = get_W(
+            model, return_linear_layers_mask=True
+        )
 
         # modify optimizer.step() function to call "reset_momentum" after
         _create_step_wrapper(self, optimizer)
@@ -85,11 +90,17 @@ class RigLScheduler:
 
             # define sparsity allocation
             self.S = []
-            for i, (W, is_linear) in enumerate(zip(self.W, self._linear_layers_mask)):
-                # when using uniform sparsity, the first layer is always 100% dense
-                # UNLESS there is only 1 layer
+            for i, (W, is_linear) in enumerate(
+                zip(self.W, self._linear_layers_mask)
+            ):
+                # when using uniform sparsity, the first layer is always 100%
+                # dense UNLESS there is only 1 layer
                 is_first_layer = i == 0
-                if is_first_layer and self.sparsity_distribution == "uniform" and len(self.W) > 1:
+                if (
+                    is_first_layer
+                    and self.sparsity_distribution == "uniform"
+                    and len(self.W) > 1
+                ):
                     self.S.append(0)
 
                 elif is_linear and self.ignore_linear_layers:
@@ -102,7 +113,8 @@ class RigLScheduler:
             # randomly sparsify model according to S
             self.random_sparsify()
 
-            # scheduler keeps a log of how many times it's called. this is how it does its scheduling
+            # scheduler keeps a log of how many times it's called. this is how
+            # it does its scheduling
             self.step = 0
             self.rigl_steps = 0
 
@@ -111,7 +123,8 @@ class RigLScheduler:
             self.alpha = alpha
             self.T_end = T_end
 
-        # also, register backward hook so sparse elements cannot be recovered during normal training
+        # also, register backward hook so sparse elements cannot be recovered
+        # during normal training
         self.backward_hook_objects = []
         for i, w in enumerate(self.W):
             # if sparsity is 0%, skip
@@ -120,7 +133,9 @@ class RigLScheduler:
                 continue
 
             if getattr(w, "_has_rigl_backward_hook", False):
-                raise Exception("This model already has been registered to a RigLScheduler.")
+                raise Exception(
+                    "This model already has been registered to a RigLScheduler."
+                )
 
             self.backward_hook_objects.append(IndexMaskHook(i, self))
             w.register_hook(self.backward_hook_objects[-1])
@@ -170,7 +185,9 @@ class RigLScheduler:
             n = self.N[l]
             s = int(self.S[l] * n)
             perm = torch.randperm(n)  # Generate random perm of indices in n
-            perm = perm[:s]  # Select s elements from n to achieve desired sparsity
+            perm = perm[
+                :s
+            ]  # Select s elements from n to achieve desired sparsity
             flat_mask = torch.ones(n, device=w.device)
             flat_mask[perm] = 0
             mask = torch.reshape(flat_mask, w.shape)
@@ -186,7 +203,8 @@ class RigLScheduler:
         s = "RigLScheduler(\n"
         s += "layers=%i,\n" % len(self.N)
 
-        # calculate the number of non-zero elements out of the total number of elements
+        # calculate the number of non-zero elements out of the total number of
+        # elements
         N_str = "["
         S_str = "["
         sparsity_percentages = []
@@ -195,7 +213,13 @@ class RigLScheduler:
         total_nonzero = 0
         total_conv_nonzero = 0
 
-        for N, S, mask, W, is_linear in zip(self.N, self.S, self.backward_masks, self.W, self._linear_layers_mask):
+        for N, S, mask, W, is_linear in zip(
+            self.N,
+            self.S,
+            self.backward_masks,
+            self.W,
+            self._linear_layers_mask,
+        ):
             actual_S = torch.sum(W[mask == 0] == 0).item()
             N_str += "%i/%i, " % (N - actual_S, N)
             sp_p = float(N - actual_S) / float(N) * 100
@@ -276,8 +300,9 @@ class RigLScheduler:
 
     def check_if_backward_hook_should_accumulate_grad(self):
         """
-        Used by the backward hooks. Basically just checks how far away the next rigl step is,
-        if it's within `self.grad_accumulation_n` steps, return True.
+        Used by the backward hooks. Basically just checks how far away the next
+        rigl step is, if it's within `self.grad_accumulation_n` steps, return
+        True.
         """
 
         if self.step >= self.T_end:
@@ -293,7 +318,9 @@ class RigLScheduler:
         self.step += 1
         if self.static_topo:
             return True
-        if (self.step % self.delta_T) == 0 and self.step < self.T_end:  # check schedule
+        if (
+            self.step % self.delta_T
+        ) == 0 and self.step < self.T_end:  # check schedule
             self._rigl_step()
             self.rigl_steps += 1
             return False
@@ -321,10 +348,14 @@ class RigLScheduler:
             # if is distributed, synchronize scores
             if is_dist:
                 dist.all_reduce(score_drop)  # get the sum of all drop scores
-                score_drop /= world_size  # divide by world size (average the drop scores)
+                score_drop /= (
+                    world_size  # divide by world size (average the drop scores)
+                )
 
                 dist.all_reduce(score_grow)  # get the sum of all grow scores
-                score_grow /= world_size  # divide by world size (average the grow scores)
+                score_grow /= (
+                    world_size  # divide by world size (average the grow scores)
+                )
 
             # calculate drop/grow quantities
             n_total = self.N[l]
@@ -344,7 +375,8 @@ class RigLScheduler:
             # flatten grow scores
             score_grow = score_grow.view(-1)
 
-            # set scores of the enabled connections(ones) to min(s) - 1, so that they have the lowest scores
+            # set scores of the enabled connections(ones) to min(s) - 1, so that
+            # they have the lowest scores
             score_grow_lifted = torch.where(
                 mask1 == 1,
                 torch.ones_like(mask1) * (torch.min(score_grow) - 1),
@@ -369,11 +401,16 @@ class RigLScheduler:
             else:
                 new_connections = (mask2_reshaped == 1) & (current_mask == 0)
 
-            # update new weights to be initialized as zeros and update the weight tensors
-            new_weights = torch.where(new_connections.to(w.device), grow_tensor, w)
+            # update new weights to be initialized as zeros and update the
+            # weight tensors
+            new_weights = torch.where(
+                new_connections.to(w.device), grow_tensor, w
+            )
             w.data = new_weights
 
-            mask_combined = torch.reshape(mask1 + mask2, current_mask.shape).bool()
+            mask_combined = torch.reshape(
+                mask1 + mask2, current_mask.shape
+            ).bool()
 
             # update the mask
             current_mask.data = mask_combined

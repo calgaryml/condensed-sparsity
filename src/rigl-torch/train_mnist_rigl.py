@@ -1,12 +1,8 @@
 """
-
-
 Note: This is the exact same script as found here:
 https://github.com/pytorch/examples/blob/0f0c9131ca5c79d1332dce1f4c06fe942fbdc665/mnist/main.py#L1
-The only difference is there are a few parser arguments added and the mandatory rigl-torch code (creating the prune
-scheduler).
-
-
+The only difference is there are a few parser arguments added and the mandatory
+rigl-torch code (creating the prune scheduler).
 """
 
 from __future__ import print_function
@@ -83,8 +79,12 @@ def test(model, device, test_loader):
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
             output = model(data)
-            test_loss += F.nll_loss(output, target, reduction="sum").item()  # sum up batch loss
-            pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
+            test_loss += F.nll_loss(
+                output, target, reduction="sum"
+            ).item()  # sum up batch loss
+            pred = output.argmax(
+                dim=1, keepdim=True
+            )  # get the index of the max log-probability
             correct += pred.eq(target.view_as(pred)).sum().item()
 
     test_loss /= len(test_loader.dataset)
@@ -112,17 +112,28 @@ def main():
         default=ed("DENSE_ALLOCATION"),
         type=float,
         help=(
-            "percentage of dense parameters allowed. if None, pruning will not be used. must be on the interval (0, 1]",
+            "percentage of dense parameters allowed. if None, pruning will not "
+            "be used. must be on the interval (0, 1]"
         ),
     )
-    parser.add_argument("--delta", default=ed("DELTA", 100), type=int, help="delta param for pruning")
+    parser.add_argument(
+        "--delta",
+        default=ed("DELTA", 100),
+        type=int,
+        help="delta param for pruning",
+    )
     parser.add_argument(
         "--grad-accumulation-n",
         default=ed("GRAD_ACCUMULATION_N", 1),
         type=int,
         help="number of gradients to accumulate before scoring for rigl",
     )
-    parser.add_argument("--alpha", default=ed("ALPHA", 0.3), type=float, help="alpha param for pruning")
+    parser.add_argument(
+        "--alpha",
+        default=ed("ALPHA", 0.3),
+        type=float,
+        help="alpha param for pruning",
+    )
     parser.add_argument(
         "--static-topo",
         default=ed("STATIC_TOPO", 0),
@@ -164,14 +175,25 @@ def main():
         metavar="M",
         help="Learning rate step gamma (default: 0.7)",
     )
-    parser.add_argument("--no-cuda", action="store_true", default=False, help="disables CUDA training")
+    parser.add_argument(
+        "--no-cuda",
+        action="store_true",
+        default=False,
+        help="disables CUDA training",
+    )
     parser.add_argument(
         "--dry-run",
         action="store_true",
         default=False,
         help="quickly check a single pass",
     )
-    parser.add_argument("--seed", type=int, default=1, metavar="S", help="random seed (default: 1)")
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=1,
+        metavar="S",
+        help="random seed (default: 1)",
+    )
     parser.add_argument(
         "--log-interval",
         type=int,
@@ -179,13 +201,24 @@ def main():
         metavar="N",
         help="how many batches to wait before logging training status",
     )
-    parser.add_argument("--save-model", default=1, type=bool, help="For Saving the current Model")
+    parser.add_argument(
+        "--save-model",
+        default=1,
+        type=bool,
+        help="For Saving the current Model",
+    )
     args = parser.parse_args()
 
     if args.dense_allocation is None:
-        print("-------------------------------------------------------------------")
-        print("heads up, RigL will not be used unless `--dense-allocation` is set!")
-        print("-------------------------------------------------------------------")
+        print(
+            "------------------------------------------------------------------"
+        )
+        print(
+            "heads up, RigL will not be used unless `--dense-allocation` is set"
+        )
+        print(
+            "------------------------------------------------------------------"
+        )
 
     use_cuda = not args.no_cuda and torch.cuda.is_available()
 
@@ -200,8 +233,12 @@ def main():
         train_kwargs.update(cuda_kwargs)
         test_kwargs.update(cuda_kwargs)
 
-    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
-    dataset1 = datasets.MNIST("../data", train=True, download=True, transform=transform)
+    transform = transforms.Compose(
+        [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
+    )
+    dataset1 = datasets.MNIST(
+        "../data", train=True, download=True, transform=transform
+    )
     dataset2 = datasets.MNIST("../data", train=False, transform=transform)
     train_loader = torch.utils.data.DataLoader(dataset1, **train_kwargs)
     test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)
@@ -230,7 +267,9 @@ def main():
     print(model)
     for epoch in range(1, args.epochs + 1):
         print(pruner)
-        train(args, model, device, train_loader, optimizer, epoch, pruner=pruner)
+        train(
+            args, model, device, train_loader, optimizer, epoch, pruner=pruner
+        )
         loss, acc = test(model, device, test_loader)
         scheduler.step()
 

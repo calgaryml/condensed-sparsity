@@ -22,7 +22,9 @@ def get_weighted_layers(model, i=0, layers=None, linear_layers_mask=None):
         elif hasattr(p, "weight") and type(p) not in EXCLUDED_TYPES:
             layers.append([p])
             linear_layers_mask.append(0)
-        elif isinstance(p, torchvision.models.resnet.Bottleneck) or isinstance(p, torchvision.models.resnet.BasicBlock):
+        elif isinstance(p, torchvision.models.resnet.Bottleneck) or isinstance(
+            p, torchvision.models.resnet.BasicBlock
+        ):
             _, linear_layers_mask, i = get_weighted_layers(
                 p, i=i + 1, layers=layers, linear_layers_mask=linear_layers_mask
             )
