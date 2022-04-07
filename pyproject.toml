@@ -7,10 +7,11 @@ homepage = "https://github.com/calgaryml/condensed-sparsity/"
 [tool.black]
 line-length = 80
 exclude ='''
-^/(
-    utils.py
-    | main.py
-    | models.py
+/(
+
+    examples/utils.py
+    | examples/main.py
+    | examples/models.py
 )
 '''
 
