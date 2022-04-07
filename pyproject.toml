@@ -1,0 +1,24 @@
+[project]
+name = "TBD"
+version ="0.1"
+authors = []
+homepage = "https://github.com/calgaryml/condensed-sparsity/"
+
+[tool.black]
+line-length = 80
+exclude ='''
+/(
+
+    examples/utils.py
+    | examples/main.py
+    | examples/models.py
+)
+'''
+
+
+[tool.pytest.ini_options]
+addopts = "--cov=src --cov-report html --cov-branch"
+markers = [
+    "integration",
+    "slow"
+]

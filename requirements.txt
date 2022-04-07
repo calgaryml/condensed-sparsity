@@ -2,3 +2,13 @@ torch>=1.0
 torchvision
 tensorboard
 wandb
+
+#Dev requirements
+pytest
+flake8
+black
+pre-commit
+pytest-cov
+
+# Original RigL version
+# torch==1.6.0

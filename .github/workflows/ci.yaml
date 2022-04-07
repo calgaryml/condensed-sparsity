@@ -1,0 +1,51 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches:
+      - "**"
+      - "!main"
+  pull_request:
+    branches:
+      - "main"
+
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.8]
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v2
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Upgrade pip
+        run: pip install --upgrade pip
+
+      # TODO: If we need SSH agent, need repo admin to add secret key
+      # - name: Setup SSH Agent
+      #   uses: webfactory/ssh-agent@v0.5.2
+      #   with:
+      #     ssh-private-key: ${{ secrets.SSH_KEY}}
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install rigl-torch
+        run: pip install ./src/rigl-torch/
+
+      - name: Lint with Flake8
+        run: python -m flake8 .
+
+      - name: Test with pytest
+        run: pytest tests -vs
+
+      - name: Formatter check with black
+        run: python -m black --check .

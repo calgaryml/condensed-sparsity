@@ -5,18 +5,27 @@ import torch
 import torch.nn as nn
 from torch.nn.parameter import Parameter
 
-def _gen_indx_seqs(fan_in: int, num_out: int, num_in: int, fan_out_const: bool) -> torch.LongTensor:
+
+def _gen_indx_seqs(
+    fan_in: int, num_out: int, num_in: int, fan_out_const: bool
+) -> torch.LongTensor:
     """
-    Generates indices required by the condensed layer (LinearCondensed) for drawing recombination vectors from the input vector v.
+    Generates indices required by the condensed layer (LinearCondensed) for
+    drawing recombination vectors from the input vector v.
 
     Args:
-        fan_in: Number of recombination vectors, corresponding to the number of columns in the weight matrix of LinearCondensed.
-        num_out: Length of recombination vectors, corresponding to the number of rows in the weight matrix of LinearCondensed.
+        fan_in: Number of recombination vectors, corresponding to the number of
+            columns in the weight matrix of LinearCondensed.
+        num_out: Length of recombination vectors, corresponding to the number of
+            rows in the weight matrix of LinearCondensed.
         num_in: Length of the input vector(s).
-        fan_out_const: If True, nearly constant fan-out will be ensured. Nearly, and not exactly, because in some cases the number of connections is not evenly divisible by the number of neurons.
-        
+        fan_out_const: If True, nearly constant fan-out will be ensured. Nearly,
+            and not exactly, because in some cases the number of connections is
+            not evenly divisible by the number of neurons.
+
     Returns:
-        A 2d array of indices of the same shape as the weight matrix in LinearCondensed, namely (num_out, fan_in).
+        A 2d array of indices of the same shape as the weight matrix in
+            LinearCondensed, namely (num_out, fan_in).
     """
 
     indx_seqs = np.zeros((num_out, fan_in))
@@ -24,19 +33,21 @@ def _gen_indx_seqs(fan_in: int, num_out: int, num_in: int, fan_out_const: bool) 
     # indices of input vector
     v_inds = np.arange(num_in)
 
-    # initializing an array of probabilities for every index of v (initially uniform)
-    probs = 1/num_in*np.ones(num_in)
+    # initializing an array of probabilities for every index of v
+    # (initially uniform)
+    probs = 1 / num_in * np.ones(num_in)
 
     for row_nr in range(num_out):
-        chosen_inds = np.random.choice(v_inds, size=fan_in, replace=False, 
-                                       p=probs/sum(probs) )
+        chosen_inds = np.random.choice(
+            v_inds, size=fan_in, replace=False, p=probs / sum(probs)
+        )
         chosen_inds.sort()
         # update probabs only if want to control fan_out
-        if fan_out_const: 
-            probs[chosen_inds] /= (100*num_in)
+        if fan_out_const:
+            probs[chosen_inds] /= 100 * num_in
 
         indx_seqs[row_nr, :] = chosen_inds
-    
+
     return torch.LongTensor(indx_seqs.astype(int))
 
 
@@ -57,15 +68,17 @@ class LinearCondensed(nn.Module):
         - Input: :math:`(*, H_{in})` where :math:`*` means any number of
           dimensions including none and :math:`H_{in} = \text{in\_features}`.
         - Output: :math:`(*, H_{out})` where all but the last dimension
-          are the same shape as the input and :math:`H_{out} = \text{out\_features}`.
+          are the same shape as the input and
+          :math:`H_{out} = \text{out\_features}`.
 
     Attributes:
         weight: the learnable weights of the module of shape
             :math:`(\text{out\_features}, \text{fan\in})`. The values are
             initialized from :math:`\mathcal{U}(-\sqrt{k}, \sqrt{k})`, where
             :math:`k = \frac{1}{\text{fan\in}}`
-        bias:   the learnable bias of the module of shape :math:`(\text{out\_features})`.
-                If :attr:`bias` is ``True``, the values are initialized from
+        bias:   the learnable bias of the module of shape
+                :math:`(\text{out\_features})`.If :attr:`bias` is ``True``, the
+                values are initialized from
                 :math:`\mathcal{U}(-\sqrt{k}, \sqrt{k})` where
                 :math:`k = \frac{1}{\text{in\_features}}`
 
@@ -77,29 +90,44 @@ class LinearCondensed(nn.Module):
         >>> print(output.size())
         torch.Size([64, 10])
     """
-    __constants__ = ['in_features', 'out_features']
+    __constants__ = ["in_features", "out_features"]
     in_features: int
     out_features: int
     fan_in: int
     weight: torch.Tensor
     indx_seqs: torch.Tensor
 
-    def __init__(self, in_features: int, out_features: int,
-                 fan_in: int, fan_out_const: bool, bias: bool = True, device=None, dtype=None) -> None:
-        factory_kwargs = {'device': device, 'dtype': dtype}
+    def __init__(
+        self,
+        in_features: int,
+        out_features: int,
+        fan_in: int,
+        fan_out_const: bool,
+        bias: bool = True,
+        device=None,
+        dtype=None,
+    ) -> None:
+        factory_kwargs = {"device": device, "dtype": dtype}
         super(LinearCondensed, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
         self.fan_in = fan_in
-        self.weight = Parameter(torch.empty((out_features, fan_in), **factory_kwargs))
+        self.weight = Parameter(
+            torch.empty((out_features, fan_in), **factory_kwargs)
+        )
         if bias:
             self.bias = Parameter(torch.empty(out_features, **factory_kwargs))
         else:
-            self.register_parameter('bias', None)
+            self.register_parameter("bias", None)
         self.reset_parameters()
 
         # ===== INDICES FOR RECOMBS =====
-        self.indx_seqs = _gen_indx_seqs(fan_in=fan_in, num_out=out_features, num_in=in_features, fan_out_const=fan_out_const)
+        self.indx_seqs = _gen_indx_seqs(
+            fan_in=fan_in,
+            num_out=out_features,
+            num_in=in_features,
+            fan_out_const=fan_out_const,
+        )
 
     def reset_parameters(self) -> None:
         # Setting a=sqrt(5) in kaiming_uniform is the same as initializing with
@@ -112,10 +140,20 @@ class LinearCondensed(nn.Module):
             nn.init.uniform_(self.bias, -bound, bound)
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        output = torch.sum(self.weight * input[:, self.indx_seqs], axis=2) + self.bias
+        output = (
+            torch.sum(self.weight * input[:, self.indx_seqs], axis=2)
+            + self.bias
+        )
         return output
 
     def extra_repr(self) -> str:
-        return 'in_features={}, out_features={}, fan_in={}, fan_out_const={}, bias={}'.format(
-            self.in_features, self.out_features, self.fan_in, self.fan_out_const, self.bias is not None
+        return (
+            "in_features={}, out_features={}, fan_in={}, fan_out_const={}, "
+            "bias={}"
+        ).format(
+            self.in_features,
+            self.out_features,
+            self.fan_in,
+            self.fan_out_const,
+            self.bias is not None,
         )
