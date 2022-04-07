@@ -20,30 +20,3 @@ def test_linear_condensed_output_size_type():
 
     assert test_output.shape == (batch_size, out_features)
     assert test_output.dtype == torch.float32
-
-
-# def test_spe_matmul():
-#     """
-#     Test output shape/type.
-#     """
-#     batch_size = 1
-#     input_len = 1
-#     num_units = 1
-#     fan_in = 1
-
-#     test_input = torch.zeros(batch_size, input_len, dtype=torch.float32)
-
-#     condensed_layer = LinearCondensed(fan_in, num_units, bias=True)
-
-#     dense_layer = Linear(fan_in, num_units, bias=True)
-
-#     condensed_output = condensed_layer(test_input)
-#     dense_output = dense_layer(test_input)
-
-#     assert condensed_output.shape == (batch_size, num_units)
-#     assert condensed_output.dtype == torch.float32
-
-#     assert dense_output.shape == (batch_size, num_units)
-#     assert dense_output.dtype == torch.float32
-
-#     torch.testing.assert_close(dense_output, condensed_output)
