@@ -1,0 +1,6 @@
+# development requirements
+pytest
+flake8
+black
+pre-commit
+pytest-cov
