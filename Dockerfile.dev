@@ -5,9 +5,14 @@ COPY requirements.txt /tmp/pip-tmp/
 RUN pip --disable-pip-version-check --no-cache-dir install -r /tmp/pip-tmp/requirements.txt \
     && rm -rf /tmp/pip-tmp
 
+# Install python requirements
+COPY requirements-dev.txt /tmp/pip-tmp/
+RUN pip --disable-pip-version-check --no-cache-dir install -r /tmp/pip-tmp/requirements-dev.txt \
+    && rm -rf /tmp/pip-tmp
+
 
 # Use a non-root user
-ARG USERNAME=user
+ARG USERNAME=dev
 ARG USER_UID=1001
 ARG USER_GID=$USER_UID
 
@@ -20,17 +25,3 @@ RUN groupadd --gid $USER_GID $USERNAME \
     && apt-get install -y sudo \
     && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
     && chmod 0440 /etc/sudoers.d/$USERNAME
-
-# ********************************************************
-# * Anything else you want to do like clean up goes here *
-# ********************************************************s
-
-# [Optional] Set the default user. Omit if you want to keep the default as root.
-USER $USERNAME
-
-# Set the working directory.
-WORKDIR /home/condensed_sparsity/
-
-# Copy the source code
-COPY --chown=$USERNAME . /home/condensed_sparsity/
-
