@@ -17,7 +17,7 @@ exclude ='''
 
 
 [tool.pytest.ini_options]
-addopts = "--cov=src --cov-report html --cov-branch"
+addopts = "--cov src --cov-report html --cov-branch"
 markers = [
     "integration",
     "slow"

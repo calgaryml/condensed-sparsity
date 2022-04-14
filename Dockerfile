@@ -34,3 +34,6 @@ WORKDIR /home/condensed_sparsity/
 # Copy the source code
 COPY --chown=$USERNAME . /home/condensed_sparsity/
 
+# Install rigl-torch package
+RUN pip install -e ./src/rigl-torch/
+
