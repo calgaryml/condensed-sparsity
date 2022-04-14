@@ -4,3 +4,4 @@ flake8
 black
 pre-commit
 pytest-cov
+ipykernel

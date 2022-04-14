@@ -21,5 +21,6 @@
 	// Uncomment to connect as a non-root user if you've added one. See https://aka.ms/vscode-remote/containers/non-root.
 	"remoteUser": "dev",
 	"workspaceMount": "source=${localWorkspaceFolder}/,target=/home/condensed-sparsity,type=bind",
-	"workspaceFolder": "/home/condensed-sparsity"
+	"workspaceFolder": "/home/condensed-sparsity",
+	"runArgs": [ "--gpus", "all"]
 }

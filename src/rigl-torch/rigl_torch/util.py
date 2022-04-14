@@ -1,5 +1,7 @@
 import torch
+import torch.nn as nn
 import torchvision
+from typing import Tuple, Union
 
 
 EXCLUDED_TYPES = (torch.nn.BatchNorm2d,)
@@ -49,3 +51,38 @@ def get_W(model, return_linear_layers_mask=False):
     if return_linear_layers_mask:
         return W, linear_layers_mask
     return W
+
+def calculate_fan_in_and_fan_out(module: Union[nn.Module, nn.parameter.Parameter]) -> Tuple[int, int]:
+    if isinstance(module, nn.Module):
+        tensor = module._parameters["weight"]
+    else: 
+        tensor = module
+    dimensions = tensor.dim()
+    if dimensions < 2:
+        raise ValueError("Fan in and fan out can not be computed for tensor with fewer than 2 dimensions")
+    num_input_fmaps = tensor.size(1)
+    num_output_fmaps = tensor.size(0)
+    receptive_field_size = 1
+    if tensor.dim() > 2:  # If module has a kernel
+        # math.prod is not always available, accumulate the product manually
+        # we could use functools.reduce but that is not supported by TorchScript
+        for s in tensor.shape[2:]:
+            receptive_field_size *= s
+    fan_in = num_input_fmaps * receptive_field_size
+    fan_out = num_output_fmaps * receptive_field_size
+
+    return fan_in, fan_out
+
+
+def get_fan_in_tensor(mask: torch.Tensor) -> torch.Tensor:
+    if mask.dim() < 2:
+        raise ValueError("Fan in can not be computed for tensor with fewer than 2 dimensions")
+    if mask.dtype == torch.bool:
+        fan_in_tensor = mask.sum(axis=list(range(1, mask.dim())))
+    else:
+        fan_in_tensor = (mask != 0.0).sum(axis=list(range(1, mask.dim())))
+    return fan_in_tensor
+
+
+def validate_constant_fan_in(fan_in_tensor: torch.Tensor) -> bool:
+    return (fan_in_tensor == fan_in_tensor[0]).all()

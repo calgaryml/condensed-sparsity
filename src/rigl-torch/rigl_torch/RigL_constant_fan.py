@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import torch.distributed as dist
 
-from rigl_torch.util import get_W
+from rigl_torch.util import get_W, calculate_fan_in_and_fan_out
 
 
 class IndexMaskHook:
@@ -43,7 +43,7 @@ def _create_step_wrapper(scheduler, optimizer):
     optimizer.step = _wrapped_step
 
 
-class RigLScheduler:
+class RigLConstFanScheduler:
     def __init__(
         self,
         model,
@@ -185,14 +185,27 @@ class RigLScheduler:
                 continue
 
             n = self.N[l]
-            s = int(self.S[l] * n)
-            perm = torch.randperm(n)  # Generate random perm of indices in n
+            fan_in, _ = calculate_fan_in_and_fan_out(w)
+            s = int(fan_in * self.S[l])  # Number of connections to drop
+            perm = torch.concat(
+                [
+                    torch.randperm(w[i].numel()).reshape(1, -1)
+                    for i in range(w.shape[0])
+                ]
+            )
+            # Generate random perm of indices to mask per filter / neuron
             perm = perm[
-                :s
-            ]  # Select s elements from n to achieve desired sparsity
-            flat_mask = torch.ones(n, device=w.device)
-            flat_mask[perm] = 0
-            mask = torch.reshape(flat_mask, w.shape)
+                :, :s
+            ]  # Drop s elements from n to achieve desired sparsity
+            mask = torch.concat(
+                [
+                    torch.ones(w[i].numel()).reshape(1, -1)
+                    for i in range(w.shape[0])
+                ]
+            )
+            for m in range(mask.shape[0]):  # TODO: vectorize
+                mask[m][perm[m]] = 0
+            mask = mask.reshape(w.shape).to(device=w.device)
 
             if is_dist:
                 dist.broadcast(mask, 0)

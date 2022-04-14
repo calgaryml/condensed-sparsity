@@ -31,18 +31,12 @@ RUN groupadd --gid $USER_GID $USERNAME \
 
 
 # Copy the source code
-COPY --chown=$USERNAME . /home/condensed_sparsity/
+COPY --chown=$USERNAME . /home/condensed-sparsity/
 
 # Install rigl-torch package
-WORKDIR /home/condensed_sparsity/
+WORKDIR /home/condensed-sparsity/
 RUN pip install -e ./src/rigl-torch/
 
-
-# RUN mkdir /root/.ssh/
-# ADD ~/.ssh/id_ed25519 ~/.ssh/ 
-
-# ARG GIT_USER_NAME=$(git config user.name)
-# RUN echo $GIT_USER_NAME
-# RUN git init .
+# Init git and setup pre-commit hooks
 RUN git config --global --add safe.directory /home/condensed-sparsity
-# RUN git init . && pre-commit install-hooks
+RUN git init . && pre-commit install-hooks
