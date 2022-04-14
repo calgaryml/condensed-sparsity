@@ -188,20 +188,14 @@ class RigLConstFanScheduler:
             fan_in, _ = calculate_fan_in_and_fan_out(w)
             s = int(fan_in * self.S[l])  # Number of connections to drop
             perm = torch.concat(
-                [
-                    torch.randperm(w[i].numel()).reshape(1, -1)
-                    for i in range(w.shape[0])
-                ]
+                [torch.randperm(n).reshape(1, -1) for i in range(w.shape[0])]
             )
             # Generate random perm of indices to mask per filter / neuron
             perm = perm[
                 :, :s
             ]  # Drop s elements from n to achieve desired sparsity
             mask = torch.concat(
-                [
-                    torch.ones(w[i].numel()).reshape(1, -1)
-                    for i in range(w.shape[0])
-                ]
+                [torch.ones(n).reshape(1, -1) for i in range(w.shape[0])]
             )
             for m in range(mask.shape[0]):  # TODO: vectorize
                 mask[m][perm[m]] = 0
