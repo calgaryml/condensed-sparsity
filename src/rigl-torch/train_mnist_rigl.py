@@ -16,7 +16,9 @@ from torch.utils.tensorboard import SummaryWriter
 from torchvision import datasets, transforms
 from torch.optim.lr_scheduler import StepLR
 import pathlib
-from rigl_torch.RigL import RigLScheduler
+from rigl_torch.RigL import RigLScheduler  # noqa: F401
+from rigl_torch.RigL_constant_fan import RigLConstFanScheduler
+import dotenv
 
 
 class Net(nn.Module):
@@ -106,6 +108,7 @@ def ed(param_name, default=None):
 
 def main():
     # Training settings
+    dotenv.load_dotenv(pathlib.Path(__file__).parent / ".env")
     parser = argparse.ArgumentParser(description="PyTorch MNIST Example")
     parser.add_argument(
         "--dense-allocation",
@@ -236,10 +239,11 @@ def main():
     transform = transforms.Compose(
         [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
     )
+    data_path = pathlib.Path(__file__).parent / "data"
     dataset1 = datasets.MNIST(
-        "../data", train=True, download=True, transform=transform
+        data_path, train=True, download=True, transform=transform
     )
-    dataset2 = datasets.MNIST("../data", train=False, transform=transform)
+    dataset2 = datasets.MNIST(data_path, train=False, transform=transform)
     train_loader = torch.utils.data.DataLoader(dataset1, **train_kwargs)
     test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)
 
@@ -250,7 +254,7 @@ def main():
     pruner = lambda: True  # noqa: E731
     if args.dense_allocation is not None:
         T_end = int(0.75 * args.epochs * len(train_loader))
-        pruner = RigLScheduler(
+        pruner = RigLConstFanScheduler(
             model,
             optimizer,
             dense_allocation=args.dense_allocation,

@@ -1,10 +1,16 @@
-""" implementation of https://arxiv.org/abs/1911.11134 """
+""" implementation of https://arxiv.org/abs/1911.11134
+    TODO: Docstrings, unit testing for new functions
+"""
 
 import numpy as np
 import torch
 import torch.distributed as dist
 
-from rigl_torch.util import get_W, calculate_fan_in_and_fan_out
+from rigl_torch.util import (
+    get_W,
+    calculate_fan_in_and_fan_out,
+    get_fan_in_tensor,
+)
 
 
 class IndexMaskHook:
@@ -201,7 +207,6 @@ class RigLConstFanScheduler:
             )
             for m in range(mask.shape[0]):  # TODO: vectorize
                 mask[m][perm[m]] = 0
-            print(mask.shape)
             mask = mask.reshape(w.shape).to(device=w.device)
 
             if is_dist:
@@ -224,6 +229,7 @@ class RigLConstFanScheduler:
         total_conv_params = 0
         total_nonzero = 0
         total_conv_nonzero = 0
+        const_fan_ins = []
 
         for N, S, mask, W, is_linear in zip(
             self.N,
@@ -242,6 +248,11 @@ class RigLConstFanScheduler:
             if not is_linear:
                 total_conv_nonzero += N - actual_S
                 total_conv_params += N
+            if mask is None:
+                fan_in, _ = calculate_fan_in_and_fan_out(W)
+                const_fan_ins.append(fan_in)
+            else:
+                const_fan_ins.append(get_fan_in_tensor(mask).unique().item())
 
         N_str = N_str[:-2] + "]"
         S_str = S_str[:-2] + "]"
@@ -276,6 +287,7 @@ class RigLConstFanScheduler:
         s += "num_rigl_steps=" + str(self.rigl_steps) + ",\n"
         s += "ignoring_linear_layers=" + str(self.ignore_linear_layers) + ",\n"
         s += "sparsity_distribution=" + str(self.sparsity_distribution) + ",\n"
+        s += "constant fan ins=" + str(const_fan_ins) + ",\n"
 
         return s + ")"
 
@@ -342,7 +354,6 @@ class RigLConstFanScheduler:
     def _rigl_step(self):
         # TODO: Make object for mask?
         drop_fraction = self.cosine_annealing()
-
         # if distributed these values will be populated
         is_dist = dist.is_initialized()
         world_size = dist.get_world_size() if is_dist else None
@@ -351,8 +362,6 @@ class RigLConstFanScheduler:
             # if sparsity is 0%, skip
             if self.S[l] <= 0:
                 continue
-
-            current_mask = self.backward_masks[l]
 
             # calculate raw scores
             score_drop = torch.abs(w)
@@ -364,70 +373,101 @@ class RigLConstFanScheduler:
                 score_drop /= (
                     world_size  # divide by world size (average the drop scores)
                 )
-
                 dist.all_reduce(score_grow)  # get the sum of all grow scores
                 score_grow /= (
                     world_size  # divide by world size (average the grow scores)
                 )
 
+            current_mask = self.backward_masks[l]
+
             # calculate drop/grow quantities
-            n_total = self.N[l]
+            n_fan_in = get_fan_in_tensor(current_mask).unique().item()
             n_ones = torch.sum(current_mask).item()
             n_prune = int(n_ones * drop_fraction)
             n_keep = n_ones - n_prune
+            n_non_zero_weights = (score_drop != 0).sum().item()
+            if n_non_zero_weights < n_keep:
+                # Then we don't have enough non-zero weights to keep. We keep
+                # ALL non-zero weights in this scenario and readjust our keep /
+                # prune amounts to suit
+                n_keep = n_non_zero_weights
+                n_prune = n_ones - n_keep
 
             # create drop mask
-            _, sorted_indices = torch.topk(score_drop.view(-1), k=n_total)
-            new_values = torch.where(
-                torch.arange(n_total, device=w.device) < n_keep,
-                torch.ones_like(sorted_indices),
-                torch.zeros_like(sorted_indices),
-            )
-            mask1 = new_values.scatter(0, sorted_indices, new_values)
+            drop_mask = self._get_drop_mask(score_drop, n_keep)
 
-            # flatten grow scores
-            score_grow = score_grow.view(-1)
+            # create growth mask per filter
+            grow_mask = self._get_grow_mask(score_grow, drop_mask, n_fan_in)
 
-            # set scores of the enabled connections(ones) to min(s) - 1, so that
-            # they have the lowest scores
-            score_grow_lifted = torch.where(
-                mask1 == 1,
-                torch.ones_like(mask1) * (torch.min(score_grow) - 1),
-                score_grow,
-            )
-
-            # create grow mask
-            _, sorted_indices = torch.topk(score_grow_lifted, k=n_total)
-            new_values = torch.where(
-                torch.arange(n_total, device=w.device) < n_prune,
-                torch.ones_like(sorted_indices),
-                torch.zeros_like(sorted_indices),
-            )
-            mask2 = new_values.scatter(0, sorted_indices, new_values)
-
-            mask2_reshaped = torch.reshape(mask2, current_mask.shape)
-            grow_tensor = torch.zeros_like(w)
-
-            REINIT_WHEN_SAME = False
-            if REINIT_WHEN_SAME:
-                raise NotImplementedError()
-            else:
-                new_connections = (mask2_reshaped == 1) & (current_mask == 0)
-
-            # update new weights to be initialized as zeros and update the
-            # weight tensors
-            new_weights = torch.where(
-                new_connections.to(w.device), grow_tensor, w
-            )
+            # get new weights
+            new_weights = self._get_new_weights(w, current_mask, grow_mask)
             w.data = new_weights
 
-            mask_combined = torch.reshape(
-                mask1 + mask2, current_mask.shape
-            ).bool()
-
-            # update the mask
-            current_mask.data = mask_combined
+            combined_mask = grow_mask + drop_mask
+            current_mask.data = combined_mask
 
             self.reset_momentum()
             self.apply_mask_to_weights()
             self.apply_mask_to_gradients()
+
+    def _get_drop_mask(
+        self, score_drop: torch.Tensor, n_keep: int
+    ) -> torch.Tensor:
+        idx_to_not_drop = torch.topk(score_drop.flatten(), k=n_keep).indices
+        drop_mask = torch.zeros(size=(score_drop.numel(),), dtype=torch.bool)
+        drop_mask[idx_to_not_drop] = True
+        drop_mask = drop_mask.reshape(score_drop.shape)
+        return drop_mask.to(device=score_drop.device)
+
+    def _get_grow_mask(
+        self,
+        score_grow,
+        drop_mask,
+        n_fan_in,
+    ):
+
+        grow_mask = torch.zeros(
+            size=drop_mask.shape, dtype=torch.bool, device=drop_mask.device
+        )
+        for idx, (drop_mask_filter, grow_mask_filter) in enumerate(
+            list(zip(drop_mask, grow_mask))
+        ):  # Iterate over filters
+            if drop_mask_filter.sum() < n_fan_in:
+                # set scores of the enabled connections(ones) to min(s) - 1,
+                # so that they have the lowest scores
+                score_grow_lifted = torch.where(
+                    drop_mask_filter == True,  # noqa: E712
+                    torch.ones_like(drop_mask_filter)
+                    * (torch.min(score_grow[idx]) - 1),
+                    score_grow[idx],
+                )
+                # Set currently active connections to min score to avoid
+                # reselecting them
+                idx_to_grow = torch.topk(
+                    score_grow_lifted.flatten(),
+                    k=n_fan_in - drop_mask_filter.sum(),
+                ).indices
+                # Grow enough connections to get to n_fan_in
+                grow_mask_filter = grow_mask_filter.flatten()
+                grow_mask_filter[idx_to_grow] = True
+                grow_mask[idx] = grow_mask_filter.reshape(drop_mask[idx].shape)
+            elif drop_mask_filter.sum() > n_fan_in:
+                print(get_fan_in_tensor(drop_mask))
+                raise ValueError(
+                    f"Filter with {drop_mask_filter.sum()} fan in > than ",
+                    "n_fan_in ({n_fan_in})",
+                )
+        assert (get_fan_in_tensor(drop_mask + grow_mask) == n_fan_in).all()
+        return grow_mask
+
+    def _get_new_weights(self, w, current_mask, grow_mask):
+        grow_tensor = torch.zeros_like(w)
+        new_connections = (current_mask == 0) & (
+            grow_mask.to(device=current_mask.device) == 1
+        )
+        new_weights = torch.where(
+            new_connections,
+            grow_tensor,  # init to 0
+            w,  # else keep existing weight
+        )
+        return new_weights

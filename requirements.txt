@@ -2,3 +2,4 @@ torch>=1.0
 torchvision
 tensorboard
 wandb
+python-dotenv

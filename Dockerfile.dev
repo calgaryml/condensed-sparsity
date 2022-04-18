@@ -33,6 +33,7 @@ RUN groupadd --gid $USER_GID $USERNAME \
 USER $USERNAME
 RUN conda init bash
 RUN echo "conda activate base" >> /home/$USERNAME/.bashrc
+RUN sudo chown -R $USERNAME:$USER_GID /opt/conda
 
 WORKDIR /home/condensed-sparsity/
 CMD pip install -e ./src/rigl-torch && git init . && pre-commit install-hooks
