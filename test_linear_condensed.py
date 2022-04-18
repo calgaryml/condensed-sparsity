@@ -1,5 +1,5 @@
 import torch
-from condensed_sparse import LinearCondensed
+from linear_condensed import LinearCondensed
 
 
 def test_linear_condensed_output_size_type():

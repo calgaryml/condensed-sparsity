@@ -28,3 +28,11 @@ RUN groupadd --gid $USER_GID $USERNAME \
     && apt-get install -y sudo \
     && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
     && chmod 0440 /etc/sudoers.d/$USERNAME
+
+# Since pytorch base uses conda, we need to configure conda
+USER $USERNAME
+RUN conda init bash
+RUN echo "conda activate base" >> /home/$USERNAME/.bashrc
+
+WORKDIR /home/condensed-sparsity/
+CMD pip install -e ./src/rigl-torch && git init . && pre-commit install-hooks

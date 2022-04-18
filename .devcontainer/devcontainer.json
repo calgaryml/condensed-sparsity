@@ -9,15 +9,27 @@
 	// Set *default* container specific settings.json values on container create.
 	"settings": {},
 	// Add the IDs of extensions you want installed when the container is created.
-	"extensions": [],
+	"extensions": [
+		"ms-python.python",
+		"njpwerner.autodocstring",
+	],
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
 	// Uncomment the next line to run commands after the container is created - for example installing curl.
-	// "postCreateCommand": "apt-get update && apt-get install -y git",
+	// "postCreateCommand": "git config --global --add safe.directory /home/condensed-sparsity",
 	// Uncomment when using a ptrace-based debugger like C++, Go, and Rust
 	// "runArgs": [ "--cap-add=SYS_PTRACE", "--security-opt", "seccomp=unconfined" ],
 	// Uncomment to use the Docker CLI from inside the container. See https://aka.ms/vscode-remote/samples/docker-from-docker.
 	// "mounts": [ "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind" ],
 	// Uncomment to connect as a non-root user if you've added one. See https://aka.ms/vscode-remote/containers/non-root.
-	"remoteUser": "dev"
+	"remoteUser": "dev",
+	// We need to mount current directory to a location that we can use to install rigl-torch from in the dockerfile 
+	"workspaceMount": "source=${localWorkspaceFolder}/,target=/home/condensed-sparsity,type=bind",
+	"workspaceFolder": "/home/condensed-sparsity",
+	"runArgs": [
+		"--gpus",
+		"all"
+	],
+	// We need to run this again since the .gitconfig that was initialized in dockerfile is overwritten with host .gitconfig during devcontainer build
+	"postStartCommand": "git config --global --add safe.directory /home/condensed-sparsity"
 }
