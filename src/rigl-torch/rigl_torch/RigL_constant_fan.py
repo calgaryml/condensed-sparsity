@@ -184,21 +184,24 @@ class RigLConstFanScheduler:
                 self.backward_masks.append(None)
                 continue
 
-            n = self.N[l]
             fan_in, _ = calculate_fan_in_and_fan_out(w)
             s = int(fan_in * self.S[l])  # Number of connections to drop
             perm = torch.concat(
-                [torch.randperm(n).reshape(1, -1) for i in range(w.shape[0])]
+                [
+                    torch.randperm(fan_in).reshape(1, -1)
+                    for i in range(w.shape[0])
+                ]
             )
             # Generate random perm of indices to mask per filter / neuron
             perm = perm[
                 :, :s
             ]  # Drop s elements from n to achieve desired sparsity
             mask = torch.concat(
-                [torch.ones(n).reshape(1, -1) for i in range(w.shape[0])]
+                [torch.ones(fan_in).reshape(1, -1) for i in range(w.shape[0])]
             )
             for m in range(mask.shape[0]):  # TODO: vectorize
                 mask[m][perm[m]] = 0
+            print(mask.shape)
             mask = mask.reshape(w.shape).to(device=w.device)
 
             if is_dist:
@@ -337,6 +340,7 @@ class RigLConstFanScheduler:
 
     @torch.no_grad()
     def _rigl_step(self):
+        # TODO: Make object for mask?
         drop_fraction = self.cosine_annealing()
 
         # if distributed these values will be populated
