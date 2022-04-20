@@ -4,7 +4,8 @@ import torch
 import torch.nn.functional as F
 import torch.optim as optim
 from rigl_torch import util
-from utils.mocks import mock_image_dataloader, MNISTNet
+from tests.utils.mocks import mock_image_dataloader, MNISTNet
+
 
 __BATCH_SIZE = 64
 __USE_CUDA = torch.cuda.is_available()
