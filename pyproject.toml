@@ -22,3 +22,4 @@ markers = [
     "integration",
     "slow"
 ]
+norecursedirs = "tests/utils"

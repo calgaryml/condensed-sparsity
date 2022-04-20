@@ -94,3 +94,18 @@ def get_fan_in_tensor(mask: torch.Tensor) -> torch.Tensor:
 
 def validate_constant_fan_in(fan_in_tensor: torch.Tensor) -> bool:
     return (fan_in_tensor == fan_in_tensor[0]).all()
+
+
+# def mock_data(
+#     image_dimensionality: Tuple[int],
+#     num_classes: int,
+#     batch_size: int,
+#     max_iters: Optional[int] = None,
+# ) -> torch.utils.data.DataLoader:
+#     if max_iters is None:
+#         max_iters = batch_size
+#     X = torch.rand((max_iters, *image_dimensionality))
+#     T = (torch.rand(max_iters) * num_classes).long()
+#     dataset = torch.utils.data.TensorDataset(X, T)
+#     dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size)
+#     return dataloader

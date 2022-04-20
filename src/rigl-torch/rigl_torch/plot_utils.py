@@ -17,7 +17,7 @@
 # from torch.optim.lr_scheduler import StepLR
 # import pathlib
 # from rigl_torch.RigL import RigLScheduler
-# from rigl_torch.RigL_constant_fan import RigLConstFanScheduler
+# from rigl_torch.rigl_constant_fan import RigLConstFanScheduler
 
 
 # class Net(nn.Module):

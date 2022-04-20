@@ -17,7 +17,7 @@ from torchvision import datasets, transforms
 from torch.optim.lr_scheduler import StepLR
 import pathlib
 from rigl_torch.RigL import RigLScheduler  # noqa: F401
-from rigl_torch.RigL_constant_fan import RigLConstFanScheduler
+from rigl_torch.rigl_constant_fan import RigLConstFanScheduler
 import dotenv
 
 
