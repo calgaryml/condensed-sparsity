@@ -1,7 +1,7 @@
 """ implementation of https://arxiv.org/abs/1911.11134
-    TODO: Docstrings, unit testing for new functions
 """
 
+from typing import Optional, Dict, Any
 import torch
 import torch.distributed as dist
 from rigl_torch.util import (
@@ -14,18 +14,39 @@ from rigl_torch.RigL import RigLScheduler
 class RigLConstFanScheduler(RigLScheduler):
     def __init__(
         self,
-        model,
-        optimizer,
-        dense_allocation=1,
-        T_end=None,
-        sparsity_distribution="uniform",
-        ignore_linear_layers=True,
-        delta=100,
-        alpha=0.3,
-        static_topo=False,
-        grad_accumulation_n=1,
-        state_dict=None,
+        model: torch.nn.Module,
+        optimizer: torch.optim.Optimizer,
+        dense_allocation: int = 1,
+        T_end: Optional[int] = None,
+        sparsity_distribution: str = "uniform",
+        ignore_linear_layers: bool = True,
+        delta: int = 100,
+        alpha: float = 0.3,
+        static_topo: bool = False,
+        grad_accumulation_n: int = 1,
+        state_dict: Dict[str, Any] = None,
     ):
+        """RigL Scheduler with constant fan-in.
+
+        Constant fan-in enforced at initalization and during each grow / prune
+        step.
+
+        Args:
+            model (torch.nn.Module): _description_
+            optimizer (torch.optim.Optimizer): _description_
+            dense_allocation (int, optional): _description_. Defaults to 1.
+            T_end (Optional[int], optional): _description_. Defaults to None.
+            sparsity_distribution (str, optional): _description_. Defaults to
+                "uniform".
+            ignore_linear_layers (bool, optional): _description_. Defaults to
+                True.
+            delta (int, optional): _description_. Defaults to 100.
+            alpha (float, optional): _description_. Defaults to 0.3.
+            static_topo (bool, optional): _description_. Defaults to False.
+            grad_accumulation_n (int, optional): _description_. Defaults to 1.
+            state_dict (Dict[str, Any], optional): _description_. Defaults to
+                None.
+        """
         super().__init__(
             model,
             optimizer,
@@ -43,6 +64,9 @@ class RigLConstFanScheduler(RigLScheduler):
 
     @torch.no_grad()
     def random_sparsify(self):
+        """Randomly sparsify model to desired sparsity distribution with
+        constant fan in.
+        """
         is_dist = dist.is_initialized()
         self.backward_masks = []
         for l, w in enumerate(self.W):
@@ -95,6 +119,7 @@ class RigLConstFanScheduler(RigLScheduler):
 
     @torch.no_grad()
     def _rigl_step(self):
+        """Perform rigl update prune / regrowth with constant fan-in."""
         # TODO: Make object for mask?
         drop_fraction = self.cosine_annealing()
         # if distributed these values will be populated
@@ -156,6 +181,17 @@ class RigLConstFanScheduler(RigLScheduler):
     def _get_drop_mask(
         self, score_drop: torch.Tensor, n_keep: int
     ) -> torch.Tensor:
+        """Get weights to prune by selecting -abs(score_drop) (weight magnitude)
+
+        Args:
+            score_drop (torch.Tensor): Weight magnitude tensor
+            n_keep (int): Number of connections to keep.
+
+        Returns:
+            torch.Tensor: Boolean mask of connections to keep. Where True, keep
+                connection else prune.
+        """
+
         idx_to_not_drop = torch.topk(score_drop.flatten(), k=n_keep).indices
         drop_mask = torch.zeros(size=(score_drop.numel(),), dtype=torch.bool)
         drop_mask[idx_to_not_drop] = True
@@ -164,10 +200,26 @@ class RigLConstFanScheduler(RigLScheduler):
 
     def _get_grow_mask(
         self,
-        score_grow,
-        drop_mask,
-        n_fan_in,
-    ):
+        score_grow: torch.Tensor,
+        drop_mask: torch.Tensor,
+        n_fan_in: int,
+    ) -> torch.Tensor:
+        """Get weights to grow by selecting abs(score_grow) where not already
+            active with constant fan-in.
+
+        Args:
+            score_grow (torch.Tensor): Absolute value of dense gradients.
+            drop_mask (torch.Tensor): Boolean mask from _get_drop_mask(). Where
+                True, connections are active.
+            n_fan_in (int): Number of connections to grow.
+
+        Raises:
+            ValueError: If constant fan-in requirement is voided by union of
+                drop_mask and growth_mask.
+
+        Returns:
+            torch.Tensor: Boolean tensor of weights to grow.
+        """
 
         grow_mask = torch.zeros(
             size=drop_mask.shape, dtype=torch.bool, device=drop_mask.device

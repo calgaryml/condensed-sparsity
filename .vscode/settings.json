@@ -7,5 +7,6 @@
   ],
   "editor.rulers": [
     80,
-  ]
+  ],
+  "autoDocstring.docstringFormat": "google"
 }
