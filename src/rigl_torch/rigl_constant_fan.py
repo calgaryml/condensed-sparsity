@@ -19,7 +19,7 @@ class RigLConstFanScheduler(RigLScheduler):
         dense_allocation: int = 1,
         T_end: Optional[int] = None,
         sparsity_distribution: str = "uniform",
-        ignore_linear_layers: bool = True,
+        ignore_linear_layers: bool = False,
         delta: int = 100,
         alpha: float = 0.3,
         static_topo: bool = False,
@@ -32,19 +32,26 @@ class RigLConstFanScheduler(RigLScheduler):
         step.
 
         Args:
-            model (torch.nn.Module): _description_
-            optimizer (torch.optim.Optimizer): _description_
-            dense_allocation (int, optional): _description_. Defaults to 1.
-            T_end (Optional[int], optional): _description_. Defaults to None.
-            sparsity_distribution (str, optional): _description_. Defaults to
-                "uniform".
-            ignore_linear_layers (bool, optional): _description_. Defaults to
-                True.
-            delta (int, optional): _description_. Defaults to 100.
-            alpha (float, optional): _description_. Defaults to 0.3.
-            static_topo (bool, optional): _description_. Defaults to False.
-            grad_accumulation_n (int, optional): _description_. Defaults to 1.
-            state_dict (Dict[str, Any], optional): _description_. Defaults to
+            model (torch.nn.Module): Model to sparsify.
+            optimizer (torch.optim.Optimizer): Optimizer to wrap with rigl
+                scheduler
+            dense_allocation (int, optional): percentage of dense parameters
+                allowed. if None, pruning will not be used. must be on the
+                interval (0, 1]". Defaults to 1.
+            T_end (Optional[int], optional): number of epochs to simulate (only
+                used for tuning). Defaults to None.
+            sparsity_distribution (str, optional): Description of sparsity
+                distribution. Defaults to "uniform".
+            ignore_linear_layers (bool, optional): If True, linear layers are
+                not sparsified. Defaults to False.
+            delta (int, optional): delta param for pruning. Defaults to 100.
+            alpha (float, optional): alpha param for pruning. Defaults to 0.3.
+            static_topo (bool, optional): if True, use random sparsity topo and
+                remain static. Defaults to False.
+            grad_accumulation_n (int, optional): number of gradients to
+                accumulate before scoring for rigl. Defaults to 1.
+            state_dict (Dict[str, Any], optional): State dict used to initalize
+                from rigl scheduler already initalized / trained. Defaults to
                 None.
         """
         super().__init__(
@@ -255,7 +262,26 @@ class RigLConstFanScheduler(RigLScheduler):
         assert (get_fan_in_tensor(drop_mask + grow_mask) == n_fan_in).all()
         return grow_mask
 
-    def _get_new_weights(self, w, current_mask, grow_mask):
+    def _get_new_weights(
+        self,
+        w: torch.nn.parameter.Parameter,
+        current_mask: torch.Tensor,
+        grow_mask: torch.Tensor,
+    ) -> torch.Tensor:
+        """Get new weights for grown connections.
+
+        New weights initalized to 0, otherwise previous weight value retained.
+
+        Args:
+            w (torch.nn.parameter.Parameter): Weight matrix for a given layer
+            current_mask (torch.Tensor): Current mask from last step for a given
+                layer.
+            grow_mask (torch.Tensor): New grow_mask obtained in this rigl step.
+                Where True, weights initalized to zero.
+
+        Returns:
+            torch.Tensor: New weight matrix with zeros for newly grown weights.
+        """
         grow_tensor = torch.zeros_like(w)
         new_connections = (current_mask == 0) & (
             grow_mask.to(device=current_mask.device) == 1
