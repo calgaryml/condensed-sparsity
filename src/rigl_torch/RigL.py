@@ -142,9 +142,7 @@ class RigLScheduler:
             setattr(w, "_has_rigl_backward_hook", True)
 
         assert self.grad_accumulation_n > 0 and self.grad_accumulation_n < delta
-        assert self.sparsity_distribution in (
-            "uniform",
-        )  # TODO: Implement ERK distribution
+        assert self.sparsity_distribution in ("uniform",)
 
     def state_dict(self):
         obj = {

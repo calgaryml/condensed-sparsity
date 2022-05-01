@@ -1,7 +1,6 @@
 """ implementation of https://arxiv.org/abs/1911.11134
 """
-
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import torch
 import torch.distributed as dist
 from rigl_torch.util import (
@@ -9,6 +8,8 @@ from rigl_torch.util import (
     get_fan_in_tensor,
 )
 from rigl_torch.RigL import RigLScheduler
+from rigl_torch.exceptions import ConstantFanInException
+import logging
 
 
 class RigLConstFanScheduler(RigLScheduler):
@@ -24,7 +25,7 @@ class RigLConstFanScheduler(RigLScheduler):
         alpha: float = 0.3,
         static_topo: bool = False,
         grad_accumulation_n: int = 1,
-        state_dict: Dict[str, Any] = None,
+        state_dict: Optional[Dict[str, Any]] = None,
     ):
         """RigL Scheduler with constant fan-in.
 
@@ -35,20 +36,20 @@ class RigLConstFanScheduler(RigLScheduler):
             model (torch.nn.Module): Model to sparsify.
             optimizer (torch.optim.Optimizer): Optimizer to wrap with rigl
                 scheduler
-            dense_allocation (int, optional): percentage of dense parameters
+            dense_allocation (int, optional): Percentage of dense parameters
                 allowed. if None, pruning will not be used. must be on the
                 interval (0, 1]". Defaults to 1.
-            T_end (Optional[int], optional): number of epochs to simulate (only
+            T_end (Optional[int], optional): Number of epochs to simulate (only
                 used for tuning). Defaults to None.
             sparsity_distribution (str, optional): Description of sparsity
                 distribution. Defaults to "uniform".
             ignore_linear_layers (bool, optional): If True, linear layers are
                 not sparsified. Defaults to False.
-            delta (int, optional): delta param for pruning. Defaults to 100.
-            alpha (float, optional): alpha param for pruning. Defaults to 0.3.
-            static_topo (bool, optional): if True, use random sparsity topo and
+            delta (int, optional): Delta param for pruning. Defaults to 100.
+            alpha (float, optional): Alpha param for pruning. Defaults to 0.3.
+            static_topo (bool, optional): If True, use random sparsity topo and
                 remain static. Defaults to False.
-            grad_accumulation_n (int, optional): number of gradients to
+            grad_accumulation_n (int, optional): Number of gradients to
                 accumulate before scoring for rigl. Defaults to 1.
             state_dict (Dict[str, Any], optional): State dict used to initalize
                 from rigl scheduler already initalized / trained. Defaults to
@@ -67,15 +68,15 @@ class RigLConstFanScheduler(RigLScheduler):
             grad_accumulation_n,
             state_dict,
         )
-        # TODO: Implement ERK distribution
+        self._logger = logging.getLogger(__file__)
 
     @torch.no_grad()
-    def random_sparsify(self):
-        """Randomly sparsify model to desired sparsity distribution with
+    def random_sparsify(self) -> None:
+        """Randomly sparsifies model to desired sparsity distribution with
         constant fan in.
         """
-        is_dist = dist.is_initialized()
-        self.backward_masks = []
+        is_dist: bool = dist.is_initialized()
+        self.backward_masks: List[torch.tensor] = []
         for l, w in enumerate(self.W):
             # if sparsity is 0%, skip
             if self.S[l] <= 0:
@@ -103,12 +104,19 @@ class RigLConstFanScheduler(RigLScheduler):
 
             if is_dist:
                 dist.broadcast(mask, 0)
-
-            mask = mask.bool()
             w *= mask
             self.backward_masks.append(mask)
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """Appends constant fan in info to RigL scheduler __str__.
+
+        Raises:
+            ConstantFanInException: If constant fan-in inconsistent for any
+                mask.
+
+        Returns:
+            str: String describing state of scheduler.
+        """
         s = super().__str__()
         s = s[:-1]  # Remove trailing ')'
         const_fan_ins = []
@@ -120,14 +128,24 @@ class RigLConstFanScheduler(RigLScheduler):
                 fan_in, _ = calculate_fan_in_and_fan_out(W)
                 const_fan_ins.append(fan_in)
             else:
-                const_fan_ins.append(get_fan_in_tensor(mask).unique().item())
-        s += "constant fan ins=" + str(const_fan_ins) + ",\n"
-        return s + ")"
+                try:
+                    const_fan_ins.append(
+                        get_fan_in_tensor(mask).unique().item()
+                    )
+                except ValueError:
+                    raise ConstantFanInException(get_fan_in_tensor(mask))
+
+        s = f"{s}constant fan ins={str(const_fan_ins)}\n)"
+        return s
 
     @torch.no_grad()
-    def _rigl_step(self):
-        """Perform rigl update prune / regrowth with constant fan-in."""
-        # TODO: Make object for mask?
+    def _rigl_step(self) -> None:
+        """Performs rigl update prune / regrowth with constant fan-in.
+
+        Raises:
+            ConstantFanInException: If constant fan-in inconsistent for any
+                mask.
+        """
         drop_fraction = self.cosine_annealing()
         # if distributed these values will be populated
         is_dist = dist.is_initialized()
@@ -156,11 +174,14 @@ class RigLConstFanScheduler(RigLScheduler):
             current_mask = self.backward_masks[l]
 
             # calculate drop/grow quantities
-            n_fan_in = get_fan_in_tensor(current_mask).unique().item()
+            try:
+                n_fan_in = get_fan_in_tensor(current_mask).unique().item()
+            except ValueError:
+                raise ConstantFanInException(get_fan_in_tensor(current_mask))
             n_ones = torch.sum(current_mask).item()
             n_prune = int(n_ones * drop_fraction)
             n_keep = n_ones - n_prune
-            n_non_zero_weights = (score_drop != 0).sum().item()
+            n_non_zero_weights = torch.count_nonzero(score_drop).item()
             if n_non_zero_weights < n_keep:
                 # Then we don't have enough non-zero weights to keep. We keep
                 # ALL non-zero weights in this scenario and readjust our keep /
@@ -188,18 +209,32 @@ class RigLConstFanScheduler(RigLScheduler):
     def _get_drop_mask(
         self, score_drop: torch.Tensor, n_keep: int
     ) -> torch.Tensor:
-        """Get weights to prune by selecting -abs(score_drop) (weight magnitude)
+        """Gets weights to prune by selecting -abs(score_drop) (weight magnitude)
 
         Args:
             score_drop (torch.Tensor): Weight magnitude tensor
             n_keep (int): Number of connections to keep.
 
+        Raises:
+            RuntimeError: If n_keep > score_drop.numel().
+
         Returns:
             torch.Tensor: Boolean mask of connections to keep. Where True, keep
                 connection else prune.
         """
+        try:
+            idx_to_not_drop = torch.topk(
+                score_drop.flatten(), k=n_keep, sorted=False
+            ).indices
+        except RuntimeError as e:
+            self._logger.error(
+                f"n_keep > score_drop.numel() ({n_keep} > {score_drop.numel()})"
+            )
+            raise RuntimeError(
+                "RigLConstFanScheduler._get_drop_mask: n_keep > "
+                "score_drop.numel()"
+            ) from e
 
-        idx_to_not_drop = torch.topk(score_drop.flatten(), k=n_keep).indices
         drop_mask = torch.zeros(size=(score_drop.numel(),), dtype=torch.bool)
         drop_mask[idx_to_not_drop] = True
         drop_mask = drop_mask.reshape(score_drop.shape)
@@ -254,7 +289,7 @@ class RigLConstFanScheduler(RigLScheduler):
                 grow_mask_filter[idx_to_grow] = True
                 grow_mask[idx] = grow_mask_filter.reshape(drop_mask[idx].shape)
             elif drop_mask_filter.sum() > n_fan_in:
-                print(get_fan_in_tensor(drop_mask))
+                self._logger.error(get_fan_in_tensor(drop_mask))
                 raise ValueError(
                     f"Filter with {drop_mask_filter.sum()} fan in > than ",
                     "n_fan_in ({n_fan_in})",
@@ -268,7 +303,7 @@ class RigLConstFanScheduler(RigLScheduler):
         current_mask: torch.Tensor,
         grow_mask: torch.Tensor,
     ) -> torch.Tensor:
-        """Get new weights for grown connections.
+        """Gets new weights for grown connections.
 
         New weights initalized to 0, otherwise previous weight value retained.
 
@@ -283,9 +318,12 @@ class RigLConstFanScheduler(RigLScheduler):
             torch.Tensor: New weight matrix with zeros for newly grown weights.
         """
         grow_tensor = torch.zeros_like(w)
-        new_connections = (current_mask == 0) & (
-            grow_mask.to(device=current_mask.device) == 1
+        new_connections = ~current_mask & grow_mask.to(
+            device=current_mask.device
         )
+        # new_connections = (current_mask == 0) & (
+        #     grow_mask.to(device=current_mask.device) == 1
+        # )
         new_weights = torch.where(
             new_connections,
             grow_tensor,  # init to 0

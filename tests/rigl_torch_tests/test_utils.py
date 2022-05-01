@@ -11,44 +11,89 @@ def net():
     del net
 
 
-def test_calculate_fan_in_and_fan_out_conv(net):
-    fan_in, fan_out = util.calculate_fan_in_and_fan_out(net.conv1)
-    assert fan_in == 1 * 3 * 3  # 1 in_channel * (3 *3) kernel
-    assert fan_out == 32 * 3 * 3  # 32 out_channel * (3 *3) kernel
+@pytest.mark.parametrize(
+    "module_param, expected_fan_in, expected_fan_out",
+    [
+        (torch.nn.Conv2d(3, 32, 3), 3 * 3 * 3, 32 * 3 * 3),
+        (
+            torch.nn.Conv2d(3, 32, 3)._parameters["weight"],
+            3 * 3 * 3,
+            32 * 3 * 3,
+        ),
+        (torch.nn.Linear(in_features=9216, out_features=128), 9216, 128),
+        (
+            torch.nn.Linear(in_features=9216, out_features=128)._parameters[
+                "weight"
+            ],
+            9216,
+            128,
+        ),
+    ],
+    ids=[
+        "Conv2D-Module",
+        "Conv2D-Parameters",
+        "Linear-Module",
+        "Linear-Parameters",
+    ],
+)
+def test_calculate_fan_in_and_fan_out_parameters_arg(
+    module_param, expected_fan_in, expected_fan_out
+):
+    fan_in, fan_out = util.calculate_fan_in_and_fan_out(module_param)
+    assert fan_in == expected_fan_in
+    assert fan_out == expected_fan_out
 
 
-def test_calculate_fan_in_and_fan_out_parameters_arg():
-    params = torch.nn.Conv2d(3, 32, 3)._parameters
-    fan_in, fan_out = util.calculate_fan_in_and_fan_out(params["weight"])
-    assert fan_in == 3 * 3 * 3  # 3 in_channel * (3 *3) kernel
-    assert fan_out == 32 * 3 * 3  # 32 out_channel * (3 *3) kernel
+@pytest.mark.parametrize(
+    "sparse_tensor, const_fan_in",
+    [
+        (
+            torch.tensor(
+                [
+                    [
+                        [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
+                        [[0, 0, 0], [0, 0, 0], [0, 0, 0]],
+                    ],
+                    [
+                        [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
+                        [[0, 0, 0], [0, 0, 0], [0, 0, 0]],
+                    ],
+                ]
+            ),
+            9,
+        ),
+        (
+            torch.tensor(
+                [
+                    [[[1, 0, 1], [0, 1, 0]], [[1, 0, 1], [0, 1, 0]]],
+                    [[[1, 0, 1], [0, 1, 0]], [[1, 0, 1], [0, 1, 0]]],
+                ]
+            ),
+            6,
+        ),
+        (
+            torch.tensor(
+                [
+                    [1, 1, 1, 0, 0, 0],
+                ]
+            ),
+            3,
+        ),
+    ],
+    ids=[
+        "structured_sparse_tensor",
+        "unstructured_sparse_tensor",
+        "dim2_sparse_tensor",
+    ],
+)
+def test_calculate_fan_in_and_fan_out_sparse(sparse_tensor, const_fan_in):
+    assert util.get_fan_in_tensor(sparse_tensor).unique().item() == const_fan_in
 
 
-def test_calculate_fan_in_and_fan_out_linear(net):
-    fan_in, fan_out = util.calculate_fan_in_and_fan_out(
-        net.fc1
-    )  # in 9216, out 128
-    assert fan_in == 9216
-    assert fan_out == 128
-
-
-def test_calculate_fan_in_and_fan_out_sparse():
-    sparsity = 0.33
-    ones = torch.ones(size=(10, 3, 3, 3))
-    ones[:, 0] = 0  # Structured sparsity
-    assert util.get_fan_in_tensor(ones).unique().item() == round(
-        3 * 3 * 3 * (1 - sparsity)
-    )
-    ones = torch.ones(size=(10, 3, 3, 3))
-    for idx, filter in enumerate(ones):  # Unstructured sparsity
-        filter = filter.flatten()
-        idx_to_drop = torch.randperm(filter.shape[0])
-        idx_to_drop = idx_to_drop[: round(filter.shape[0] * sparsity)]
-        filter[idx_to_drop] = 0
-        ones[idx] = filter.reshape(3, 3, 3)
-    assert util.get_fan_in_tensor(ones).unique().item() == round(
-        3 * 3 * 3 * (1 - sparsity)
-    )
+def test_calculate_fan_in_and_fan_out_raises_on_dim():
+    t = torch.tensor([0, 1, 1])
+    with pytest.raises(ValueError) as _:
+        util.calculate_fan_in_and_fan_out(t)
 
 
 def test_get_fan_in_tensor_conv(net):
