@@ -209,7 +209,7 @@ class RigLConstFanScheduler(RigLScheduler):
     def _get_drop_mask(
         self, score_drop: torch.Tensor, n_keep: int
     ) -> torch.Tensor:
-        """Gets weights to prune by selecting -abs(score_drop) (weight magnitude)
+        """Gets weights to prune by selecting -abs(score_drop).
 
         Args:
             score_drop (torch.Tensor): Weight magnitude tensor
