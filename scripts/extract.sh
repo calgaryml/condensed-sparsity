@@ -1,5 +1,6 @@
 #! /bin/bash
 # Expected to be launched with DATA_DIR as first argument
+# TODO: Review and refactor
 
 set -ex # stop and fail if anything stops
 
@@ -26,4 +27,3 @@ wget -qO- https://raw.githubusercontent.com/soumith/imagenetloader.torch/master/
 echo "Done!"
 cd ..
 echo "Extracted `find train | grep .JPEG | wc -l` train files and `find val | grep .JPEG | wc -l` validation files"
-

@@ -1,38 +1,20 @@
 FROM pytorch/pytorch:latest
 
-# Install python requirements
-COPY requirements.txt /tmp/pip-tmp/
-RUN pip --disable-pip-version-check --no-cache-dir install -r /tmp/pip-tmp/requirements.txt \
-    && rm -rf /tmp/pip-tmp
-
-# Install python requirements
-COPY requirements-dev.txt /tmp/pip-tmp/
-RUN pip --disable-pip-version-check --no-cache-dir install -r /tmp/pip-tmp/requirements-dev.txt \
-    && rm -rf /tmp/pip-tmp
-
 # Install git/ssh
 RUN apt-get update \
     && apt-get install -y git ssh
 
-# Use a non-root user
-ARG USERNAME=dev
-ARG USER_UID=1001
-ARG USER_GID=$USER_UID
-
-# Create the user
-RUN groupadd --gid $USER_GID $USERNAME \
-    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME \
-    #
-    # [Optional] Add sudo support. Omit if you don't need to install software after connecting.
-    && apt-get update \
-    && apt-get install -y sudo \
-    && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
-    && chmod 0440 /etc/sudoers.d/$USERNAME
-
-# Since pytorch base uses conda, we need to configure conda
-USER $USERNAME
+# Install project requirements
+COPY requirements.txt /tmp/pip-tmp/
 RUN conda init bash
-RUN echo "conda activate base" >> /home/$USERNAME/.bashrc
+RUN exec bash \
+    && conda activate base \
+    && conda install -c defaults -c conda-forge --file /tmp/pip-tmp/requirements.txt \
+    && rm -rf /tmp/pip-tmp
+
+# Install dev requirements
+COPY requirements-dev.txt /tmp/pip-tmp/
+RUN conda install -c defaults -c conda-forge --file /tmp/pip-tmp/requirements-dev.txt \
+    && rm -rf /tmp/pip-tmp
 
 WORKDIR /home/condensed-sparsity/
-CMD pip install -e ./src/rigl-torch && git init . && pre-commit install-hooks

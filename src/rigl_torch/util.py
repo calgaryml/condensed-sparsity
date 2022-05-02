@@ -55,7 +55,19 @@ def get_W(model, return_linear_layers_mask=False):
 
 def calculate_fan_in_and_fan_out(
     module: Union[nn.Module, nn.parameter.Parameter]
-) -> Tuple[int, int]:
+) -> Tuple[int]:
+    """Get tuple of fan_in and fan_out for a parameter / module
+
+    Args:
+        module (Union[nn.Module, nn.parameter.Parameter]): Module or parameter
+            to obtain fan in / out for.
+
+    Raises:
+        ValueError: If dim of parameter < 2
+
+    Returns:
+        Tuple[int]: Fan-in, fan out tuple
+    """
     if isinstance(module, nn.Module):
         tensor = module._parameters["weight"]
     else:
@@ -76,11 +88,22 @@ def calculate_fan_in_and_fan_out(
             receptive_field_size *= s
     fan_in = num_input_fmaps * receptive_field_size
     fan_out = num_output_fmaps * receptive_field_size
-
     return fan_in, fan_out
 
 
 def get_fan_in_tensor(mask: torch.Tensor) -> torch.Tensor:
+    """Get tensor of fan-in per filter / neuron
+
+    Args:
+        mask (torch.Tensor): Boolean mask or weight matrix for layer
+
+    Raises:
+        ValueError: If mask dim < 2
+
+    Returns:
+        torch.Tensor: Tensor of shape [num_filters,] with each element == number
+            of fan-in for that filter / neuron.
+    """
     if mask.dim() < 2:
         raise ValueError(
             "Fan in can not be computed for tensor with fewer than 2 dimensions"
@@ -93,4 +116,13 @@ def get_fan_in_tensor(mask: torch.Tensor) -> torch.Tensor:
 
 
 def validate_constant_fan_in(fan_in_tensor: torch.Tensor) -> bool:
+    """Returns True if all filters / neurons in fan-in tensor are equal.
+
+    Args:
+        fan_in_tensor (torch.Tensor): Fan in tensor returneed by
+            get_fan_in_tensor
+
+    Returns:
+        bool: True if fan-in are all equal.
+    """
     return (fan_in_tensor == fan_in_tensor[0]).all()

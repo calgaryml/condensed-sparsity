@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import torch.distributed as dist
 
-from rigl_torch.util import get_W, calculate_fan_in_and_fan_out
+from rigl_torch.util import get_W
 
 
 class IndexMaskHook:
@@ -43,7 +43,7 @@ def _create_step_wrapper(scheduler, optimizer):
     optimizer.step = _wrapped_step
 
 
-class RigLConstFanScheduler:
+class RigLScheduler:
     def __init__(
         self,
         model,
@@ -142,9 +142,7 @@ class RigLConstFanScheduler:
             setattr(w, "_has_rigl_backward_hook", True)
 
         assert self.grad_accumulation_n > 0 and self.grad_accumulation_n < delta
-        assert self.sparsity_distribution in (
-            "uniform",
-        )  # TODO: Implement ERK distribution
+        assert self.sparsity_distribution in ("uniform",)
 
     def state_dict(self):
         obj = {
@@ -185,21 +183,14 @@ class RigLConstFanScheduler:
                 continue
 
             n = self.N[l]
-            fan_in, _ = calculate_fan_in_and_fan_out(w)
-            s = int(fan_in * self.S[l])  # Number of connections to drop
-            perm = torch.concat(
-                [torch.randperm(n).reshape(1, -1) for i in range(w.shape[0])]
-            )
-            # Generate random perm of indices to mask per filter / neuron
+            s = int(self.S[l] * n)
+            perm = torch.randperm(n)  # Generate random perm of indices in n
             perm = perm[
-                :, :s
-            ]  # Drop s elements from n to achieve desired sparsity
-            mask = torch.concat(
-                [torch.ones(n).reshape(1, -1) for i in range(w.shape[0])]
-            )
-            for m in range(mask.shape[0]):  # TODO: vectorize
-                mask[m][perm[m]] = 0
-            mask = mask.reshape(w.shape).to(device=w.device)
+                :s
+            ]  # Select s elements from n to achieve desired sparsity
+            flat_mask = torch.ones(n, device=w.device)
+            flat_mask[perm] = 0
+            mask = torch.reshape(flat_mask, w.shape)
 
             if is_dist:
                 dist.broadcast(mask, 0)

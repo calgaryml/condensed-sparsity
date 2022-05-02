@@ -5,7 +5,7 @@
 ## Installation
 - `pip install --upgrade pip`
 - `pip install -r requirements.txt`
-- `pip install -e ./src/rigl-torch/`
+- `pip install -e .`
 - `pre-commit install`
 
 ## Tests
