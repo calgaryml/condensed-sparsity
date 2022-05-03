@@ -1,4 +1,15 @@
-FROM pytorch/pytorch:latest
+FROM pytorch/pytorch:1.11.0-cuda11.3-cudnn8-devel
+
+# Deal with nvidia GPG key issues
+# https://developer.nvidia.com/blog/updating-the-cuda-linux-gpg-repository-key/
+ARG DISTRO=ubuntu1804
+ARG ARCH=x86_64
+RUN rm /etc/apt/sources.list.d/cuda.list
+RUN rm /etc/apt/sources.list.d/nvidia-ml.list
+RUN apt-key del 7fa2af80
+RUN apt-get update && apt-get install -y wget
+RUN wget https://developer.download.nvidia.com/compute/cuda/repos/$DISTRO/$ARCH/cuda-keyring_1.0-1_all.deb \
+    && dpkg -i cuda-keyring_1.0-1_all.deb
 
 # Install git/ssh
 RUN apt-get update \
