@@ -7,7 +7,7 @@ from rigl_torch.util import (
     calculate_fan_in_and_fan_out,
     get_fan_in_tensor,
 )
-from rigl_torch.RigL import RigLScheduler
+from rigl_torch.rigl_scheduler import RigLScheduler
 from rigl_torch.exceptions import ConstantFanInException
 import logging
 
@@ -104,6 +104,7 @@ class RigLConstFanScheduler(RigLScheduler):
 
             if is_dist:
                 dist.broadcast(mask, 0)
+            mask = mask.bool()
             w *= mask
             self.backward_masks.append(mask)
 
@@ -120,10 +121,7 @@ class RigLConstFanScheduler(RigLScheduler):
         s = super().__str__()
         s = s[:-1]  # Remove trailing ')'
         const_fan_ins = []
-        for mask, W, in zip(
-            self.backward_masks,
-            self.W,
-        ):
+        for mask, W, in zip(self.backward_masks, self.W,):
             if mask is None:
                 fan_in, _ = calculate_fan_in_and_fan_out(W)
                 const_fan_ins.append(fan_in)
@@ -180,7 +178,7 @@ class RigLConstFanScheduler(RigLScheduler):
                 raise ConstantFanInException(get_fan_in_tensor(current_mask))
             n_ones = torch.sum(current_mask).item()
             n_prune = int(n_ones * drop_fraction)
-            n_keep = n_ones - n_prune
+            n_keep = int(n_ones - n_prune)
             n_non_zero_weights = torch.count_nonzero(score_drop).item()
             if n_non_zero_weights < n_keep:
                 # Then we don't have enough non-zero weights to keep. We keep
@@ -241,10 +239,7 @@ class RigLConstFanScheduler(RigLScheduler):
         return drop_mask.to(device=score_drop.device)
 
     def _get_grow_mask(
-        self,
-        score_grow: torch.Tensor,
-        drop_mask: torch.Tensor,
-        n_fan_in: int,
+        self, score_grow: torch.Tensor, drop_mask: torch.Tensor, n_fan_in: int,
     ) -> torch.Tensor:
         """Get weights to grow by selecting abs(score_grow) where not already
             active with constant fan-in.

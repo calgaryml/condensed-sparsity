@@ -26,7 +26,7 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import torchvision.models as models
 
-from rigl_torch.RigL import RigLScheduler
+from rigl_torch.rigL import RigLScheduler
 
 model_names = sorted(
     name

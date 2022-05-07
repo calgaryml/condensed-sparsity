@@ -1,0 +1,21 @@
+data_folder: ./data
+rigl:
+  dense_allocation: ???
+  delta: 100
+  grad_accumulation: 1
+  alpha: 0.3
+  static_topo: 0
+training:
+  batch_size: 64
+  test_batch_size: 1000
+  epochs: 50
+  lr: 1
+  gamma: 0.7
+  no_cuda: false
+  dry_run: false
+  seed: 1
+  log_interval: 10
+  save_model: true
+wanb:
+  project: condensed-rigl
+  entity: condensed-sparsity

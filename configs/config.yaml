@@ -1,0 +1,49 @@
+experiment:
+  name: dense_mnist
+paths:
+  data_folder: ./data
+  artifacts: ./artifacts
+  logs: ./logs
+rigl: 
+  dense_allocation: null
+  # percentage of dense parameters allowed. if None, pruning will not 
+  # be used. must be on the interval (0, 1]
+  delta: 100
+  # delta param for pruning
+  grad_accumulation_n: 1
+  # number of gradients to accumulate before scoring for rigl",
+  alpha: 0.3
+  # alpha param for pruning"
+  static_topo: 0
+  # if 1, use random sparsity topo and remain static"
+training:
+  batch_size: 64
+  # "input batch size for training (default: 64)",
+  test_batch_size: 10
+  # input batch size for testing (default: 1000)",
+  epochs: 50
+  # number of epochs to train (default: 14)",
+  lr: 1
+  # learning rate (default: 1.0)",
+  gamma: 0.7
+  # Learning rate step gamma (default: 0.7)
+  dry_run: False
+  # quickly check a single pass",
+  seed: 1
+  # random seed (default: 1)",
+  log_interval: 10
+  # how many batches to wait before logging training status",
+  save_model: True
+  # For Saving the current Model",
+compute:
+  no_cuda: False
+  cuda_kwargs: {"num_workers": 1, "pin_memory": True, "shuffle": True}
+  # disables CUDA training",
+wandb:
+  project: condensed-rigl
+  entity: condensed-sparsity
+  start_method: thread
+
+hydra:  
+  run:
+    dir: ${paths.logs}
