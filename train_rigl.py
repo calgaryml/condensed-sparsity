@@ -61,7 +61,8 @@ def main(cfg: omegaconf.DictConfig) -> None:
         )
     else:
         logger.warning(
-            f"{cfg.rigl.dense_allocation} is None, training with dense network..."
+            f"{cfg.rigl.dense_allocation} is None, training with dense "
+            "network..."
         )
 
     writer = SummaryWriter(log_dir="./graphs")
@@ -71,7 +72,13 @@ def main(cfg: omegaconf.DictConfig) -> None:
     for epoch in range(1, cfg.training.epochs + 1):
         logger.info(pruner)
         train(
-            cfg, model, device, train_loader, optimizer, epoch, pruner=pruner,
+            cfg,
+            model,
+            device,
+            train_loader,
+            optimizer,
+            epoch,
+            pruner=pruner,
         )
         loss, acc = test(model, device, test_loader, epoch)
         scheduler.step()
@@ -169,9 +176,9 @@ def wandb_log(epoch, loss, accuracy, inputs, logits, captions, pred):
             "loss": loss,
             "accuracy": accuracy,
             "inputs": wandb.Image(inputs),
-            "logits": wandb.Histogram(logits),
-            "captions": wandb.Html(captions.numpy().__str__()),
-            "predictions": wandb.Html(pred.numpy().__str__()),
+            "logits": wandb.Histogram(logits.cpu()),
+            "captions": wandb.Html(captions.cpu().numpy().__str__()),
+            "predictions": wandb.Html(pred.cpu().numpy().__str__()),
         }
     )
 
