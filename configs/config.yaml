@@ -1,9 +1,9 @@
 defaults:
-  - dataset: mnist
-  - model: mnist
+  - dataset: cifar10
+  - model: resnet18
   - _self_
 experiment:
-  name: resnet18_cifar10_test
+  name: resnet18_cifar10_benchmark
 paths:
   data_folder: /home/condensed-sparsity/data
   artifacts: /home/condensed-sparsity/artifacts
