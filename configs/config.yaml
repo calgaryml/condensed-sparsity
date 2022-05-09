@@ -1,9 +1,13 @@
+defaults:
+  - dataset: mnist
+  - model: mnist
+  - _self_
 experiment:
-  name: dense_mnist
+  name: resnet18_cifar10_test
 paths:
-  data_folder: ./data
-  artifacts: ./artifacts
-  logs: ./logs
+  data_folder: /home/condensed-sparsity/data
+  artifacts: /home/condensed-sparsity/artifacts
+  logs: /home/condensed-sparsity/logs
 rigl: 
   dense_allocation: null
   # percentage of dense parameters allowed. if None, pruning will not 
@@ -16,6 +20,9 @@ rigl:
   # alpha param for pruning"
   static_topo: 0
   # if 1, use random sparsity topo and remain static"
+  const_fan_in: True
+  # If True, use const_fan_in scheduler.
+  sparsity_distribution: uniform
 training:
   batch_size: 64
   # "input batch size for training (default: 64)",
@@ -43,7 +50,6 @@ wandb:
   project: condensed-rigl
   entity: condensed-sparsity
   start_method: thread
-
 hydra:  
   run:
     dir: ${paths.logs}

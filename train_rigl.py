@@ -10,7 +10,8 @@ import pathlib
 
 from rigl_torch.rigl_scheduler import RigLScheduler
 from rigl_torch.rigl_constant_fan import RigLConstFanScheduler
-from rigl_torch.models import MnistNet
+from rigl_torch.models import get_model
+from rigl_torch.datasets import get_dataloaders
 
 
 @hydra.main(config_path="configs/", config_name="config")
@@ -30,25 +31,9 @@ def main(cfg: omegaconf.DictConfig) -> None:
     use_cuda = not cfg.compute.no_cuda and torch.cuda.is_available()
     torch.manual_seed(cfg.training.seed)
     device = torch.device("cuda" if use_cuda else "cpu")
+    train_loader, test_loader = get_dataloaders(cfg)
 
-    train_kwargs = {"batch_size": cfg.training.batch_size}
-    test_kwargs = {"batch_size": cfg.training.test_batch_size}
-    if use_cuda:
-        train_kwargs.update(cfg.compute.cuda_kwargs)
-        test_kwargs.update(cfg.compute.cuda_kwargs)
-
-    transform = transforms.Compose(
-        [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
-    )
-    data_path = cfg.paths.data_folder
-    dataset1 = datasets.MNIST(
-        data_path, train=True, download=True, transform=transform
-    )
-    dataset2 = datasets.MNIST(data_path, train=False, transform=transform)
-    train_loader = torch.utils.data.DataLoader(dataset1, **train_kwargs)
-    test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)
-
-    model = MnistNet().to(device)
+    model = get_model(cfg).to(device)
     optimizer = torch.optim.Adadelta(model.parameters(), lr=cfg.training.lr)
     scheduler = torch.optim.lr_scheduler.StepLR(
         optimizer, step_size=1, gamma=cfg.training.gamma
@@ -57,7 +42,13 @@ def main(cfg: omegaconf.DictConfig) -> None:
     pruner = lambda: True  # noqa: E731
     if cfg.rigl.dense_allocation is not None:
         T_end = int(0.75 * cfg.training.epochs * len(train_loader))
-        pruner = RigLConstFanScheduler(
+        if cfg.rigl.const_fan_in:
+            rigl_scheduler = RigLConstFanScheduler
+            logger.info("Using constant fan in rigl scheduler...")
+        else:
+            logger.info("Using vanilla rigl scheduler...")
+            rigl_scheduler = RigLScheduler
+        pruner = rigl_scheduler(
             model,
             optimizer,
             dense_allocation=cfg.rigl.dense_allocation,
@@ -67,6 +58,7 @@ def main(cfg: omegaconf.DictConfig) -> None:
             T_end=T_end,
             ignore_linear_layers=False,
             grad_accumulation_n=cfg.rigl.grad_accumulation_n,
+            sparsity_distribution=cfg.rigl.sparsity_distribution,
         )
     else:
         logger.warning(
@@ -84,6 +76,7 @@ def main(cfg: omegaconf.DictConfig) -> None:
         )
         loss, acc = test(model, device, test_loader, epoch)
         scheduler.step()
+        wandb.log({"Learning Rate": scheduler.get_last_lr()[0]})
 
         writer.add_scalar("loss", loss, epoch)
         writer.add_scalar("accuracy", acc, epoch)
@@ -92,9 +85,14 @@ def main(cfg: omegaconf.DictConfig) -> None:
 
     if cfg.training.save_model:
         save_path = pathlib.Path(cfg.paths.artifacts)
-    if not save_path.is_dir():
-        save_path.mkdir()
-    torch.save(model.state_dict(), save_path / "mnist_cnn.pt")
+        if not save_path.is_dir():
+            save_path.mkdir()
+        f_path = save_path / f"{cfg.experiment.name}.pt"
+        torch.save(model.state_dict(), f_path)
+        art = wandb.Artifact(name=cfg.experiment.name, type="model")
+        art.add_file(f_path)
+        logging.info(f"artifact path: {f_path}")
+        wandb.log_artifact(art)
     run.finish()
 
 
@@ -143,7 +141,13 @@ def test(model, device, test_loader, epoch):
 
     test_loss /= len(test_loader.dataset)
     wandb_log(
-        epoch, test_loss, correct / len(test_loader), data, output, target, pred
+        epoch,
+        test_loss,
+        correct / len(test_loader.dataset),
+        data,
+        output,
+        target,
+        pred,
     )
 
     logger.info(

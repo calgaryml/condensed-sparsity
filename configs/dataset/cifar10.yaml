@@ -1,0 +1,2 @@
+name: cifar10
+normalize: False
