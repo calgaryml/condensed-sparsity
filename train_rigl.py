@@ -7,6 +7,7 @@ import hydra
 import logging
 import wandb
 import pathlib
+import math
 
 from rigl_torch.rigl_scheduler import RigLScheduler
 from rigl_torch.rigl_constant_fan import RigLConstFanScheduler
@@ -101,7 +102,8 @@ def train(cfg, model, device, train_loader, optimizer, epoch, pruner):
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
-        output = model(data)
+        logits = model(data)
+        output = F.log_softmax(logits, dim=1)
         loss = F.nll_loss(output, target)
         loss.backward()
 
@@ -130,7 +132,8 @@ def test(model, device, test_loader, epoch):
     with torch.no_grad():
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
-            output = model(data)
+            logits = model(data)
+            output = F.log_softmax(logits, dim=1)
             test_loss += F.nll_loss(
                 output, target, reduction="sum"
             ).item()  # sum up batch loss
