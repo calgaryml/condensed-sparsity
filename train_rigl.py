@@ -1,13 +1,11 @@
 import torch
 import torch.nn.functional as F
-from torchvision import transforms, datasets
 from torch.utils.tensorboard import SummaryWriter
 import omegaconf
 import hydra
 import logging
 import wandb
 import pathlib
-import math
 
 from rigl_torch.rigl_scheduler import RigLScheduler
 from rigl_torch.rigl_constant_fan import RigLConstFanScheduler
