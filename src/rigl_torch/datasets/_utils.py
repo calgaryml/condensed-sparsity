@@ -2,6 +2,7 @@ import torch
 from rigl_torch.datasets._mnist import MnistDataStem
 from rigl_torch.datasets._cifar import Cifar10DataStem
 from omegaconf import DictConfig
+
 # from rigl_torch.datasets._mnist import MnistDataStem
 
 
@@ -13,8 +14,8 @@ def get_dataloaders(cfg: DictConfig) -> torch.utils.data.DataLoader:
     elif cfg.dataset.name.lower() == "imagenet":
         pass
     else:
-        raise ValueError(f"{cfg.dataset.name.lower()} is not a recognized dataset name!")
+        raise ValueError(
+            f"{cfg.dataset.name.lower()} is not a recognized dataset name!"
+        )
     train_dataloader, test_dataloader = data_stem.get_train_test_loaders()
     return train_dataloader, test_dataloader
-
-

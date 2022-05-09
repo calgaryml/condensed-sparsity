@@ -3,4 +3,4 @@ torchvision
 tensorboard
 wandb
 python-dotenv
-hydra
+hydra-core
