@@ -42,7 +42,6 @@ class Cifar10DataStem(_data_stem.ABCDataStem):
         if train:
             transforms_list.extend(
                 [
-                    PerImageStandarization(inplace=False),
                     transforms.Pad(padding=4, padding_mode="reflect"),
                     # Equivalent to: https://github.com/google-research/rigl/blob/master/rigl/cifar_resnet/data_helper.py#L29  # noqa
                     transforms.RandomCrop(
