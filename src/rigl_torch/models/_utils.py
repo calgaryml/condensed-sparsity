@@ -2,7 +2,7 @@ from omegaconf import DictConfig
 import torch
 
 from rigl_torch.models.mnist import MnistNet
-from rigl_torch.models.resnet import get_wide_resnet_22
+from rigl_torch.models.resnet import get_wide_resnet_22, get_resnet18
 from functools import partial
 
 
@@ -14,6 +14,7 @@ def get_model(cfg: DictConfig) -> torch.nn.Module:
             width_multiplier=2,
         ),
         "mnist": lambda: MnistNet(),
+        "resnet18": partial(get_resnet18, num_classes=cfg.dataset.num_classes),
     }
     if cfg.model.name not in model_loader.keys():
         raise ValueError(
