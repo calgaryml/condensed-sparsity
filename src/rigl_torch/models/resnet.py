@@ -4,14 +4,11 @@ from torchvision.models import resnet18
 from rigl_torch.models.model_factory import ModelFactory
 
 
-# @ModelFactory.register_model(model="wide_resnet22", dataset="cifar10")
-# class wide_resnet22_cifar10()
-
-
-def get_wide_resnet_22(num_classes: int, width_multiplier: int = 2):
+@ModelFactory.register_model(model="wide_resnet22", dataset="cifar10")
+def get_wide_resnet_22():
     kwargs = dict(
-        width_per_group=64 * width_multiplier,
-        num_classes=num_classes,
+        width_per_group=64 * 2,
+        num_classes=10,
         pretrained=False,
         progress=True,
         layers=[2, 2, 4, 2],
@@ -22,3 +19,8 @@ def get_wide_resnet_22(num_classes: int, width_multiplier: int = 2):
 
 def get_resnet18(num_classes: int):
     return resnet18(num_classes=num_classes)
+
+
+if __name__ == "__main__":
+    net = ModelFactory.get_model("wide_resnet22", "cifar10")
+    print(net)

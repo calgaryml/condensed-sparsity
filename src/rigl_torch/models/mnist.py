@@ -5,7 +5,6 @@ import torch.nn.functional as F
 from rigl_torch.models.model_factory import ModelFactory
 
 
-@ModelFactory.register_model(model="mnist", dataset="mnist")
 class MnistNet(nn.Module):
     def __init__(self):
         super(MnistNet, self).__init__()
@@ -31,6 +30,11 @@ class MnistNet(nn.Module):
         return output
 
 
+@ModelFactory.register_model(model="mnist", dataset="mnist")
+def Mnist():
+    return MnistNet()
+
+
 if __name__ == "__main__":
-    net = MnistNet()
+    net = ModelFactory.get_model("mnist", "mnist")
     print(net)

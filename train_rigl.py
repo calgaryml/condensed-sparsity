@@ -35,7 +35,7 @@ def main(cfg: omegaconf.DictConfig) -> None:
     model = get_model(cfg).to(device)
     optimizer = torch.optim.Adadelta(model.parameters(), lr=cfg.training.lr)
     scheduler = torch.optim.lr_scheduler.StepLR(
-        optimizer, step_size=1, gamma=cfg.training.gamma
+        optimizer, step_size=10, gamma=cfg.training.gamma
     )
 
     pruner = lambda: True  # noqa: E731

@@ -1,6 +1,6 @@
 defaults:
-  - dataset: mnist
-  - model: mnist
+  - dataset: cifar10
+  - model: resnet18
   - _self_
 experiment:
   name: ${model.name}_${dataset.name}_benchmark
