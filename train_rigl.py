@@ -72,13 +72,7 @@ def main(cfg: omegaconf.DictConfig) -> None:
     for epoch in range(1, cfg.training.epochs + 1):
         logger.info(pruner)
         train(
-            cfg,
-            model,
-            device,
-            train_loader,
-            optimizer,
-            epoch,
-            pruner=pruner,
+            cfg, model, device, train_loader, optimizer, epoch, pruner=pruner,
         )
         loss, acc = test(model, device, test_loader, epoch)
         scheduler.step()

@@ -1,9 +1,9 @@
 defaults:
-  - dataset: cifar10
-  - model: wideresnet22
+  - dataset: mnist
+  - model: mnist
   - _self_
 experiment:
-  name: wideresnet22_cifar10_benchmark
+  name: ${model.name}_${dataset.name}_benchmark
 paths:
   data_folder: /home/condensed-sparsity/data
   artifacts: /home/condensed-sparsity/artifacts

@@ -2,7 +2,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from rigl_torch.models.model_factory import ModelFactory
 
+
+@ModelFactory.register_model(model="mnist", dataset="mnist")
 class MnistNet(nn.Module):
     def __init__(self):
         super(MnistNet, self).__init__()
@@ -26,3 +29,8 @@ class MnistNet(nn.Module):
         x = self.dropout2(x)
         output = self.fc2(x)
         return output
+
+
+if __name__ == "__main__":
+    net = MnistNet()
+    print(net)

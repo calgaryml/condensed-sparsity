@@ -1,1 +1,2 @@
 name: mnist
+num_classes: 10

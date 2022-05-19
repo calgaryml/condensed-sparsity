@@ -4,6 +4,7 @@ import torch
 from rigl_torch.models.mnist import MnistNet
 from rigl_torch.models.resnet import get_wide_resnet_22, get_resnet18
 from functools import partial
+from rigl_torch.models.model_factory import ModelFactory
 
 
 def get_model(cfg: DictConfig) -> torch.nn.Module:
@@ -13,7 +14,9 @@ def get_model(cfg: DictConfig) -> torch.nn.Module:
             num_classes=cfg.dataset.num_classes,
             width_multiplier=2,
         ),
-        "mnist": lambda: MnistNet(),
+        "mnist": partial(
+            ModelFactory.get_model, cfg.model.name, cfg.dataset.name
+        ),
         "resnet18": partial(get_resnet18, num_classes=cfg.dataset.num_classes),
     }
     if cfg.model.name not in model_loader.keys():

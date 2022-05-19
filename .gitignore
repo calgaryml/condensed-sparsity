@@ -172,3 +172,4 @@ cython_debug/
 # .vscode # We will share .vscode for this project.
 logs/
 data/
+wandb/
