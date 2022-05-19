@@ -3,13 +3,13 @@ defaults:
   - model: resnet18
   - _self_
 experiment:
-  name: ${model.name}_${dataset.name}_benchmark
+  name: ${model.name}_${dataset.name}_const_fan
 paths:
   data_folder: /home/condensed-sparsity/data
   artifacts: /home/condensed-sparsity/artifacts
   logs: /home/condensed-sparsity/logs
 rigl: 
-  dense_allocation: null
+  dense_allocation: 0.1
   # percentage of dense parameters allowed. if None, pruning will not 
   # be used. must be on the interval (0, 1]
   delta: 100

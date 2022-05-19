@@ -12,7 +12,7 @@ class ModelFactory(object):
         print(f"assigning {model} to factory")
 
         def wrapper(model_loader: Callable) -> Callable:
-            cls.registered_models[dataset] = {model: partial(model_loader)}
+            cls.registered_models[dataset] = {model: model_loader}
             return model_loader
 
         return wrapper

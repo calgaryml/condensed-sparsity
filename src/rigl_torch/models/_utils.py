@@ -17,7 +17,10 @@ def get_model(cfg: DictConfig) -> torch.nn.Module:
         "mnist": partial(
             ModelFactory.get_model, cfg.model.name, cfg.dataset.name
         ),
-        "resnet18": partial(get_resnet18, num_classes=cfg.dataset.num_classes),
+        "resnet18": partial(
+            ModelFactory.get_model, cfg.model.name, cfg.dataset.name
+        )
+        # partial(get_resnet18, num_classes=cfg.dataset.num_classes),
     }
     if cfg.model.name not in model_loader.keys():
         raise ValueError(
