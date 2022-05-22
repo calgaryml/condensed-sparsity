@@ -11,6 +11,7 @@ from rigl_torch.rigl_scheduler import RigLScheduler
 from rigl_torch.rigl_constant_fan import RigLConstFanScheduler
 from rigl_torch.models import get_model
 from rigl_torch.datasets import get_dataloaders
+from rigl_torch.optim import CosineAnnealingWithLinearWarmUp
 
 
 @hydra.main(config_path="configs/", config_name="config")
@@ -34,8 +35,12 @@ def main(cfg: omegaconf.DictConfig) -> None:
 
     model = get_model(cfg).to(device)
     optimizer = torch.optim.Adadelta(model.parameters(), lr=cfg.training.lr)
-    scheduler = torch.optim.lr_scheduler.StepLR(
-        optimizer, step_size=10, gamma=cfg.training.gamma
+    scheduler = CosineAnnealingWithLinearWarmUp(
+        optimizer,
+        T_max=cfg.training.epochs,
+        eta_min=0,
+        lr=cfg.training.lr,
+        warm_up_steps=cfg.training.warm_up_steps,
     )
 
     pruner = lambda: True  # noqa: E731

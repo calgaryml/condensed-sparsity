@@ -3,7 +3,7 @@ defaults:
   - model: resnet18
   - _self_
 experiment:
-  name: ${model.name}_${dataset.name}_const_fan
+  name: ${model.name}_${dataset.name}_const_fan_new_lr_schedule_1.0_lr
 paths:
   data_folder: /home/condensed-sparsity/data
   artifacts: /home/condensed-sparsity/artifacts
@@ -30,10 +30,14 @@ training:
   # input batch size for testing (default: 1000)",
   epochs: 50
   # number of epochs to train (default: 14)",
-  lr: 1
-  # learning rate (default: 1.0)",
+  lr: 1.0
+  # Learning rate after warmup (default: 0.01)",
+  init_lr: 0.000001
+  # Learning rate for first epoch of warm up
+  warm_up_steps: 5
+  # Number of epochs to warm up for
   gamma: 0.7
-  # Learning rate step gamma (default: 0.7)
+  # Learning rate step gamma (default: 0.7)  NOT USED
   dry_run: False
   # quickly check a single pass",
   seed: 1
@@ -42,6 +46,7 @@ training:
   # how many batches to wait before logging training status",
   save_model: True
   # For Saving the current Model",
+
 compute:
   no_cuda: False
   cuda_kwargs: {"num_workers": 1, "pin_memory": True, "shuffle": True}

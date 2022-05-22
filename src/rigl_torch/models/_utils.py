@@ -1,8 +1,7 @@
 from omegaconf import DictConfig
 import torch
 
-from rigl_torch.models.mnist import MnistNet
-from rigl_torch.models.resnet import get_wide_resnet_22, get_resnet18
+from rigl_torch.models.resnet import get_wide_resnet_22
 from functools import partial
 from rigl_torch.models.model_factory import ModelFactory
 
@@ -15,10 +14,10 @@ def get_model(cfg: DictConfig) -> torch.nn.Module:
             width_multiplier=2,
         ),
         "mnist": partial(
-            ModelFactory.get_model, cfg.model.name, cfg.dataset.name
+            ModelFactory.load_model, cfg.model.name, cfg.dataset.name
         ),
         "resnet18": partial(
-            ModelFactory.get_model, cfg.model.name, cfg.dataset.name
+            ModelFactory.load_model, cfg.model.name, cfg.dataset.name
         )
         # partial(get_resnet18, num_classes=cfg.dataset.num_classes),
     }

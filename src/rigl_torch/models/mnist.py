@@ -30,11 +30,11 @@ class MnistNet(nn.Module):
         return output
 
 
-@ModelFactory.register_model(model="mnist", dataset="mnist")
+@ModelFactory.register_model_loader(model="mnist", dataset="mnist")
 def Mnist():
     return MnistNet()
 
 
 if __name__ == "__main__":
-    net = ModelFactory.get_model("mnist", "mnist")
+    net = ModelFactory.load_model("mnist", "mnist")
     print(net)

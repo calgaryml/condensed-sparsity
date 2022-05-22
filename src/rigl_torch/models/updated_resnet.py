@@ -125,7 +125,7 @@ class ResNet(nn.Module):
         return out
 
 
-@ModelFactory.register_model(model="resnet18", dataset="cifar10")
+@ModelFactory.register_model_loader(model="resnet18", dataset="cifar10")
 def ResNet18():
     return ResNet(BasicBlock, [2, 2, 2, 2])
 
