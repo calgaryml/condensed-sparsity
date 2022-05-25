@@ -66,7 +66,7 @@ def main(cfg: omegaconf.DictConfig) -> None:
         )
     else:
         logger.warning(
-            f"{cfg.rigl.dense_allocation} is None, training with dense "
+            "cfg.rigl.dense_allocation is `null`, training with dense "
             "network..."
         )
 

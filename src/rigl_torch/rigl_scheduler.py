@@ -3,6 +3,7 @@
 import numpy as np
 import torch
 import torch.distributed as dist
+from typing import List
 
 from rigl_torch.util import get_W
 
@@ -89,26 +90,7 @@ class RigLScheduler:
             self.backward_masks = None
 
             # define sparsity allocation
-            self.S = []
-            for i, (W, is_linear) in enumerate(
-                zip(self.W, self._linear_layers_mask)
-            ):
-                # when using uniform sparsity, the first layer is always 100%
-                # dense UNLESS there is only 1 layer
-                is_first_layer = i == 0
-                if (
-                    is_first_layer
-                    and self.sparsity_distribution == "uniform"
-                    and len(self.W) > 1
-                ):
-                    self.S.append(0)
-
-                elif is_linear and self.ignore_linear_layers:
-                    # if choosing to ignore linear layers, keep them 100% dense
-                    self.S.append(0)
-
-                else:
-                    self.S.append(1 - dense_allocation)
+            self.S = self._allocate_sparsity()
 
             # randomly sparsify model according to S
             self.random_sparsify()
@@ -143,6 +125,45 @@ class RigLScheduler:
 
         assert self.grad_accumulation_n > 0 and self.grad_accumulation_n < delta
         assert self.sparsity_distribution in ("uniform",)
+
+    def _allocate_sparsity(self) -> List[float]:
+        sparsity_dist = []
+        sparsity_allocators = {
+            "uniform": self._uniform_sparsity_dist,
+            "erk": self._erk_sparsity_dist,
+        }
+        try:
+            sparsity_dist = sparsity_allocators[
+                self.sparsity_distribution.lower()
+            ]()
+        except Exception as e:
+            raise ValueError(
+                "Unknown sparsity distribution "
+                f"{self.sparsity_distribution}. Please select from "
+                f"{list(sparsity_allocators.keys())}."
+            ) from e
+        return sparsity_dist
+
+    def _uniform_sparsity_dist(self) -> List[float]:
+        sparsity_dist = []
+        for i, (W, is_linear) in enumerate(
+            zip(self.W, self._linear_layers_mask)
+        ):
+            # when using uniform sparsity, the first layer is always 100%
+            # dense UNLESS there is only 1 layer
+            if i == 0 and len(self.W) > 1:
+                sparsity_dist.append(0)
+
+            elif is_linear and self.ignore_linear_layers:
+                # if choosing to ignore linear layers, keep them 100% dense
+                sparsity_dist.append(0)
+
+            else:
+                sparsity_dist.append(1 - self.dense_allocation)
+        return sparsity_dist
+
+    def _erk_sparsity_dist(self) -> List[float]:
+        raise NotImplementedError()
 
     def state_dict(self):
         obj = {

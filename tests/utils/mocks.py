@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from typing import Optional, Tuple
 
-from rigl_torch.RigL import RigLScheduler
+from rigl_torch.rigl_scheduler import RigLScheduler
 
 
 def mock_image_dataloader(

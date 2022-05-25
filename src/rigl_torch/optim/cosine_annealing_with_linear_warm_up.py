@@ -15,6 +15,8 @@ class CosineAnnealingWithLinearWarmUp(_LRScheduler):
         warm_up_steps=20,
         init_lr=None,
     ):
+        """Cosine annealing lr decay with linear warm up.
+        """
         self.T_max = T_max
         self.eta_min = eta_min
         self.warm_up_steps = warm_up_steps
@@ -29,12 +31,13 @@ class CosineAnnealingWithLinearWarmUp(_LRScheduler):
         super().__init__(optimizer, last_epoch=last_epoch, verbose=verbose)
 
     def get_lr(self):
-        if self.last_epoch < self.warm_up_steps:
+        if self.last_epoch < self.warm_up_steps:  # Linear warm up phase
             return [self._linear_warmup_lrs[self.last_epoch]] * len(
                 self.optimizer.param_groups
             )
 
         elif (self.last_epoch - 1 - self.T_max) % (2 * self.T_max) == 0:
+            # Cosine annealing phases
             return [
                 group["lr"]
                 + (self.lr - self.eta_min)

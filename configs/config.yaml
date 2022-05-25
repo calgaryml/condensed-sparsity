@@ -3,7 +3,7 @@ defaults:
   - model: resnet18
   - _self_
 experiment:
-  name: ${model.name}_${dataset.name}_const_fan_new_lr_schedule_1.0_lr
+  name: ${model.name}_${dataset.name}_vanilla_rigl
 paths:
   data_folder: /home/condensed-sparsity/data
   artifacts: /home/condensed-sparsity/artifacts
