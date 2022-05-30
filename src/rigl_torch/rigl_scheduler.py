@@ -4,6 +4,7 @@ import numpy as np
 import torch
 import torch.distributed as dist
 from typing import List
+import logging
 
 from rigl_torch.util import get_W
 
@@ -58,7 +59,11 @@ class RigLScheduler:
         static_topo=False,
         grad_accumulation_n=1,
         state_dict=None,
+        erk_power_scale=1.0,
     ):
+        self._implemented_sparsity_distributions = ["uniform", "erk"]
+        self._logger = logging.getLogger(__file__)
+        self.erk_power_scale = erk_power_scale
         if dense_allocation <= 0 or dense_allocation > 1:
             raise Exception(
                 "Dense allocation must be on the interval (0, 1]. Got: %f"
@@ -124,7 +129,10 @@ class RigLScheduler:
             setattr(w, "_has_rigl_backward_hook", True)
 
         assert self.grad_accumulation_n > 0 and self.grad_accumulation_n < delta
-        assert self.sparsity_distribution in ("uniform",)
+        assert (
+            self.sparsity_distribution
+            in self._implemented_sparsity_distributions
+        )
 
     def _allocate_sparsity(self) -> List[float]:
         sparsity_dist = []
@@ -132,16 +140,15 @@ class RigLScheduler:
             "uniform": self._uniform_sparsity_dist,
             "erk": self._erk_sparsity_dist,
         }
-        try:
-            sparsity_dist = sparsity_allocators[
-                self.sparsity_distribution.lower()
-            ]()
-        except Exception as e:
+        if self.sparsity_distribution.lower() not in sparsity_allocators:
             raise ValueError(
                 "Unknown sparsity distribution "
                 f"{self.sparsity_distribution}. Please select from "
                 f"{list(sparsity_allocators.keys())}."
-            ) from e
+            )
+        sparsity_dist = sparsity_allocators[
+            self.sparsity_distribution.lower()
+        ]()
         return sparsity_dist
 
     def _uniform_sparsity_dist(self) -> List[float]:
@@ -163,7 +170,59 @@ class RigLScheduler:
         return sparsity_dist
 
     def _erk_sparsity_dist(self) -> List[float]:
-        raise NotImplementedError()
+        eps = None
+        is_eps_valid = False
+        dense_layers = set()
+        while not is_eps_valid:
+            divisor = 0
+            rhs = 0
+            raw_probabilties = {}
+            for layer_idx, (weight_matrix, is_linear) in enumerate(
+                zip(self.W, self._linear_layers_mask)
+            ):
+                n_params = np.prod(
+                    weight_matrix.shape
+                )  # Total number of params
+                n_zeros = int(n_params * self.dense_allocation)
+                n_ones = int(n_params * (1 - self.dense_allocation))
+
+                if layer_idx in dense_layers or (
+                    is_linear and self.ignore_linear_layers
+                ):
+                    dense_layers.add(layer_idx)
+                    rhs -= n_zeros
+                else:
+                    rhs += n_ones
+                    raw_prob = (
+                        np.sum(weight_matrix.shape)
+                        / np.prod(weight_matrix.shape)
+                    ) ** self.erk_power_scale
+                    raw_probabilties[layer_idx] = raw_prob
+                    divisor += raw_probabilties[layer_idx] * n_params
+            eps = rhs / divisor
+            max_prob = np.max(list(raw_probabilties.values()))
+            max_prob_eps = max_prob * eps
+            if max_prob_eps > 1:
+                is_eps_valid = False
+                for layer_idx, raw_prob in raw_probabilties.items():
+                    if raw_prob == max_prob:
+                        self._logger.info(
+                            f"Sparsity of layer at index {layer_idx} set to 0.0"
+                        )
+                        dense_layers.add(layer_idx)
+            else:
+                is_eps_valid = True
+
+        sparsity_dist = []
+        for layer_idx, (weight_matrix, is_linear) in enumerate(
+            zip(self.W, self._linear_layers_mask)
+        ):
+            if layer_idx in dense_layers:
+                sparsity = 0.0
+            else:
+                sparsity = eps * raw_probabilties[layer_idx]
+            sparsity_dist.append(sparsity)
+        return sparsity_dist
 
     def state_dict(self):
         obj = {
@@ -439,3 +498,66 @@ class RigLScheduler:
             self.reset_momentum()
             self.apply_mask_to_weights()
             self.apply_mask_to_gradients()
+
+
+if __name__ == "__main__":
+    from rigl_torch.models import get_model
+    from rigl_torch.datasets import get_dataloaders
+    from omegaconf import DictConfig
+    import hydra
+    import numpy as np
+    import math
+    import matplotlib.pyplot as plt
+    import torch
+    import torch.nn as nn
+    import torch.nn.functional as F
+    from rigl_torch.models import ModelFactory
+    from rigl_torch.optim.cosine_annealing_with_linear_warm_up import (
+        CosineAnnealingWithLinearWarmUp,
+    )
+    from rigl_torch.rigl_constant_fan import RigLConstFanScheduler
+    from rigl_torch.rigl_scheduler import RigLScheduler
+
+    with hydra.initialize(config_path="../../configs"):
+        cfg = hydra.compose(config_name="config.yaml", overrides=[])
+    model = ModelFactory.load_model(model="mnist", dataset="mnist")
+    use_cuda = not cfg.compute.no_cuda and torch.cuda.is_available()
+    torch.manual_seed(cfg.training.seed)
+    device = torch.device("cuda" if use_cuda else "cpu")
+    train_loader, test_loader = get_dataloaders(cfg)
+
+    model = get_model(cfg).to(device)
+    optimizer = torch.optim.Adadelta(model.parameters(), lr=cfg.training.lr)
+    scheduler = CosineAnnealingWithLinearWarmUp(
+        optimizer,
+        T_max=cfg.training.epochs,
+        eta_min=0,
+        lr=cfg.training.lr,
+        warm_up_steps=cfg.training.warm_up_steps,
+    )
+
+    pruner = lambda: True  # noqa: E731
+    if cfg.rigl.dense_allocation is not None:
+        T_end = int(0.75 * cfg.training.epochs * len(train_loader))
+        if cfg.rigl.const_fan_in:
+            rigl_scheduler = RigLConstFanScheduler
+        else:
+            rigl_scheduler = RigLScheduler
+        pruner = rigl_scheduler(
+            model,
+            optimizer,
+            dense_allocation=cfg.rigl.dense_allocation,
+            alpha=cfg.rigl.alpha,
+            delta=cfg.rigl.delta,
+            static_topo=cfg.rigl.static_topo,
+            T_end=T_end,
+            ignore_linear_layers=False,
+            grad_accumulation_n=cfg.rigl.grad_accumulation_n,
+            sparsity_distribution=cfg.rigl.sparsity_distribution,
+            erk_power_scale=cfg.rigl.erk_power_scale,
+        )
+    else:
+        print(
+            "cfg.rigl.dense_allocation is `null`, training with dense "
+            "network..."
+        )

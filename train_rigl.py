@@ -14,7 +14,7 @@ from rigl_torch.datasets import get_dataloaders
 from rigl_torch.optim import CosineAnnealingWithLinearWarmUp
 
 
-@hydra.main(config_path="configs/", config_name="config")
+@hydra.main(config_path="configs/", config_name="config", version_base="1.2")
 def main(cfg: omegaconf.DictConfig) -> None:
     logger.info(f"Running train_rigl.py with config:\n{cfg}")
 
@@ -63,6 +63,7 @@ def main(cfg: omegaconf.DictConfig) -> None:
             ignore_linear_layers=False,
             grad_accumulation_n=cfg.rigl.grad_accumulation_n,
             sparsity_distribution=cfg.rigl.sparsity_distribution,
+            erk_power_scale=cfg.rigl.erk_power_scale,
         )
     else:
         logger.warning(

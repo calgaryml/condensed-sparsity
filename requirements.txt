@@ -4,3 +4,4 @@ tensorboard
 wandb
 python-dotenv
 hydra-core
+omegaconf

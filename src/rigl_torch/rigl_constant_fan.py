@@ -26,6 +26,7 @@ class RigLConstFanScheduler(RigLScheduler):
         static_topo: bool = False,
         grad_accumulation_n: int = 1,
         state_dict: Optional[Dict[str, Any]] = None,
+        erk_power_scale=1.0,
     ):
         """RigL Scheduler with constant fan-in.
 
@@ -67,8 +68,8 @@ class RigLConstFanScheduler(RigLScheduler):
             static_topo,
             grad_accumulation_n,
             state_dict,
+            erk_power_scale
         )
-        self._logger = logging.getLogger(__file__)
 
     @torch.no_grad()
     def random_sparsify(self) -> None:
@@ -121,10 +122,7 @@ class RigLConstFanScheduler(RigLScheduler):
         s = super().__str__()
         s = s[:-1]  # Remove trailing ')'
         const_fan_ins = []
-        for mask, W, in zip(
-            self.backward_masks,
-            self.W,
-        ):
+        for mask, W, in zip(self.backward_masks, self.W,):
             if mask is None:
                 fan_in, _ = calculate_fan_in_and_fan_out(W)
                 const_fan_ins.append(fan_in)
@@ -242,10 +240,7 @@ class RigLConstFanScheduler(RigLScheduler):
         return drop_mask.to(device=score_drop.device)
 
     def _get_grow_mask(
-        self,
-        score_grow: torch.Tensor,
-        drop_mask: torch.Tensor,
-        n_fan_in: int,
+        self, score_grow: torch.Tensor, drop_mask: torch.Tensor, n_fan_in: int,
     ) -> torch.Tensor:
         """Get weights to grow by selecting abs(score_grow) where not already
             active with constant fan-in.

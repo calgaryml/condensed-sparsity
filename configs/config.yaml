@@ -1,6 +1,6 @@
 defaults:
-  - dataset: cifar10
-  - model: resnet18
+  - dataset: mnist
+  - model: mnist
   - _self_
 experiment:
   name: ${model.name}_${dataset.name}_vanilla_rigl
@@ -22,7 +22,10 @@ rigl:
   # if 1, use random sparsity topo and remain static"
   const_fan_in: True
   # If True, use const_fan_in scheduler.
-  sparsity_distribution: uniform
+  sparsity_distribution: erk
+  # Define layer-wise sparsity distribution. Options include `uniform` & `erk`
+  erk_power_scale: 1.0
+  # Power scale for ERK distribution
 training:
   batch_size: 64
   # "input batch size for training (default: 64)",
