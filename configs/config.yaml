@@ -2,12 +2,15 @@ defaults:
   - dataset: mnist
   - model: mnist
   - _self_
+
 experiment:
-  name: ${model.name}_${dataset.name}_vanilla_rigl
+  name: ${model.name}_${dataset.name}_const_fan_erk
+
 paths:
   data_folder: /home/condensed-sparsity/data
   artifacts: /home/condensed-sparsity/artifacts
   logs: /home/condensed-sparsity/logs
+
 rigl: 
   dense_allocation: 0.1
   # percentage of dense parameters allowed. if None, pruning will not 
@@ -26,6 +29,7 @@ rigl:
   # Define layer-wise sparsity distribution. Options include `uniform` & `erk`
   erk_power_scale: 1.0
   # Power scale for ERK distribution
+
 training:
   batch_size: 64
   # "input batch size for training (default: 64)",
@@ -54,10 +58,12 @@ compute:
   no_cuda: False
   cuda_kwargs: {"num_workers": 1, "pin_memory": True, "shuffle": True}
   # disables CUDA training",
+
 wandb:
   project: condensed-rigl
   entity: condensed-sparsity
   start_method: thread
+
 hydra:  
   run:
     dir: ${paths.logs}

@@ -5,7 +5,6 @@ from torchvision import transforms, datasets
 
 
 class MnistDataStem(_data_stem.ABCDataStem):
-
     def __init__(self, cfg: Dict[str, Any]):
         super().__init__(cfg)
 
@@ -14,9 +13,15 @@ class MnistDataStem(_data_stem.ABCDataStem):
         train_dataset = datasets.MNIST(
             self.data_path, train=True, download=True, transform=transform
         )
-        test_dataset = datasets.MNIST(self.data_path, train=False, transform=transform)
-        train_loader = torch.utils.data.DataLoader(train_dataset, **self.train_kwargs)
-        test_loader = torch.utils.data.DataLoader(test_dataset, **self.test_kwargs)
+        test_dataset = datasets.MNIST(
+            self.data_path, train=False, transform=transform
+        )
+        train_loader = torch.utils.data.DataLoader(
+            train_dataset, **self.train_kwargs
+        )
+        test_loader = torch.utils.data.DataLoader(
+            test_dataset, **self.test_kwargs
+        )
         return train_loader, test_loader
 
     def _get_transform(self):

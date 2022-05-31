@@ -9,7 +9,9 @@ class ABCDataStem(ABC):
         self.initalize_from_cfg()
 
     def initalize_from_cfg(self) -> None:
-        self.use_cuda = not self.cfg.compute.no_cuda and torch.cuda.is_available()
+        self.use_cuda = (
+            not self.cfg.compute.no_cuda and torch.cuda.is_available()
+        )
         torch.manual_seed(self.cfg.training.seed)
         self.device = torch.device("cuda" if self.use_cuda else "cpu")
         self.train_kwargs = {"batch_size": self.cfg.training.batch_size}

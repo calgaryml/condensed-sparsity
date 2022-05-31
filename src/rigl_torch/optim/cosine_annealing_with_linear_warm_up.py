@@ -15,8 +15,7 @@ class CosineAnnealingWithLinearWarmUp(_LRScheduler):
         warm_up_steps=20,
         init_lr=None,
     ):
-        """Cosine annealing lr decay with linear warm up.
-        """
+        """Cosine annealing lr decay with linear warm up."""
         self.T_max = T_max
         self.eta_min = eta_min
         self.warm_up_steps = warm_up_steps

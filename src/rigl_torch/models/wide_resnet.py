@@ -1,5 +1,6 @@
-"""Wideresnet implementation from: https://github.com/varun19299/rigl-reproducibility/blob/master/models/wide_resnet.py
-"""
+"""Wideresnet implementation from:
+https://github.com/varun19299/rigl-reproducibility/blob/master/models/wide_resnet.py
+"""  # noqa
 
 import math
 import numpy as np
@@ -14,7 +15,8 @@ class WideResNet(nn.Module):
     """
     Wide Residual Network with varying depth and width.
 
-    For more info, see the paper: Wide Residual Networks by Sergey Zagoruyko, Nikos Komodakis
+    For more info, see the paper: Wide Residual Networks by Sergey Zagoruyko,
+    Nikos Komodakis
     https://arxiv.org/abs/1605.07146
 
     :param depth: No of layers
@@ -25,7 +27,8 @@ class WideResNet(nn.Module):
     :type num_classes: int
     :param dropRate: Dropout Probability
     :type dropRate: float
-    :param small_dense_density: Equivalent parameter density of Small-Dense model
+    :param small_dense_density: Equivalent parameter density of Small-Dense
+        model
     :type small_dense_density: float
     """
 
@@ -56,15 +59,30 @@ class WideResNet(nn.Module):
         )
         # 1st block
         self.block1 = NetworkBlock(
-            n, nChannels[0], nChannels[1], block, 1, dropRate,
+            n,
+            nChannels[0],
+            nChannels[1],
+            block,
+            1,
+            dropRate,
         )
         # 2nd block
         self.block2 = NetworkBlock(
-            n, nChannels[1], nChannels[2], block, 2, dropRate,
+            n,
+            nChannels[1],
+            nChannels[2],
+            block,
+            2,
+            dropRate,
         )
         # 3rd block
         self.block3 = NetworkBlock(
-            n, nChannels[2], nChannels[3], block, 2, dropRate,
+            n,
+            nChannels[2],
+            nChannels[3],
+            block,
+            2,
+            dropRate,
         )
         # global average pooling and classifier
         self.bn1 = nn.BatchNorm2d(nChannels[3])
@@ -101,7 +119,8 @@ class BasicBlock(nn.Module):
     """
     Wide Residual Network basic block
 
-    For more info, see the paper: Wide Residual Networks by Sergey Zagoruyko, Nikos Komodakis
+    For more info, see the paper: Wide Residual Networks by Sergey Zagoruyko,
+        Nikos Komodakis
     https://arxiv.org/abs/1605.07146
 
     :param in_planes: input channels

@@ -170,6 +170,17 @@ class RigLScheduler:
         return sparsity_dist
 
     def _erk_sparsity_dist(self) -> List[float]:
+        """Get Erdos Renyi Kernel sparsity distribution for `self.model`.
+
+        Implementation based on approach in original rigl paper and reproduced
+        papers:
+        https://github.com/google-research/rigl/blob/97d62b0724c9a489a5318edb34951c6800575311/rigl/sparse_utils.py#L90
+        https://github.com/varun19299/rigl-reproducibility/blob/f8a3398f6249e291aa8d91e376e49820fde8f2d3/sparselearning/funcs/init_scheme.py#L147
+
+
+        Returns:
+            List[float]: List of sparsities to apply per layer.
+        """
         eps = None
         is_eps_valid = False
         dense_layers = set()
@@ -498,66 +509,3 @@ class RigLScheduler:
             self.reset_momentum()
             self.apply_mask_to_weights()
             self.apply_mask_to_gradients()
-
-
-if __name__ == "__main__":
-    from rigl_torch.models import get_model
-    from rigl_torch.datasets import get_dataloaders
-    from omegaconf import DictConfig
-    import hydra
-    import numpy as np
-    import math
-    import matplotlib.pyplot as plt
-    import torch
-    import torch.nn as nn
-    import torch.nn.functional as F
-    from rigl_torch.models import ModelFactory
-    from rigl_torch.optim.cosine_annealing_with_linear_warm_up import (
-        CosineAnnealingWithLinearWarmUp,
-    )
-    from rigl_torch.rigl_constant_fan import RigLConstFanScheduler
-    from rigl_torch.rigl_scheduler import RigLScheduler
-
-    with hydra.initialize(config_path="../../configs"):
-        cfg = hydra.compose(config_name="config.yaml", overrides=[])
-    model = ModelFactory.load_model(model="mnist", dataset="mnist")
-    use_cuda = not cfg.compute.no_cuda and torch.cuda.is_available()
-    torch.manual_seed(cfg.training.seed)
-    device = torch.device("cuda" if use_cuda else "cpu")
-    train_loader, test_loader = get_dataloaders(cfg)
-
-    model = get_model(cfg).to(device)
-    optimizer = torch.optim.Adadelta(model.parameters(), lr=cfg.training.lr)
-    scheduler = CosineAnnealingWithLinearWarmUp(
-        optimizer,
-        T_max=cfg.training.epochs,
-        eta_min=0,
-        lr=cfg.training.lr,
-        warm_up_steps=cfg.training.warm_up_steps,
-    )
-
-    pruner = lambda: True  # noqa: E731
-    if cfg.rigl.dense_allocation is not None:
-        T_end = int(0.75 * cfg.training.epochs * len(train_loader))
-        if cfg.rigl.const_fan_in:
-            rigl_scheduler = RigLConstFanScheduler
-        else:
-            rigl_scheduler = RigLScheduler
-        pruner = rigl_scheduler(
-            model,
-            optimizer,
-            dense_allocation=cfg.rigl.dense_allocation,
-            alpha=cfg.rigl.alpha,
-            delta=cfg.rigl.delta,
-            static_topo=cfg.rigl.static_topo,
-            T_end=T_end,
-            ignore_linear_layers=False,
-            grad_accumulation_n=cfg.rigl.grad_accumulation_n,
-            sparsity_distribution=cfg.rigl.sparsity_distribution,
-            erk_power_scale=cfg.rigl.erk_power_scale,
-        )
-    else:
-        print(
-            "cfg.rigl.dense_allocation is `null`, training with dense "
-            "network..."
-        )

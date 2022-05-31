@@ -12,7 +12,7 @@ def get_dataloaders(cfg: DictConfig) -> torch.utils.data.DataLoader:
     elif cfg.dataset.name.lower() == "cifar10":
         data_stem = Cifar10DataStem(cfg)
     elif cfg.dataset.name.lower() == "imagenet":
-        pass
+        raise NotImplementedError("Imagenet stem not yet implemented")
     else:
         raise ValueError(
             f"{cfg.dataset.name.lower()} is not a recognized dataset name!"

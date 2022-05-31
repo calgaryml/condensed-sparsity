@@ -6,10 +6,10 @@ import hydra
 import logging
 import wandb
 import pathlib
+from rigl_torch.models.model_factory import ModelFactory
 
 from rigl_torch.rigl_scheduler import RigLScheduler
 from rigl_torch.rigl_constant_fan import RigLConstFanScheduler
-from rigl_torch.models import get_model
 from rigl_torch.datasets import get_dataloaders
 from rigl_torch.optim import CosineAnnealingWithLinearWarmUp
 
@@ -33,7 +33,11 @@ def main(cfg: omegaconf.DictConfig) -> None:
     device = torch.device("cuda" if use_cuda else "cpu")
     train_loader, test_loader = get_dataloaders(cfg)
 
-    model = get_model(cfg).to(device)
+    # model = get_model(cfg).to(device)  # TODO: Replace with model factory
+    model = ModelFactory.load_model(
+        model=cfg.model.name, dataset=cfg.dataset.name
+    )
+    model.to(device)
     optimizer = torch.optim.Adadelta(model.parameters(), lr=cfg.training.lr)
     scheduler = CosineAnnealingWithLinearWarmUp(
         optimizer,
@@ -78,7 +82,13 @@ def main(cfg: omegaconf.DictConfig) -> None:
     for epoch in range(1, cfg.training.epochs + 1):
         logger.info(pruner)
         train(
-            cfg, model, device, train_loader, optimizer, epoch, pruner=pruner,
+            cfg,
+            model,
+            device,
+            train_loader,
+            optimizer,
+            epoch,
+            pruner=pruner,
         )
         loss, acc = test(model, device, test_loader, epoch)
         scheduler.step()
