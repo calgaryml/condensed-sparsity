@@ -53,6 +53,11 @@ training:
   # how many batches to wait before logging training status",
   save_model: True
   # For Saving the current Model",
+  weight_decay: 0  # 5.0e-4 -> rigl value
+  # L2 Regularization for optimizer
+  momentum: 0  # 0.9 -> rigl value
+  # Momentum coefficient for SGD optimizer
+  optimizer: "adadelta" # "adadelta", "adamw"
 
 compute:
   no_cuda: False

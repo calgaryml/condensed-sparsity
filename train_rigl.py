@@ -11,7 +11,7 @@ from rigl_torch.models.model_factory import ModelFactory
 from rigl_torch.rigl_scheduler import RigLScheduler
 from rigl_torch.rigl_constant_fan import RigLConstFanScheduler
 from rigl_torch.datasets import get_dataloaders
-from rigl_torch.optim import CosineAnnealingWithLinearWarmUp
+from rigl_torch.optim import CosineAnnealingWithLinearWarmUp, get_optimizer
 
 
 @hydra.main(config_path="configs/", config_name="config", version_base="1.2")
@@ -38,7 +38,27 @@ def main(cfg: omegaconf.DictConfig) -> None:
         model=cfg.model.name, dataset=cfg.dataset.name
     )
     model.to(device)
-    optimizer = torch.optim.Adadelta(model.parameters(), lr=cfg.training.lr)
+
+    optimizer = get_optimizer(cfg, model)
+    # optimizer = torch.optim.Adadelta(
+    #     model.parameters(),
+    #     lr=cfg.training.lr,
+    #     weight_decay=cfg.training.weight_decay,
+    # )
+    # optimizer = torch.optim.AdamW(
+    #     model.parameters(),
+    #     lr=cfg.training.lr,
+    #     weight_decay=cfg.training.weight_decay,
+    # )
+    # optimizer = torch.optim.SGD(
+    #     model.parameters(),
+    #     lr=cfg.training.lr,
+    #     momentum=cfg.training.momentum,
+    #     dampening=0,
+    #     weight_decay=cfg.training.weight_decay,
+    #     nesterov=True,
+    #     maximize=False,
+    # )
     scheduler = CosineAnnealingWithLinearWarmUp(
         optimizer,
         T_max=cfg.training.epochs,
@@ -82,13 +102,7 @@ def main(cfg: omegaconf.DictConfig) -> None:
     for epoch in range(1, cfg.training.epochs + 1):
         logger.info(pruner)
         train(
-            cfg,
-            model,
-            device,
-            train_loader,
-            optimizer,
-            epoch,
-            pruner=pruner,
+            cfg, model, device, train_loader, optimizer, epoch, pruner=pruner,
         )
         loss, acc = test(model, device, test_loader, epoch)
         scheduler.step()
