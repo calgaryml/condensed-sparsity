@@ -4,7 +4,8 @@ defaults:
   - _self_
 
 experiment:
-  name: ${model.name}_${dataset.name}_benchmark
+  comment: null
+  name: ${model.name}_${dataset.name}_${experiment.comment}
 
 paths:
   data_folder: /home/condensed-sparsity/data
@@ -55,7 +56,7 @@ training:
   # For Saving the current Model",
   weight_decay: 0  # 5.0e-4 -> rigl value
   # L2 Regularization for optimizer
-  momentum: 0  # 0.9 -> rigl value
+  momentum: 0.9  # 0.9 -> rigl value
   # Momentum coefficient for SGD optimizer
   optimizer: "adadelta" # "adadelta", "adamw"
 

@@ -17,7 +17,6 @@ from rigl_torch.optim import CosineAnnealingWithLinearWarmUp, get_optimizer
 @hydra.main(config_path="configs/", config_name="config", version_base="1.2")
 def main(cfg: omegaconf.DictConfig) -> None:
     logger.info(f"Running train_rigl.py with config:\n{cfg}")
-
     run = wandb.init(
         name=cfg.experiment.name,
         entity=cfg.wandb.entity,

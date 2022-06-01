@@ -6,6 +6,8 @@ import logging
 class ModelFactory(object):
     registered_models = {}
     # Nested dictionary in form {dataset: {model: Callable}}
+    # logging.basicConfig(level=logging.INFO)
+    # TODO -> Check above for interaction with hydra-core
     __logger = logging.getLogger(__file__)
 
     @classmethod
@@ -15,7 +17,9 @@ class ModelFactory(object):
         )
 
         def wrapper(model_loader: Callable) -> Callable:
-            cls.registered_models[dataset] = {model: model_loader}
+            if dataset not in cls.registered_models:
+                cls.registered_models[dataset] = {}
+            cls.registered_models[dataset][model] = model_loader
             return model_loader
 
         return wrapper
