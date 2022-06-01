@@ -58,7 +58,7 @@ training:
   # L2 Regularization for optimizer
   momentum: 0.9  # 0.9 -> rigl value
   # Momentum coefficient for SGD optimizer
-  optimizer: "adadelta" # "adadelta", "adamw"
+  optimizer: "adadelta" # "sgd", "adamw"
 
 compute:
   no_cuda: False
