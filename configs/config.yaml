@@ -1,10 +1,10 @@
 defaults:
-  - dataset: cifar10
-  - model: wide_resnet22
+  - dataset: mnist
+  - model: cond_net
   - _self_
 
 experiment:
-  comment: rigl_training_settings
+  comment: 0.5_sparisty
   name: ${model.name}_${dataset.name}_${experiment.comment}
 
 paths:
@@ -13,6 +13,7 @@ paths:
   logs: /home/condensed-sparsity/logs
 
 rigl: 
+  dense_allocation: 0.5
   # percentage of dense parameters allowed. if None, pruning will not 
   # be used. must be on the interval (0, 1]
   dense_allocation: 0.1
@@ -65,7 +66,6 @@ training:
   # Learning rate step gamma
   step_size: 30000
   # Step size to use in learning rate scheduler if StepLR is used.
-
 
 compute:
   # disables CUDA training",

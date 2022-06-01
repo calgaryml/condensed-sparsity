@@ -14,8 +14,8 @@ import wandb
 
 
 from CustomSummaryWriter import *
-from models import Net, CondNet, SparseNet
-from utils import *
+from .models import Net, CondNet, SparseNet
+from .utils import *
 
 
 if __name__ == "__main__":

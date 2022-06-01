@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
-from utils import gen_indx_seqs, make_smask
+from .utils import gen_indx_seqs, make_smask
 import math
 from torch.nn.parameter import Parameter
 
