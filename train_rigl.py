@@ -39,25 +39,6 @@ def main(cfg: omegaconf.DictConfig) -> None:
     model.to(device)
 
     optimizer = get_optimizer(cfg, model)
-    # optimizer = torch.optim.Adadelta(
-    #     model.parameters(),
-    #     lr=cfg.training.lr,
-    #     weight_decay=cfg.training.weight_decay,
-    # )
-    # optimizer = torch.optim.AdamW(
-    #     model.parameters(),
-    #     lr=cfg.training.lr,
-    #     weight_decay=cfg.training.weight_decay,
-    # )
-    # optimizer = torch.optim.SGD(
-    #     model.parameters(),
-    #     lr=cfg.training.lr,
-    #     momentum=cfg.training.momentum,
-    #     dampening=0,
-    #     weight_decay=cfg.training.weight_decay,
-    #     nesterov=True,
-    #     maximize=False,
-    # )
     scheduler = CosineAnnealingWithLinearWarmUp(
         optimizer,
         T_max=cfg.training.epochs,
@@ -101,7 +82,13 @@ def main(cfg: omegaconf.DictConfig) -> None:
     for epoch in range(1, cfg.training.epochs + 1):
         logger.info(pruner)
         train(
-            cfg, model, device, train_loader, optimizer, epoch, pruner=pruner,
+            cfg,
+            model,
+            device,
+            train_loader,
+            optimizer,
+            epoch,
+            pruner=pruner,
         )
         loss, acc = test(model, device, test_loader, epoch)
         scheduler.step()

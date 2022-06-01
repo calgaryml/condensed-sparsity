@@ -5,7 +5,7 @@ defaults:
 
 experiment:
   comment: null
-  name: ${model.name}_${dataset.name}_${experiment.comment}
+  name: ${model.name}_${dataset.name}_${experiment.comment}_0.1LR
 
 paths:
   data_folder: /home/condensed-sparsity/data
@@ -38,7 +38,7 @@ training:
   # input batch size for testing (default: 1000)",
   epochs: 50
   # number of epochs to train (default: 14)",
-  lr: 1.0
+  lr: 0.1
   # Learning rate after warmup (default: 0.01)",
   init_lr: 0.000001
   # Learning rate for first epoch of warm up
