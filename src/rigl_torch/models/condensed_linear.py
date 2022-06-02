@@ -26,10 +26,3 @@ if __name__ == "__main__":
     print(args.__dict__)
     net = CondNet(**args.__dict__)
     print([x for x in net.modules()])
-    # make_linear = args.make_linear
-    # add_bias = not args.no_bias
-    # num_layers = args.num_layers
-    # num_mid = args.num_mid
-    # fan_in = args.fan_in
-    # fan_out_const = args.fan_out_const
-    # net = CondNet()
