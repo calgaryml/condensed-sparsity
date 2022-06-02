@@ -11,8 +11,7 @@ from rigl_torch.models.model_factory import ModelFactory
 from rigl_torch.rigl_scheduler import RigLScheduler
 from rigl_torch.rigl_constant_fan import RigLConstFanScheduler
 from rigl_torch.datasets import get_dataloaders
-from rigl_torch.optim import (  # noqa: F401
-    CosineAnnealingWithLinearWarmUp,
+from rigl_torch.optim import (
     get_optimizer,
     get_lr_scheduler,
 )
