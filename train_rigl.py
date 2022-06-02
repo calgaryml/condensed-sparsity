@@ -11,7 +11,11 @@ from rigl_torch.models.model_factory import ModelFactory
 from rigl_torch.rigl_scheduler import RigLScheduler
 from rigl_torch.rigl_constant_fan import RigLConstFanScheduler
 from rigl_torch.datasets import get_dataloaders
-from rigl_torch.optim import CosineAnnealingWithLinearWarmUp, get_optimizer
+from rigl_torch.optim import (  # noqa: F401
+    CosineAnnealingWithLinearWarmUp,
+    get_optimizer,
+    get_lr_scheduler
+)
 
 
 @hydra.main(config_path="configs/", config_name="config", version_base="1.2")
@@ -39,16 +43,7 @@ def main(cfg: omegaconf.DictConfig) -> None:
     model.to(device)
 
     optimizer = get_optimizer(cfg, model)
-    # scheduler = CosineAnnealingWithLinearWarmUp(
-    #     optimizer,
-    #     T_max=cfg.training.epochs,
-    #     eta_min=0,
-    #     lr=cfg.training.lr,
-    #     warm_up_steps=cfg.training.warm_up_steps,
-    # )
-    scheduler = torch.optim.lr_scheduler.StepLR(
-        optimizer, step_size=30000, gamma=cfg.training.gammma,
-    )
+    scheduler = get_lr_scheduler(cfg, optimizer)
 
     pruner = lambda: True  # noqa: E731
     if cfg.rigl.dense_allocation is not None:

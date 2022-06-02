@@ -4,7 +4,7 @@ defaults:
   - _self_
 
 experiment:
-  comment: erk_testing
+  comment: rigl_training_settings
   name: ${model.name}_${dataset.name}_${experiment.comment}
 
 paths:
@@ -32,33 +32,40 @@ rigl:
   erk_power_scale: 1.0
 
 training:
-  # "input batch size for training (default: 64)
+  dry_run: True
+  # quickly check a single pass",
   batch_size: 128
   # input batch size for testing (default: 1000)
   test_batch_size: 1000
   # number of epochs to train (default: 250)
   epochs: 250
-  # Learning rate after warmup (default: 0.01)
-  lr: 0.1
-  # Learning rate for first epoch of warm up
-  init_lr: 0
-  # Number of epochs to warm up for
-  warm_up_steps: 5
-  # Learning rate step gamma (default: 0.7)  NOT USED!
-  gamma: 0.7
-  # quickly check a single pass
-  dry_run: False
-  # random seed (default: 1)
+  # number of epochs to train (default: 14)",
   seed: 1
   # how many batches to wait before logging training status
   log_interval: 10
   # For Saving the current Model
   save_model: True
-  weight_decay: 0  # 5.0e-4 -> rigl value
+
+  ## Optimization
+  optimizer: sgd # "sgd", "adamw"
+  weight_decay: 5.0e-4  # 5.0e-4 -> rigl value
   # L2 Regularization for optimizer
   momentum: 0.9  # 0.9 -> rigl value
   # Momentum coefficient for SGD optimizer
-  optimizer: "adadelta" # "sgd", "adamw"
+
+  ## Scheduler
+  scheduler: step_lr # cosine_annealing_with_warm_up, step_lr_with_warm_up
+  lr: 0.1
+  # Learning rate after warmup (default: 0.01)",
+  init_lr: 0.000001
+  # Learning rate for first epoch of warm up
+  warm_up_steps: 5
+  # Number of epochs to warm up for linear warm ups
+  gamma: 0.2
+  # Learning rate step gamma
+  step_size: 30000
+  # Step size to use in learning rate scheduler if StepLR is used.
+
 
 compute:
   # disables CUDA training",
