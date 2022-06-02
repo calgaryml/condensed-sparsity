@@ -39,12 +39,15 @@ def main(cfg: omegaconf.DictConfig) -> None:
     model.to(device)
 
     optimizer = get_optimizer(cfg, model)
-    scheduler = CosineAnnealingWithLinearWarmUp(
-        optimizer,
-        T_max=cfg.training.epochs,
-        eta_min=0,
-        lr=cfg.training.lr,
-        warm_up_steps=cfg.training.warm_up_steps,
+    # scheduler = CosineAnnealingWithLinearWarmUp(
+    #     optimizer,
+    #     T_max=cfg.training.epochs,
+    #     eta_min=0,
+    #     lr=cfg.training.lr,
+    #     warm_up_steps=cfg.training.warm_up_steps,
+    # )
+    scheduler = torch.optim.lr_scheduler.StepLR(
+        optimizer, step_size=30000, gamma=cfg.training.gammma,
     )
 
     pruner = lambda: True  # noqa: E731
@@ -82,13 +85,7 @@ def main(cfg: omegaconf.DictConfig) -> None:
     for epoch in range(1, cfg.training.epochs + 1):
         logger.info(pruner)
         train(
-            cfg,
-            model,
-            device,
-            train_loader,
-            optimizer,
-            epoch,
-            pruner=pruner,
+            cfg, model, device, train_loader, optimizer, epoch, pruner=pruner,
         )
         loss, acc = test(model, device, test_loader, epoch)
         scheduler.step()

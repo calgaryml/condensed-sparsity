@@ -20,7 +20,7 @@ rigl:
   delta: 100
   # number of gradients to accumulate before scoring for rigl",
   grad_accumulation_n: 1
-  # alpha param for pruning
+  # alpha param for pruning for cosine decay in determining how many connections to prune/regrow
   alpha: 0.3
   # if 1, use random sparsity topo and remain static"
   static_topo: 0
@@ -33,11 +33,11 @@ rigl:
 
 training:
   # "input batch size for training (default: 64)
-  batch_size: 64
+  batch_size: 128
   # input batch size for testing (default: 1000)
   test_batch_size: 1000
-  # number of epochs to train (default: 14)
-  epochs: 50
+  # number of epochs to train (default: 250)
+  epochs: 250
   # Learning rate after warmup (default: 0.01)
   lr: 0.1
   # Learning rate for first epoch of warm up
