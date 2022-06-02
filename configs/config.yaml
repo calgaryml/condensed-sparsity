@@ -4,8 +4,8 @@ defaults:
   - _self_
 
 experiment:
-  comment: null
-  name: ${model.name}_${dataset.name}_${experiment.comment}_0.1LR
+  comment: erk_testing
+  name: ${model.name}_${dataset.name}_${experiment.comment}
 
 paths:
   data_folder: /home/condensed-sparsity/data
@@ -13,7 +13,7 @@ paths:
   logs: /home/condensed-sparsity/logs
 
 rigl: 
-  dense_allocation: null
+  dense_allocation: 0.1
   # percentage of dense parameters allowed. if None, pruning will not 
   # be used. must be on the interval (0, 1]
   delta: 100
