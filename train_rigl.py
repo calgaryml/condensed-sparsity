@@ -77,9 +77,10 @@ def main(cfg: omegaconf.DictConfig) -> None:
 
     wandb.watch(model, criterion=F.nll_loss, log="all", log_freq=100)
     logger.info(f"Model Summary: {model}")
+    step = 0
     for epoch in range(1, cfg.training.epochs + 1):
         logger.info(pruner)
-        train(
+        step = train(
             cfg,
             model,
             device,
@@ -87,13 +88,13 @@ def main(cfg: omegaconf.DictConfig) -> None:
             optimizer,
             epoch,
             pruner=pruner,
+            scheduler=scheduler,
+            step=step,
         )
-        loss, acc = test(model, device, test_loader, epoch)
-        scheduler.step()
-        wandb.log({"Learning Rate": scheduler.get_last_lr()[0]})
-
+        loss, acc = test(model, device, test_loader, epoch, step)
         writer.add_scalar("loss", loss, epoch)
         writer.add_scalar("accuracy", acc, epoch)
+        wandb.log({"Learning Rate": scheduler.get_last_lr()[0]}, step=step)
         if cfg.training.dry_run:
             break
 
@@ -110,9 +111,12 @@ def main(cfg: omegaconf.DictConfig) -> None:
     run.finish()
 
 
-def train(cfg, model, device, train_loader, optimizer, epoch, pruner):
+def train(
+    cfg, model, device, train_loader, optimizer, epoch, pruner, scheduler, step
+):
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
+        step += 1
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         logits = model(data)
@@ -122,6 +126,7 @@ def train(cfg, model, device, train_loader, optimizer, epoch, pruner):
 
         if pruner():
             optimizer.step()
+        scheduler.step()
 
         if batch_idx % cfg.training.log_interval == 0:
             logger.info(
@@ -135,10 +140,11 @@ def train(cfg, model, device, train_loader, optimizer, epoch, pruner):
             )
         if cfg.training.dry_run:
             logger.warning("Dry run, exiting after one training step")
-            return
+            return step
+    return step
 
 
-def test(model, device, test_loader, epoch):
+def test(model, device, test_loader, epoch, step):
     model.eval()
     test_loss = 0
     correct = 0
@@ -164,6 +170,7 @@ def test(model, device, test_loader, epoch):
         output,
         target,
         pred,
+        step,
     )
 
     logger.info(
@@ -177,7 +184,7 @@ def test(model, device, test_loader, epoch):
     return test_loss, correct / len(test_loader.dataset)
 
 
-def wandb_log(epoch, loss, accuracy, inputs, logits, captions, pred):
+def wandb_log(epoch, loss, accuracy, inputs, logits, captions, pred, step):
     wandb.log(
         {
             "epoch": epoch,
@@ -187,7 +194,8 @@ def wandb_log(epoch, loss, accuracy, inputs, logits, captions, pred):
             "logits": wandb.Histogram(logits.cpu()),
             "captions": wandb.Html(captions.cpu().numpy().__str__()),
             "predictions": wandb.Html(pred.cpu().numpy().__str__()),
-        }
+        },
+        step=step,
     )
 
 
