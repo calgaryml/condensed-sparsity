@@ -32,7 +32,7 @@ rigl:
   erk_power_scale: 1.0
 
 training:
-  dry_run: True
+  dry_run: False
   # quickly check a single pass",
   batch_size: 128
   # input batch size for testing (default: 1000)
