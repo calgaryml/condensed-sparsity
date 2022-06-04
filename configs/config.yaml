@@ -1,11 +1,12 @@
 defaults:
-  - dataset: mnist
-  - model: cond_net
+  - dataset: cifar10
+  - model: resnet18
   - _self_
 
 experiment:
-  comment: 0.5_sparisty
+  comment: sweep
   name: ${model.name}_${dataset.name}_${experiment.comment}
+  sweep: True
 
 paths:
   data_folder: /home/condensed-sparsity/data
@@ -42,7 +43,7 @@ training:
   epochs: 250
   # number of epochs to train (default: 14)",
   seed: 1
-  # how many batches to wait before logging training status
+  # random seed (default: 1)",
   log_interval: 10
   # For Saving the current Model
   save_model: True
