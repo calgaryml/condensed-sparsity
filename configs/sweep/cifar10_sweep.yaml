@@ -1,7 +1,7 @@
 program: train_rigl.py
 method: grid
 project: condensed-rigl
-name: resnet18_sweep
+name: cifar10_sweep
 metric:
   goal: maximize
   name: accuracy
