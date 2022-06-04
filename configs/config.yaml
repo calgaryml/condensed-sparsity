@@ -1,6 +1,6 @@
 defaults:
   - dataset: cifar10
-  - model: wide_resnet22
+  - model: resnet18
   - _self_
 
 experiment:
@@ -42,7 +42,7 @@ training:
   # number of epochs to train (default: 250)
   epochs: 250
   # number of epochs to train (default: 14)",
-  seed: 1
+  seed: null
   # random seed (default: 1)",
   log_interval: 10
   # For Saving the current Model

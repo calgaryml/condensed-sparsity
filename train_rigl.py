@@ -33,6 +33,7 @@ def set_seed(cfg: omegaconf.DictConfig) -> omegaconf.DictConfig:
 def main(cfg: omegaconf.DictConfig) -> None:
     cfg = set_seed(cfg)
     logger.info(f"Running train_rigl.py with config:\n{cfg}")
+
     run = wandb.init(
         name=cfg.experiment.name,
         entity=cfg.wandb.entity,
