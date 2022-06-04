@@ -1,7 +1,7 @@
 program: train_rigl.py
 method: grid
 project: condensed-rigl
-name: cifar10_sweep
+name: cifar10_sweep_with_iterations
 metric:
   goal: maximize
   name: accuracy
@@ -19,6 +19,8 @@ parameters:
       # If True, use const_fan_in scheduler.
       # sparsity_distribution: erk
       # # Define layer-wise sparsity distribution. Options include `uniform` & `erk`
+  training.seed:
+    values: [8746, 6037, 7303, 2078, 42]
 
 command:
   - ${env}

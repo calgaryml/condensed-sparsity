@@ -4,7 +4,7 @@ defaults:
   - _self_
 
 experiment:
-  comment: sweep
+  comment: sweep_${rigl.dense_allocation}_%{rigl.const_fan_in}
   name: ${model.name}_${dataset.name}_${experiment.comment}
   sweep: True
 
