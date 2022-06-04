@@ -1,0 +1,31 @@
+# Hacks until we have compose installed:
+# docker build --file ./Dockerfile -t rigl-sweep-agent .
+# docker create --cpus 12 --memory 30G --env-file .env --gpus '"device=1"' -i -t rigl-sweep-agent:latest
+# docker run --cpus 12 --memory 30G --env-file .env --gpus '"device=0"' -i -t --name gpu-0 rigl-sweep-agent:latest
+# docker run --cpus 12 --memory 30G --env-file .env --gpus '"device=1"' -i -t -d --name gpu-1 rigl-sweep-agent:latest
+# docker run --cpus 12 --memory 30G --env-file .env --gpus '"device=2"' -i -t --name gpu-2 rigl-sweep-agent:latest
+# docker run --cpus 12 --memory 30G --env-file .env --gpus '"device=3"' -i -t --name gpu-3 rigl-sweep-agent:latest
+
+services:
+  sweep_agent:
+    build: ./Dockerfile.dev
+    env_file:
+      - .env
+    volumes:
+      - type: mount
+        source: .
+        target: /home/condensed-sparsity
+    deploy:
+      mode: replicated
+      replicas: ${REPLICAS}
+      resources:
+        reservations:
+          devices:
+            - capabilities: ["nvidia-compute"]
+              driver: nvidia
+              count: 1
+        limits:
+          cpus: ${CPUS_LIMIT}
+          memory: ${MEMORY_LIMIT}
+
+
