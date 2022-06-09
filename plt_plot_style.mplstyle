@@ -45,7 +45,7 @@ ytick.labelsize : 16
 lines.linewidth: 3
 
 # Legend properties
-legend.framealpha: 2 # opacity of legend frame
+legend.framealpha: 0.8 # opacity of legend frame
 legend.frameon: True # whether or not to draw a frame around legend
 legend.fontsize: 12# Font size of the legend
 legend.borderpad : 1
