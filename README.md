@@ -12,3 +12,6 @@
 This repository uses `pytest`.
 
 Run tests using `pytest tests`
+
+
+wide_resnet22_cifar10_sweep_0.1_False 2078
