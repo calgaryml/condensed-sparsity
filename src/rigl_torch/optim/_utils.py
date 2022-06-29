@@ -3,6 +3,9 @@ from omegaconf import DictConfig, OmegaConf
 from functools import partial
 
 from rigl_torch.models import ModelFactory
+from .cosine_annealing_with_linear_warm_up import (
+    CosineAnnealingWithLinearWarmUp,
+)
 
 
 def get_optimizer(cfg: OmegaConf, model) -> torch.optim.Optimizer:
@@ -36,6 +39,40 @@ def get_optimizer(cfg: OmegaConf, model) -> torch.optim.Optimizer:
         )
     else:
         return optimizers[cfg.training.optimizer.lower()]()
+
+
+def get_lr_scheduler(
+    cfg: OmegaConf, optim: torch.optim.Optimizer
+) -> torch.optim.lr_scheduler._LRScheduler:
+    schedulers = {
+        "step_lr": partial(
+            torch.optim.lr_scheduler.StepLR,
+            optimizer=optim,
+            step_size=cfg.training.step_size,
+            gamma=cfg.training.gamma,
+        ),
+        # "step_lr_with_warm_up": partial( # For imagnet
+        #     torch.optim.Adadelta,
+        #     params=model.parameters(),
+        #     lr=cfg.training.lr,
+        #     weight_decay=cfg.training.weight_decay,
+        # ),
+        "cosine_annealing_with_warm_up": partial(
+            CosineAnnealingWithLinearWarmUp,
+            optimizer=optim,
+            T_max=cfg.training.epochs * cfg.dataset.train_len,
+            eta_min=0,
+            lr=cfg.training.lr,
+            warm_up_steps=cfg.training.warm_up_steps * cfg.training.batch_size,
+        ),
+    }
+    if cfg.training.scheduler.lower() not in list(schedulers.keys()):
+        raise ValueError(
+            f"{cfg.training.scheduler.lower()} is not a valid scheudler. "
+            f"Select from: {list(schedulers.keys())} "
+        )
+    else:
+        return schedulers[cfg.training.scheduler.lower()]()
 
 
 if __name__ == "__main__":

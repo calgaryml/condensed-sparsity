@@ -2,3 +2,4 @@ name: cifar10
 normalize: False
 num_classes: 10
 classes: ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
+train_len: 50000
