@@ -71,14 +71,7 @@ def test_calculate_fan_in_and_fan_out_parameters_arg(
             ),
             6,
         ),
-        (
-            torch.tensor(
-                [
-                    [1, 1, 1, 0, 0, 0],
-                ]
-            ),
-            3,
-        ),
+        (torch.tensor([[1, 1, 1, 0, 0, 0],]), 3,),
     ],
     ids=[
         "structured_sparse_tensor",
