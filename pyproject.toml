@@ -10,6 +10,7 @@ exclude ='''
     examples/utils.py
     | examples/main.py
     | examples/models.py
+    | wandb/*
 )
 '''
 

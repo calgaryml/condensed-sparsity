@@ -36,7 +36,11 @@ class BasicBlock(nn.Module):
         if stride != 1 or in_planes != planes:
             self.shortcut = nn.Sequential(
                 nn.Conv2d(
-                    in_planes, planes, kernel_size=1, stride=stride, bias=False,
+                    in_planes,
+                    planes,
+                    kernel_size=1,
+                    stride=stride,
+                    bias=False,
                 ),
                 nn.BatchNorm2d(planes),
             )

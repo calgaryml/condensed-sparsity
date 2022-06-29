@@ -9,7 +9,10 @@ def pytest_addoption(parser):
         help="run integration tests",
     )
     parser.addoption(
-        "--run-slow", action="store_true", default=False, help="run slow tests",
+        "--run-slow",
+        action="store_true",
+        default=False,
+        help="run slow tests",
     )
 
 
