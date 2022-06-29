@@ -1,4 +1,4 @@
-"""Implmentation from:
+"""Implementation from:
 https://github.com/kuangliu/pytorch-cifar/blob/master/models/resnet.py
 
 ResNet in PyTorch.
@@ -16,8 +16,6 @@ from rigl_torch.models import ModelFactory
 
 
 class BasicBlock(nn.Module):
-    expansion = 1
-
     def __init__(self, in_planes, planes, stride=1):
         super(BasicBlock, self).__init__()
         self.conv1 = nn.Conv2d(
@@ -35,16 +33,12 @@ class BasicBlock(nn.Module):
         self.bn2 = nn.BatchNorm2d(planes)
 
         self.shortcut = nn.Sequential()
-        if stride != 1 or in_planes != self.expansion * planes:
+        if stride != 1 or in_planes != planes:
             self.shortcut = nn.Sequential(
                 nn.Conv2d(
-                    in_planes,
-                    self.expansion * planes,
-                    kernel_size=1,
-                    stride=stride,
-                    bias=False,
+                    in_planes, planes, kernel_size=1, stride=stride, bias=False,
                 ),
-                nn.BatchNorm2d(self.expansion * planes),
+                nn.BatchNorm2d(planes),
             )
 
     def forward(self, x):
@@ -56,7 +50,10 @@ class BasicBlock(nn.Module):
 
 
 class Bottleneck(nn.Module):
-    expansion = 4
+    expansion = (
+        4  # Expansion * planes == number of output channels in expansion block
+    )
+    # See more in mobile net paper: https://arxiv.org/pdf/1801.04381.pdf
 
     def __init__(self, in_planes, planes, stride=1):
         super(Bottleneck, self).__init__()

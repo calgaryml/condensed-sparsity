@@ -5,7 +5,7 @@ from torchvision import transforms, datasets
 from ._transforms import PerImageStandarization  # noqa: F401
 
 
-class Cifar10DataStem(_data_stem.ABCDataStem):
+class CIFAR10DataStem(_data_stem.ABCDataStem):
     _IMAGE_HEIGHT = 32
     _IMAGE_WIDTH = 32
 

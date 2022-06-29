@@ -4,7 +4,7 @@ import torch
 from torchvision import transforms, datasets
 
 
-class MnistDataStem(_data_stem.ABCDataStem):
+class MNISTDataStem(_data_stem.ABCDataStem):
     def __init__(self, cfg: Dict[str, Any]):
         super().__init__(cfg)
 

@@ -13,47 +13,47 @@ paths:
   logs: /home/condensed-sparsity/logs
 
 rigl: 
-  dense_allocation: 0.1
   # percentage of dense parameters allowed. if None, pruning will not 
   # be used. must be on the interval (0, 1]
-  delta: 100
+  dense_allocation: 0.1
   # delta param for pruning
-  grad_accumulation_n: 1
+  delta: 100
   # number of gradients to accumulate before scoring for rigl",
+  grad_accumulation_n: 1
+  # alpha param for pruning
   alpha: 0.3
-  # alpha param for pruning"
-  static_topo: 0
   # if 1, use random sparsity topo and remain static"
-  const_fan_in: False
+  static_topo: 0
   # If True, use const_fan_in scheduler.
-  sparsity_distribution: erk
+  const_fan_in: False
   # Define layer-wise sparsity distribution. Options include `uniform` & `erk`
-  erk_power_scale: 1.0
+  sparsity_distribution: erk
   # Power scale for ERK distribution
+  erk_power_scale: 1.0
 
 training:
+  # "input batch size for training (default: 64)
   batch_size: 64
-  # "input batch size for training (default: 64)",
-  test_batch_size: 10
-  # input batch size for testing (default: 1000)",
+  # input batch size for testing (default: 1000)
+  test_batch_size: 1000
+  # number of epochs to train (default: 14)
   epochs: 50
-  # number of epochs to train (default: 14)",
+  # Learning rate after warmup (default: 0.01)
   lr: 0.1
-  # Learning rate after warmup (default: 0.01)",
-  init_lr: 0.000001
   # Learning rate for first epoch of warm up
-  warm_up_steps: 5
+  init_lr: 0
   # Number of epochs to warm up for
+  warm_up_steps: 5
+  # Learning rate step gamma (default: 0.7)  NOT USED!
   gamma: 0.7
-  # Learning rate step gamma (default: 0.7)  NOT USED
+  # quickly check a single pass
   dry_run: False
-  # quickly check a single pass",
+  # random seed (default: 1)
   seed: 1
-  # random seed (default: 1)",
+  # how many batches to wait before logging training status
   log_interval: 10
-  # how many batches to wait before logging training status",
+  # For Saving the current Model
   save_model: True
-  # For Saving the current Model",
   weight_decay: 0  # 5.0e-4 -> rigl value
   # L2 Regularization for optimizer
   momentum: 0.9  # 0.9 -> rigl value
@@ -61,9 +61,9 @@ training:
   optimizer: "adadelta" # "sgd", "adamw"
 
 compute:
+  # disables CUDA training",
   no_cuda: False
   cuda_kwargs: {"num_workers": 1, "pin_memory": True, "shuffle": True}
-  # disables CUDA training",
 
 wandb:
   project: condensed-rigl
