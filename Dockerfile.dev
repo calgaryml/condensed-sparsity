@@ -11,9 +11,9 @@ RUN apt-get update && apt-get install -y wget
 RUN wget https://developer.download.nvidia.com/compute/cuda/repos/$DISTRO/$ARCH/cuda-keyring_1.0-1_all.deb \
     && dpkg -i cuda-keyring_1.0-1_all.deb
 
-# Install git/ssh
+# Install git/ssh/tmux
 RUN apt-get update \
-    && apt-get install -y git ssh
+    && apt-get install -y git ssh tmux vim
 
 # Install project requirements
 COPY requirements.txt /tmp/pip-tmp/
@@ -27,5 +27,7 @@ RUN exec bash \
 COPY requirements-dev.txt /tmp/pip-tmp/
 RUN conda install -c defaults -c conda-forge --file /tmp/pip-tmp/requirements-dev.txt \
     && rm -rf /tmp/pip-tmp
+
+ENV NVIDIA_DRIVER_CAPABILITIES=all
 
 WORKDIR /home/condensed-sparsity/

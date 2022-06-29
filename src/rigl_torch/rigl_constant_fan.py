@@ -7,9 +7,8 @@ from rigl_torch.util import (
     calculate_fan_in_and_fan_out,
     get_fan_in_tensor,
 )
-from rigl_torch.RigL import RigLScheduler
+from rigl_torch.rigl_scheduler import RigLScheduler
 from rigl_torch.exceptions import ConstantFanInException
-import logging
 
 
 class RigLConstFanScheduler(RigLScheduler):
@@ -26,6 +25,7 @@ class RigLConstFanScheduler(RigLScheduler):
         static_topo: bool = False,
         grad_accumulation_n: int = 1,
         state_dict: Optional[Dict[str, Any]] = None,
+        erk_power_scale=1.0,
     ):
         """RigL Scheduler with constant fan-in.
 
@@ -67,8 +67,8 @@ class RigLConstFanScheduler(RigLScheduler):
             static_topo,
             grad_accumulation_n,
             state_dict,
+            erk_power_scale,
         )
-        self._logger = logging.getLogger(__file__)
 
     @torch.no_grad()
     def random_sparsify(self) -> None:
@@ -104,6 +104,7 @@ class RigLConstFanScheduler(RigLScheduler):
 
             if is_dist:
                 dist.broadcast(mask, 0)
+            mask = mask.bool()
             w *= mask
             self.backward_masks.append(mask)
 
@@ -180,7 +181,7 @@ class RigLConstFanScheduler(RigLScheduler):
                 raise ConstantFanInException(get_fan_in_tensor(current_mask))
             n_ones = torch.sum(current_mask).item()
             n_prune = int(n_ones * drop_fraction)
-            n_keep = n_ones - n_prune
+            n_keep = int(n_ones - n_prune)
             n_non_zero_weights = torch.count_nonzero(score_drop).item()
             if n_non_zero_weights < n_keep:
                 # Then we don't have enough non-zero weights to keep. We keep

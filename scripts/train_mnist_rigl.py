@@ -19,6 +19,7 @@ import pathlib
 from rigl_torch.RigL import RigLScheduler  # noqa: F401
 from rigl_torch.rigl_constant_fan import RigLConstFanScheduler
 import dotenv
+import wandb
 
 
 class Net(nn.Module):
@@ -108,7 +109,7 @@ def ed(param_name, default=None):
 
 def main():
     # Training settings
-    dotenv.load_dotenv(pathlib.Path(__file__).parent / ".env")
+    dotenv.load_dotenv(pathlib.Path(__file__).parent.parent / ".env")
     parser = argparse.ArgumentParser(description="PyTorch MNIST Example")
     parser.add_argument(
         "--dense-allocation",
@@ -160,7 +161,7 @@ def main():
     parser.add_argument(
         "--epochs",
         type=int,
-        default=ed("EPOCHS", 14),
+        default=ed("EPOCHS", 50),
         metavar="N",
         help="number of epochs to train (default: 14)",
     )
@@ -193,7 +194,7 @@ def main():
     parser.add_argument(
         "--seed",
         type=int,
-        default=1,
+        default=ed("RANDOM_SEED", 1),
         metavar="S",
         help="random seed (default: 1)",
     )
@@ -206,7 +207,7 @@ def main():
     )
     parser.add_argument(
         "--save-model",
-        default=1,
+        default=True,
         type=bool,
         help="For Saving the current Model",
     )
@@ -288,4 +289,6 @@ def main():
 
 
 if __name__ == "__main__":
+    wandb.login()
+    wandb.init(project="condensed-rigl", entity="condensed-sparsity")
     main()

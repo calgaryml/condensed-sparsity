@@ -170,3 +170,7 @@ cython_debug/
 *.png
 *.ipynb
 # .vscode # We will share .vscode for this project.
+logs/
+data/
+wandb/
+!notebooks/*.ipynb

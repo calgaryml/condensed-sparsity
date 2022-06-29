@@ -3,6 +3,8 @@
 import numpy as np
 import torch
 import torch.distributed as dist
+from typing import List
+import logging
 
 from rigl_torch.util import get_W
 
@@ -57,7 +59,11 @@ class RigLScheduler:
         static_topo=False,
         grad_accumulation_n=1,
         state_dict=None,
+        erk_power_scale=1.0,
     ):
+        self._implemented_sparsity_distributions = ["uniform", "erk"]
+        self._logger = logging.getLogger(__file__)
+        self.erk_power_scale = erk_power_scale
         if dense_allocation <= 0 or dense_allocation > 1:
             raise Exception(
                 "Dense allocation must be on the interval (0, 1]. Got: %f"
@@ -89,26 +95,7 @@ class RigLScheduler:
             self.backward_masks = None
 
             # define sparsity allocation
-            self.S = []
-            for i, (W, is_linear) in enumerate(
-                zip(self.W, self._linear_layers_mask)
-            ):
-                # when using uniform sparsity, the first layer is always 100%
-                # dense UNLESS there is only 1 layer
-                is_first_layer = i == 0
-                if (
-                    is_first_layer
-                    and self.sparsity_distribution == "uniform"
-                    and len(self.W) > 1
-                ):
-                    self.S.append(0)
-
-                elif is_linear and self.ignore_linear_layers:
-                    # if choosing to ignore linear layers, keep them 100% dense
-                    self.S.append(0)
-
-                else:
-                    self.S.append(1 - dense_allocation)
+            self.S = self._allocate_sparsity()
 
             # randomly sparsify model according to S
             self.random_sparsify()
@@ -142,7 +129,113 @@ class RigLScheduler:
             setattr(w, "_has_rigl_backward_hook", True)
 
         assert self.grad_accumulation_n > 0 and self.grad_accumulation_n < delta
-        assert self.sparsity_distribution in ("uniform",)
+        assert (
+            self.sparsity_distribution
+            in self._implemented_sparsity_distributions
+        )
+
+    def _allocate_sparsity(self) -> List[float]:
+        sparsity_dist = []
+        sparsity_allocators = {
+            "uniform": self._uniform_sparsity_dist,
+            "erk": self._erk_sparsity_dist,
+        }
+        if self.sparsity_distribution.lower() not in sparsity_allocators:
+            raise ValueError(
+                "Unknown sparsity distribution "
+                f"{self.sparsity_distribution}. Please select from "
+                f"{list(sparsity_allocators.keys())}."
+            )
+        sparsity_dist = sparsity_allocators[
+            self.sparsity_distribution.lower()
+        ]()
+        return sparsity_dist
+
+    def _uniform_sparsity_dist(self) -> List[float]:
+        sparsity_dist = []
+        for i, (W, is_linear) in enumerate(
+            zip(self.W, self._linear_layers_mask)
+        ):
+            # when using uniform sparsity, the first layer is always 100%
+            # dense UNLESS there is only 1 layer
+            if i == 0 and len(self.W) > 1:
+                sparsity_dist.append(0)
+
+            elif is_linear and self.ignore_linear_layers:
+                # if choosing to ignore linear layers, keep them 100% dense
+                sparsity_dist.append(0)
+
+            else:
+                sparsity_dist.append(1 - self.dense_allocation)
+        return sparsity_dist
+
+    def _erk_sparsity_dist(self) -> List[float]:
+        """Get Erdos Renyi Kernel sparsity distribution for `self.model`.
+
+        Implementation based on approach in original rigl paper and reproduced
+        papers:
+        https://github.com/google-research/rigl/blob/97d62b0724c9a489a5318edb34951c6800575311/rigl/sparse_utils.py#L90
+        https://github.com/varun19299/rigl-reproducibility/blob/f8a3398f6249e291aa8d91e376e49820fde8f2d3/sparselearning/funcs/init_scheme.py#L147
+
+
+        Returns:
+            List[float]: List of sparsities to apply per layer.
+        """
+        eps = None
+        is_eps_valid = False
+        dense_layers = set()
+        while not is_eps_valid:
+            divisor = 0
+            rhs = 0
+            raw_probabilties = {}
+            for layer_idx, (weight_matrix, is_linear) in enumerate(
+                zip(self.W, self._linear_layers_mask)
+            ):
+                n_params = np.prod(
+                    weight_matrix.shape
+                )  # Total number of params
+                n_zeros = int(n_params * (1 - self.dense_allocation))
+                n_ones = int(n_params * self.dense_allocation)
+
+                if layer_idx in dense_layers or (
+                    is_linear and self.ignore_linear_layers
+                ):
+                    # dense_layers.add(layer_idx)
+                    rhs -= n_zeros
+                else:
+                    n_ones = n_params - n_zeros
+                    rhs += n_ones
+                    raw_prob = (
+                        np.sum(weight_matrix.shape)
+                        / np.prod(weight_matrix.shape)
+                    ) ** self.erk_power_scale
+                    raw_probabilties[layer_idx] = raw_prob
+                    divisor += raw_probabilties[layer_idx] * n_params
+            eps = rhs / divisor
+            max_prob = np.max(list(raw_probabilties.values()))
+            max_prob_eps = max_prob * eps
+            if max_prob_eps > 1:
+                is_eps_valid = False
+                for layer_idx, raw_prob in raw_probabilties.items():
+                    if raw_prob == max_prob:
+                        self._logger.info(
+                            f"Sparsity of layer at index {layer_idx} set to 0.0"
+                        )
+                        dense_layers.add(layer_idx)
+                        break
+            else:
+                is_eps_valid = True
+
+        sparsity_dist = []
+        for layer_idx, (weight_matrix, is_linear) in enumerate(
+            zip(self.W, self._linear_layers_mask)
+        ):
+            if layer_idx in dense_layers:
+                sparsity = 0.0
+            else:
+                sparsity = 1 - (eps * raw_probabilties[layer_idx])
+            sparsity_dist.append(sparsity)
+        return sparsity_dist
 
     def state_dict(self):
         obj = {
@@ -418,3 +511,58 @@ class RigLScheduler:
             self.reset_momentum()
             self.apply_mask_to_weights()
             self.apply_mask_to_gradients()
+
+
+if __name__ == "__main__":
+    from rigl_torch.datasets import get_dataloaders
+    import hydra
+    from rigl_torch.optim import CosineAnnealingWithLinearWarmUp
+    from rigl_torch.models import ModelFactory
+    from rigl_torch.rigl_constant_fan import RigLConstFanScheduler
+
+    with hydra.initialize(config_path="../../configs"):
+        cfg = hydra.compose(config_name="config.yaml", overrides=[])
+
+    use_cuda = not cfg.compute.no_cuda and torch.cuda.is_available()
+    torch.manual_seed(cfg.training.seed)
+    device = torch.device("cuda" if use_cuda else "cpu")
+    train_loader, test_loader = get_dataloaders(cfg)
+
+    model = ModelFactory.load_model(
+        model=cfg.model.name, dataset=cfg.dataset.name
+    ).to(device)
+    # model = get_model(cfg).to(device)
+    optimizer = torch.optim.Adadelta(model.parameters(), lr=cfg.training.lr)
+    scheduler = CosineAnnealingWithLinearWarmUp(
+        optimizer,
+        T_max=cfg.training.epochs,
+        eta_min=0,
+        lr=cfg.training.lr,
+        warm_up_steps=cfg.training.warm_up_steps,
+    )
+    pruner = lambda: True  # noqa: E731
+    if cfg.rigl.dense_allocation is not None:
+        T_end = int(0.75 * cfg.training.epochs * len(train_loader))
+        if cfg.rigl.const_fan_in:
+            rigl_scheduler = RigLConstFanScheduler
+        else:
+            rigl_scheduler = RigLScheduler
+        pruner = rigl_scheduler(
+            model,
+            optimizer,
+            dense_allocation=cfg.rigl.dense_allocation,
+            alpha=cfg.rigl.alpha,
+            delta=cfg.rigl.delta,
+            static_topo=cfg.rigl.static_topo,
+            T_end=T_end,
+            ignore_linear_layers=False,
+            grad_accumulation_n=cfg.rigl.grad_accumulation_n,
+            sparsity_distribution=cfg.rigl.sparsity_distribution,
+            erk_power_scale=cfg.rigl.erk_power_scale,
+        )
+    else:
+        print(
+            "cfg.rigl.dense_allocation is `null`, training with dense "
+            "network..."
+        )
+    print(pruner)

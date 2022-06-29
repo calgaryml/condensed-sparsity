@@ -5,7 +5,7 @@ import torch
 import torch.multiprocessing as mp
 import torch.distributed as dist
 
-from rigl_torch.RigL import RigLScheduler
+from rigl_torch.rigl_scheduler import RigLScheduler
 from rigl_torch.util import get_W
 import pytest
 
