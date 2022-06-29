@@ -60,17 +60,10 @@ def get_lr_scheduler(
         "cosine_annealing_with_warm_up": partial(
             CosineAnnealingWithLinearWarmUp,
             optimizer=optim,
-<<<<<<< HEAD
             T_max=cfg.training.epochs * cfg.dataset.train_len,
             eta_min=0,
             lr=cfg.training.lr,
             warm_up_steps=cfg.training.warm_up_steps * cfg.training.batch_size,
-=======
-            T_max=cfg.training.epochs,
-            eta_min=0,
-            lr=cfg.training.lr,
-            warm_up_steps=cfg.training.warm_up_steps,
->>>>>>> lr scheduler options added
         ),
     }
     if cfg.training.scheduler.lower() not in list(schedulers.keys()):
