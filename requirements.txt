@@ -5,3 +5,4 @@ wandb
 python-dotenv
 hydra-core
 omegaconf
+pytorch-lightning

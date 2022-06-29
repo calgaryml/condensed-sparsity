@@ -1,5 +1,7 @@
 import torch
 import torch.nn.functional as F
+import pytorch_lightning as pl
+import random
 from torch.utils.tensorboard import SummaryWriter
 import omegaconf
 import hydra
@@ -11,15 +13,25 @@ from rigl_torch.models.model_factory import ModelFactory
 from rigl_torch.rigl_scheduler import RigLScheduler
 from rigl_torch.rigl_constant_fan import RigLConstFanScheduler
 from rigl_torch.datasets import get_dataloaders
-from rigl_torch.optim import (  # noqa: F401
-    CosineAnnealingWithLinearWarmUp,
+from rigl_torch.optim import (
     get_optimizer,
     get_lr_scheduler,
 )
 
 
+def set_seed(cfg: omegaconf.DictConfig) -> omegaconf.DictConfig:
+    if cfg.training.seed is None:
+        cfg.training.seed = random.randint(0, 10000)
+        logger.info(
+            f"No seed set in config! Generated random seed: {cfg.training.seed}"
+        )
+    pl.utilities.seed.seed_everything(cfg.training.seed)
+    return cfg
+
+
 @hydra.main(config_path="configs/", config_name="config", version_base="1.2")
 def main(cfg: omegaconf.DictConfig) -> None:
+    cfg = set_seed(cfg)
     logger.info(f"Running train_rigl.py with config:\n{cfg}")
     run = wandb.init(
         name=cfg.experiment.name,
@@ -32,11 +44,10 @@ def main(cfg: omegaconf.DictConfig) -> None:
     )
 
     use_cuda = not cfg.compute.no_cuda and torch.cuda.is_available()
-    torch.manual_seed(cfg.training.seed)
+
     device = torch.device("cuda" if use_cuda else "cpu")
     train_loader, test_loader = get_dataloaders(cfg)
 
-    # model = get_model(cfg).to(device)  # TODO: Replace with model factory
     model = ModelFactory.load_model(
         model=cfg.model.name, dataset=cfg.dataset.name
     )
