@@ -27,7 +27,7 @@ def linear_benchmark(x, linear):
 
 
 sparsities = [0.0, 0.5, 0.9, 0.95, 0.99]
-batch_dist = {2 ** x: 1 / len(list(range(0, 11))) for x in range(0, 11)}
+batch_dist = {2**x: 1 / len(list(range(0, 11))) for x in range(0, 11)}
 sparse_dist = {x: 1 / len(sparsities) for x in sparsities}
 # NOTE: May play with the fuzzer again, so leaving this commented out as ref.
 # fuzzer = benchmark.Fuzzer(
@@ -52,7 +52,7 @@ sparse_dist = {x: 1 / len(sparsities) for x in sparsities}
 #     ],
 #     seed=42,
 # )
-batch_sizes = [2 ** x for x in range(0, 12)]
+batch_sizes = [2**x for x in range(0, 12)]
 results = []
 counter = 0
 for batch_size, s in product(batch_sizes, sparsities):
