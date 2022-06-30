@@ -8,5 +8,6 @@
   "editor.rulers": [
     80,
   ],
-  "autoDocstring.docstringFormat": "google"
+  "autoDocstring.docstringFormat": "google",
+  "files.insertFinalNewline": true
 }

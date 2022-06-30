@@ -16,6 +16,10 @@ from rigl_torch.models import ModelFactory
 
 
 class BasicBlock(nn.Module):
+    # Not used for this block, but included to maintain compatibility with
+    # Bottleneck block
+    expansion = 1
+
     def __init__(self, in_planes, planes, stride=1):
         super(BasicBlock, self).__init__()
         self.conv1 = nn.Conv2d(
@@ -33,16 +37,16 @@ class BasicBlock(nn.Module):
         self.bn2 = nn.BatchNorm2d(planes)
 
         self.shortcut = nn.Sequential()
-        if stride != 1 or in_planes != planes:
+        if stride != 1 or in_planes != self.expansion * planes:
             self.shortcut = nn.Sequential(
                 nn.Conv2d(
                     in_planes,
-                    planes,
+                    self.expansion * planes,
                     kernel_size=1,
                     stride=stride,
                     bias=False,
                 ),
-                nn.BatchNorm2d(planes),
+                nn.BatchNorm2d(self.expansion * planes),
             )
 
     def forward(self, x):
