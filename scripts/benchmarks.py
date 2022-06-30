@@ -29,6 +29,7 @@ def linear_benchmark(x, linear):
 sparsities = [0.0, 0.5, 0.9, 0.95, 0.99]
 batch_dist = {2 ** x: 1 / len(list(range(0, 11))) for x in range(0, 11)}
 sparse_dist = {x: 1 / len(sparsities) for x in sparsities}
+# NOTE: May play with the fuzzer again, so leaving this commented out as ref.
 # fuzzer = benchmark.Fuzzer(
 #     parameters=[
 #         benchmark.FuzzedParameter("batch", distribution=batch_dist),
@@ -109,6 +110,7 @@ for batch_size, s in product(batch_sizes, sparsities):
                 num_threads=num_threads,
             ).blocked_autorange(min_run_time=5)
         )
+    # NOTE: May play with the fuzzer again, so leaving this commented out as ref
     # for tensors, tensor_params, params in fuzzer.take(50):
     # sub_label = f"{params['batch']:<6} x {params['k0']:<4}"
     # for s in sparsities:
