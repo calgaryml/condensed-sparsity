@@ -1,21 +1,23 @@
+
 # Figure properties
 figure.figsize: 10, 6 # figure size in inches
+figure.facecolor: (1,1,1,1)
 
 # Font properties
 font.size: 16 # Size of the font
 font.family: sans-serif # Type of Font
-font.sans-serif : Helvetica
+font.sans-serif : "DejaVu Sans"
 
 
 # Axes properties
-axes.linewidth: 2 # edge linewidth
-axes.labelpad: 18 # space between label and axis
+axes.linewidth: 2  # edge linewidth
+axes.labelpad: 8   # space between label and axis
 axes.prop_cycle: cycler(color=['00a5bb','f79141','499585', 'd81e52', '6cb2c5' , '6c77c5', 'c5ba6c', '56ce93', 'd88fBf', 'ffd505']) # color cycle for plot lines
-axes.titlepad: 20.0     # pad between axes and title in points
-axes.labelsize: 16 # Axes labels size
-axes.titlesize: 20 # Plot title size
-axes.labelweight: 600 # Axel Labels weight
-axes.titleweight: 600 # Axel Titleweight
+axes.titlepad: 20.0    # pad between axes and title in points
+axes.labelsize: 16     # Axes labels size
+axes.titlesize: 20     # Plot title size
+axes.labelweight: 500  # Axel Labels weight
+axes.titleweight: 500  # Axel Titleweight
 axes.edgecolor: 262626
 axes.labelcolor: 262626
 axes.titlecolor: 262626
@@ -42,14 +44,14 @@ ytick.minor.pad: 10
 ytick.labelsize : 16
 
 # Line properties
-lines.linewidth: 3
+lines.linewidth: 3.5
 
 # Legend properties
-legend.framealpha: 0.8 # opacity of legend frame
-legend.frameon: True # whether or not to draw a frame around legend
-legend.fontsize: 12# Font size of the legend
-legend.borderpad : 1
-#legend.borderaxespad: 1.5
+legend.framealpha: 0.8  # opacity of legend frame
+legend.frameon: True   # whether or not to draw a frame around legend
+legend.fontsize: 14     # Font size of the legend
+legend.borderpad : 0
+legend.borderaxespad: 1.5
 
 #Edge Color properties
-#patch.force_edgecolor: True #Edge color for the bars
+patch.force_edgecolor: False #Edge color for the bars
