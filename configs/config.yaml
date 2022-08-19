@@ -1,18 +1,21 @@
 defaults:
-  - dataset: cifar10
-  - model: resnet18
+  - dataset: mnist
+  - model: mnist
   - _self_
 
 experiment:
   comment: missing_sweep_${rigl.dense_allocation}_${rigl.const_fan_in}
   name: ${model.name}_${dataset.name}_${experiment.comment}
   sweep: True
+  resume_from_run: False
+  run_id: null
 
 paths:
   base: /home/mklasby/projects/def-rmsouza/mklasby/condensed-sparsity
   data_folder: ${paths.base}/data
   artifacts: ${paths.base}/artifacts
   logs: ${paths.base}/logs
+  checkpoints: ${paths.artifacts}/checkpoints
 
 rigl: 
   # percentage of dense parameters allowed. if None, pruning will not 
@@ -35,7 +38,7 @@ rigl:
 
 training:
   # quickly check a single pass",
-  dry_run: True
+  dry_run: False
   # input batch size for testing (default: 1000)
   batch_size: 128
   # number of epochs to train (default: 250)
@@ -43,7 +46,7 @@ training:
   # number of epochs to train (default: 14)
   epochs: 250
   # random seed (default: 1)
-  seed: null
+  seed: 42
   # Log interval (number of steps / iterations)
   log_interval: 10000
   # For Saving the current Model

@@ -250,6 +250,7 @@ class RigLScheduler:
                 "static_topo": self.static_topo,
                 "sparsity_distribution": self.sparsity_distribution,
                 "grad_accumulation_n": self.grad_accumulation_n,
+                "erk_power_scale": self.erk_power_scale
             },
             "step": self.step,
             "rigl_steps": self.rigl_steps,

@@ -17,6 +17,7 @@ from rigl_torch.optim import (
     get_optimizer,
     get_lr_scheduler,
 )
+from rigl_torch.utils.checkpoint import Checkpoint
 
 
 def set_seed(cfg: omegaconf.DictConfig) -> omegaconf.DictConfig:
@@ -89,6 +90,16 @@ def main(cfg: omegaconf.DictConfig) -> None:
     wandb.watch(model, criterion=F.nll_loss, log="all", log_freq=100)
     logger.info(f"Model Summary: {model}")
     step = 0
+    checkpoint = Checkpoint(
+        run_id=run.id,
+        cfg=cfg,
+        model=model,
+        optimizer=optimizer,
+        scheduler=scheduler,
+        pruner=pruner,
+        epoch=0,
+        step=0,
+    )
     for epoch in range(1, cfg.training.epochs + 1):
         logger.info(pruner)
         step = train(
@@ -106,6 +117,8 @@ def main(cfg: omegaconf.DictConfig) -> None:
         writer.add_scalar("loss", loss, epoch)
         writer.add_scalar("accuracy", acc, epoch)
         wandb.log({"Learning Rate": scheduler.get_last_lr()[0]}, step=step)
+        checkpoint.current_acc = acc
+        checkpoint.save_checkpoint()
         if cfg.training.dry_run:
             break
 
