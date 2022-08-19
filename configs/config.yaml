@@ -11,7 +11,7 @@ experiment:
   run_id: 1hz0vtiw
 
 paths:
-  base: /home/mklasby/projects/def-rmsouza/mklasby/condensed-sparsity
+  base: ${oc.env:BASE_PATH}
   data_folder: ${paths.base}/data
   artifacts: ${paths.base}/artifacts
   logs: ${paths.base}/logs
