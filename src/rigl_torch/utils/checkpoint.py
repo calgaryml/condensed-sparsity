@@ -28,10 +28,10 @@ class Checkpoint(object):
     checkpoint_dir: Optional[Union[pathlib.Path, str]] = None
     f_name: str = "checkpoint.pt.tar"
     best_file_name: Optional[str] = f"best-{f_name}"
-    _logger = logging.getLogger(__name__)
     parent_dir: pathlib.Path = pathlib.Path(
         "/home/condensed-sparsity/artifacts/checkpoints/"
     )
+    _logger = logging.getLogger(__name__)
     _RUN_ID_DELIMITER: str = "_"
 
     def __post_init__(self) -> None:

@@ -6,7 +6,7 @@ import torch.distributed as dist
 from typing import List
 import logging
 
-from rigl_torch.util import get_W
+from rigl_torch.utils.rigl_utils import get_W
 
 
 class IndexMaskHook:
@@ -250,7 +250,7 @@ class RigLScheduler:
                 "static_topo": self.static_topo,
                 "sparsity_distribution": self.sparsity_distribution,
                 "grad_accumulation_n": self.grad_accumulation_n,
-                "erk_power_scale": self.erk_power_scale
+                "erk_power_scale": self.erk_power_scale,
             },
             "step": self.step,
             "rigl_steps": self.rigl_steps,

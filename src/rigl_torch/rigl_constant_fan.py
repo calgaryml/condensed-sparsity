@@ -3,7 +3,7 @@
 from typing import Optional, Dict, Any, List
 import torch
 import torch.distributed as dist
-from rigl_torch.util import (
+from rigl_torch.utils.rigl_utils import (
     calculate_fan_in_and_fan_out,
     get_fan_in_tensor,
 )

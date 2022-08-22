@@ -32,8 +32,36 @@ def set_seed(cfg: omegaconf.DictConfig) -> omegaconf.DictConfig:
 
 @hydra.main(config_path="configs/", config_name="config", version_base="1.2")
 def main(cfg: omegaconf.DictConfig) -> None:
+    _RESUME_FROM_CHECKPOINT = False
+    run_id = None
+    wandb_init_resume = "never"
+    optimizer_state, scheduler_state, pruner_state, model_state = (
+        None,
+        None,
+        None,
+        None,
+    )
+    if cfg.training.resume_from_checkpoint:
+        if cfg.training.run_id is None:
+            raise ValueError(
+                "Must provide wandb run_id when "
+                "cfg.training.resume_from_checkpoint is True"
+            )
+        checkpoint = Checkpoint.load_last_checkpoint(run_id=cfg.training.run_id)
+        _RESUME_FROM_CHECKPOINT = True
+        wandb_init_resume = "must"
+        run_id = checkpoint.run_id
+        optimizer_state = checkpoint.optimizer
+        scheduler_state = checkpoint.scheduler
+        pruner_state = checkpoint.pruner
+        model_state = checkpoint.model
+        logger.info(f"Resuming training with run_id: {cfg.training.run_id}")
+        cfg = checkpoint.cfg
+
     cfg = set_seed(cfg)
     logger.info(f"Running train_rigl.py with config:\n{cfg}")
+    wandb_init_kwargs = dict(resume=wandb_init_resume, id=run_id)
+
     run = wandb.init(
         name=cfg.experiment.name,
         entity=cfg.wandb.entity,
@@ -42,6 +70,7 @@ def main(cfg: omegaconf.DictConfig) -> None:
             cfg=cfg, resolve=True, throw_on_missing=True
         ),
         settings=wandb.Settings(start_method=cfg.wandb.start_method),
+        **wandb_init_kwargs,
     )
 
     use_cuda = not cfg.compute.no_cuda and torch.cuda.is_available()
@@ -50,14 +79,14 @@ def main(cfg: omegaconf.DictConfig) -> None:
     train_loader, test_loader = get_dataloaders(cfg)
 
     model = ModelFactory.load_model(
-        model=cfg.model.name, dataset=cfg.dataset.name
+        model=cfg.model.name, dataset=cfg.dataset.name, state_dict=model_state
     )
     model.to(device)
 
-    optimizer = get_optimizer(cfg, model)
-    scheduler = get_lr_scheduler(cfg, optimizer)
+    optimizer = get_optimizer(cfg, model, state_dict=optimizer_state)
+    scheduler = get_lr_scheduler(cfg, optimizer, state_dict=scheduler_state)
 
-    pruner = lambda: True  # noqa: E731
+    pruner = None  # noqa: E731
     if cfg.rigl.dense_allocation is not None:
         T_end = int(0.75 * cfg.training.epochs * len(train_loader))
         if cfg.rigl.const_fan_in:
@@ -78,6 +107,7 @@ def main(cfg: omegaconf.DictConfig) -> None:
             grad_accumulation_n=cfg.rigl.grad_accumulation_n,
             sparsity_distribution=cfg.rigl.sparsity_distribution,
             erk_power_scale=cfg.rigl.erk_power_scale,
+            state_dict=pruner_state
         )
     else:
         logger.warning(
@@ -90,17 +120,25 @@ def main(cfg: omegaconf.DictConfig) -> None:
     wandb.watch(model, criterion=F.nll_loss, log="all", log_freq=100)
     logger.info(f"Model Summary: {model}")
     step = 0
-    checkpoint = Checkpoint(
-        run_id=run.id,
-        cfg=cfg,
-        model=model,
-        optimizer=optimizer,
-        scheduler=scheduler,
-        pruner=pruner,
-        epoch=0,
-        step=0,
-    )
-    for epoch in range(1, cfg.training.epochs + 1):
+    if not _RESUME_FROM_CHECKPOINT:
+        checkpoint = Checkpoint(
+            run_id=run.id,
+            cfg=cfg,
+            model=model,
+            optimizer=optimizer,
+            scheduler=scheduler,
+            pruner=pruner,
+            epoch=0,
+            step=0,
+        )
+        epoch_start = 1
+    else:
+        checkpoint.model = model
+        checkpoint.optimizer = optimizer
+        checkpoint.scheduler = scheduler
+        checkpoint.pruner = pruner
+        epoch_start = checkpoint.epoch
+    for epoch in range(epoch_start, cfg.training.epochs + 1):
         logger.info(pruner)
         step = train(
             cfg,
@@ -118,6 +156,8 @@ def main(cfg: omegaconf.DictConfig) -> None:
         writer.add_scalar("accuracy", acc, epoch)
         wandb.log({"Learning Rate": scheduler.get_last_lr()[0]}, step=step)
         checkpoint.current_acc = acc
+        checkpoint.step = step
+        checkpoint.epoch = epoch
         checkpoint.save_checkpoint()
         if cfg.training.dry_run:
             break
@@ -148,7 +188,7 @@ def train(
         loss = F.nll_loss(output, target)
         loss.backward()
 
-        if pruner():
+        if pruner is not None and pruner():
             optimizer.step()
         scheduler.step()
 

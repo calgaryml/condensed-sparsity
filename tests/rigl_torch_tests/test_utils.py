@@ -1,5 +1,5 @@
 import pytest
-from rigl_torch import util
+from rigl_torch.utils import rigl_utils
 import torch
 from tests.utils.mocks import MNISTNet
 
@@ -39,7 +39,7 @@ def net():
 def test_calculate_fan_in_and_fan_out_parameters_arg(
     module_param, expected_fan_in, expected_fan_out
 ):
-    fan_in, fan_out = util.calculate_fan_in_and_fan_out(module_param)
+    fan_in, fan_out = rigl_utils.calculate_fan_in_and_fan_out(module_param)
     assert fan_in == expected_fan_in
     assert fan_out == expected_fan_out
 
@@ -71,14 +71,7 @@ def test_calculate_fan_in_and_fan_out_parameters_arg(
             ),
             6,
         ),
-        (
-            torch.tensor(
-                [
-                    [1, 1, 1, 0, 0, 0],
-                ]
-            ),
-            3,
-        ),
+        (torch.tensor([[1, 1, 1, 0, 0, 0],]), 3,),
     ],
     ids=[
         "structured_sparse_tensor",
@@ -87,17 +80,20 @@ def test_calculate_fan_in_and_fan_out_parameters_arg(
     ],
 )
 def test_calculate_fan_in_and_fan_out_sparse(sparse_tensor, const_fan_in):
-    assert util.get_fan_in_tensor(sparse_tensor).unique().item() == const_fan_in
+    assert (
+        rigl_utils.get_fan_in_tensor(sparse_tensor).unique().item()
+        == const_fan_in
+    )
 
 
 def test_calculate_fan_in_and_fan_out_raises_on_dim():
     t = torch.tensor([0, 1, 1])
     with pytest.raises(ValueError) as _:
-        util.calculate_fan_in_and_fan_out(t)
+        rigl_utils.calculate_fan_in_and_fan_out(t)
 
 
 def test_get_fan_in_tensor_conv(net):
-    fan_in_tensor = util.get_fan_in_tensor(net.conv1.weight)
+    fan_in_tensor = rigl_utils.get_fan_in_tensor(net.conv1.weight)
     assert len(fan_in_tensor) == net.conv1.out_channels
     assert len(torch.unique(fan_in_tensor)) == 1
     assert (
@@ -106,14 +102,14 @@ def test_get_fan_in_tensor_conv(net):
 
 
 def test_get_fan_in_tensor_linear(net):
-    fan_in_tensor = util.get_fan_in_tensor(net.fc1.weight)
+    fan_in_tensor = rigl_utils.get_fan_in_tensor(net.fc1.weight)
     assert len(fan_in_tensor) == net.fc1.out_features
     assert len(torch.unique(fan_in_tensor)) == 1
     assert torch.unique(fan_in_tensor).item() == 9216
 
 
 def test_validate_constant_fan_in(net):
-    fan_in_tensor = util.get_fan_in_tensor(net.fc1.weight)
-    assert util.validate_constant_fan_in(fan_in_tensor)
-    fan_in_tensor = util.get_fan_in_tensor(net.conv1.weight)
-    assert util.validate_constant_fan_in(fan_in_tensor)
+    fan_in_tensor = rigl_utils.get_fan_in_tensor(net.fc1.weight)
+    assert rigl_utils.validate_constant_fan_in(fan_in_tensor)
+    fan_in_tensor = rigl_utils.get_fan_in_tensor(net.conv1.weight)
+    assert rigl_utils.validate_constant_fan_in(fan_in_tensor)

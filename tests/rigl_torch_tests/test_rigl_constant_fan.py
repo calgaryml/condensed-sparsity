@@ -2,7 +2,7 @@ import pytest
 from rigl_torch.rigl_constant_fan import RigLConstFanScheduler
 import torch
 import torch.optim as optim
-from rigl_torch import util
+from rigl_torch.utils import rigl_utils
 from tests.utils.mocks import (
     mock_image_dataloader,
     MNISTNet,
@@ -67,7 +67,7 @@ def test_random_sparsify(pruner):
     for w in pruner.W:
         if w is None:
             continue
-        assert len(util.get_fan_in_tensor(w).unique()) == 1
+        assert len(rigl_utils.get_fan_in_tensor(w).unique()) == 1
 
 
 @pytest.mark.slow
@@ -99,4 +99,4 @@ def test_train_const_fan(pruner, data_loaders):
         for w in pruner.W:
             if w is None:
                 continue
-        assert len(util.get_fan_in_tensor(w).unique()) == 1
+        assert len(rigl_utils.get_fan_in_tensor(w).unique()) == 1

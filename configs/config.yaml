@@ -7,7 +7,7 @@ experiment:
   comment: missing_sweep_${rigl.dense_allocation}_${rigl.const_fan_in}
   name: ${model.name}_${dataset.name}_${experiment.comment}
   sweep: True
-  resume_from_run: False
+  resume_from_checkpoint: False
   run_id: null
 
 paths:
