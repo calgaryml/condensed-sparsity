@@ -41,13 +41,15 @@ def main(cfg: omegaconf.DictConfig) -> None:
         None,
         None,
     )
-    if cfg.training.resume_from_checkpoint:
-        if cfg.training.run_id is None:
+    if cfg.experiment.resume_from_checkpoint:
+        if cfg.experiment.run_id is None:
             raise ValueError(
                 "Must provide wandb run_id when "
                 "cfg.training.resume_from_checkpoint is True"
             )
-        checkpoint = Checkpoint.load_last_checkpoint(run_id=cfg.training.run_id)
+        checkpoint = Checkpoint.load_last_checkpoint(
+            run_id=cfg.experiment.run_id
+        )
         _RESUME_FROM_CHECKPOINT = True
         wandb_init_resume = "must"
         run_id = checkpoint.run_id
@@ -55,7 +57,7 @@ def main(cfg: omegaconf.DictConfig) -> None:
         scheduler_state = checkpoint.scheduler
         pruner_state = checkpoint.pruner
         model_state = checkpoint.model
-        logger.info(f"Resuming training with run_id: {cfg.training.run_id}")
+        logger.info(f"Resuming training with run_id: {cfg.experiment.run_id}")
         cfg = checkpoint.cfg
 
     cfg = set_seed(cfg)
@@ -107,7 +109,7 @@ def main(cfg: omegaconf.DictConfig) -> None:
             grad_accumulation_n=cfg.rigl.grad_accumulation_n,
             sparsity_distribution=cfg.rigl.sparsity_distribution,
             erk_power_scale=cfg.rigl.erk_power_scale,
-            state_dict=pruner_state
+            state_dict=pruner_state,
         )
     else:
         logger.warning(

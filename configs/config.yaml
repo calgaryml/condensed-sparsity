@@ -7,8 +7,8 @@ experiment:
   comment: missing_sweep_${rigl.dense_allocation}_${rigl.const_fan_in}
   name: ${model.name}_${dataset.name}_${experiment.comment}
   sweep: True
-  resume_from_checkpoint: False
-  run_id: null
+  resume_from_checkpoint: True
+  run_id: 1hz0vtiw
 
 paths:
   base: /home/mklasby/projects/def-rmsouza/mklasby/condensed-sparsity
