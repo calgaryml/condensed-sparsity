@@ -175,3 +175,6 @@ logs/
 data/
 wandb/
 !notebooks/*.ipynb
+
+# Singularity
+*.sif
