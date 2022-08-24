@@ -9,9 +9,10 @@ experiment:
   sweep: True
 
 paths:
-  data_folder: /home/condensed-sparsity/data
-  artifacts: /home/condensed-sparsity/artifacts
-  logs: /home/condensed-sparsity/logs
+  base: /home/mklasby/projects/def-rmsouza/mklasby/condensed-sparsity
+  data_folder: ${paths.base}/data
+  artifacts: ${paths.base}/artifacts
+  logs: ${paths.base}/logs
 
 rigl: 
   # percentage of dense parameters allowed. if None, pruning will not 
