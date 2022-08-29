@@ -21,7 +21,7 @@ def get_optimizer(
             dampening=0,
             weight_decay=cfg.training.weight_decay,
             nesterov=True,
-            maximize=False,
+            # maximize=False,
         ),
         "adadelta": partial(
             torch.optim.Adadelta,

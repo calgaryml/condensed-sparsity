@@ -1,9 +1,9 @@
 import torch
-from rigl_torch.datasets._mnist import MNISTDataStem
-from rigl_torch.datasets._cifar import CIFAR10DataStem
 from omegaconf import DictConfig
 
-# from rigl_torch.datasets._mnist import MNISTDataStem
+from rigl_torch.datasets._mnist import MNISTDataStem
+from rigl_torch.datasets._cifar import CIFAR10DataStem
+from rigl_torch.datasets._imagenet import ImageNetDataStem
 
 
 def get_dataloaders(cfg: DictConfig) -> torch.utils.data.DataLoader:
@@ -12,7 +12,7 @@ def get_dataloaders(cfg: DictConfig) -> torch.utils.data.DataLoader:
     elif cfg.dataset.name.lower() == "cifar10":
         data_stem = CIFAR10DataStem(cfg)
     elif cfg.dataset.name.lower() == "imagenet":
-        raise NotImplementedError("Imagenet stem not yet implemented")
+        data_stem = ImageNetDataStem(cfg, data_path_override=cfg.dataset.root)
     else:
         raise ValueError(
             f"{cfg.dataset.name.lower()} is not a recognized dataset name!"

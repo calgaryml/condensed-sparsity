@@ -1,12 +1,15 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Any
+from typing import Dict, Any, Optional, Union
+import pathlib
 import torch
 
 
 class ABCDataStem(ABC):
-    def __init__(self, cfg: Dict[str, Any]):
+    def __init__(self, cfg: Dict[str, Any], data_path_override: Optional[Union[str, pathlib.Path]] = None):
         self.cfg = cfg
         self.initalize_from_cfg()
+        self.data_path_override = data_path_override
+
 
     def initalize_from_cfg(self) -> None:
         self.use_cuda = (
@@ -19,7 +22,10 @@ class ABCDataStem(ABC):
         if self.use_cuda:
             self.train_kwargs.update(self.cfg.compute.cuda_kwargs)
             self.test_kwargs.update(self.cfg.compute.cuda_kwargs)
-        self.data_path = self.cfg.paths.data_folder
+        if self.data_path_override is not None:
+            self.data_path = self.data_path_override
+        else:
+            self.data_path = self.cfg.paths.data_folder
 
     @abstractmethod
     def get_train_test_loaders(self):
