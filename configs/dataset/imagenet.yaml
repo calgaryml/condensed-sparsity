@@ -1,0 +1,5 @@
+name: imagenet
+normalize: False
+num_classes: 1000
+train_len: 1281167
+root: <path_to_ILSVRC2017>
