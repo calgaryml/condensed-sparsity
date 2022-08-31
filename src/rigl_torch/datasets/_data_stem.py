@@ -43,7 +43,9 @@ class ABCDataStem(ABC):
         else:
             self.data_path = self.cfg.paths.data_folder
 
-    def _get_generator(self, device: torch.device, seed: int) -> torch.Generator:
+    def _get_generator(
+        self, device: torch.device, seed: int
+    ) -> torch.Generator:
         gen = torch.Generator(device=device)
         gen.manual_seed(seed)
         return gen
