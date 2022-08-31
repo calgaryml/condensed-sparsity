@@ -7,13 +7,13 @@ from rigl_torch.datasets import _data_stem
 from ._transforms import PerImageStandarization
 
 
-
-
 class ImageNetDataStem(_data_stem.ABCDataStem):
     _IMAGE_HEIGHT = 224
     _IMAGE_WIDTH = 224
 
-    def __init__(self, cfg: Dict[str, Any], data_path_override: Union[pathlib.Path, str]): 
+    def __init__(
+        self, cfg: Dict[str, Any], data_path_override: Union[pathlib.Path, str]
+    ):
         super().__init__(cfg, data_path_override=data_path_override)
 
     def get_train_test_loaders(self):

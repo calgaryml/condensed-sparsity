@@ -5,27 +5,48 @@ import torch
 
 
 class ABCDataStem(ABC):
-    def __init__(self, cfg: Dict[str, Any], data_path_override: Optional[Union[str, pathlib.Path]] = None):
+    def __init__(
+        self,
+        cfg: Dict[str, Any],
+        data_path_override: Optional[Union[str, pathlib.Path]] = None,
+    ):
         self.cfg = cfg
-        self.initalize_from_cfg()
-        self.data_path_override = data_path_override
+        self._data_path_override = data_path_override
+        self._initalize_from_cfg()
 
-
-    def initalize_from_cfg(self) -> None:
+    def _initalize_from_cfg(self) -> None:
         self.use_cuda = (
             not self.cfg.compute.no_cuda and torch.cuda.is_available()
         )
         torch.manual_seed(self.cfg.training.seed)
         self.device = torch.device("cuda" if self.use_cuda else "cpu")
-        self.train_kwargs = {"batch_size": self.cfg.training.batch_size}
-        self.test_kwargs = {"batch_size": self.cfg.training.test_batch_size}
+        train_gen = self._get_generator(
+            device=self.device, seed=self.cfg.training.seed
+        )
+        test_gen = self._get_generator(
+            device=self.device, seed=self.cfg.training.seed
+        )
+        self.train_kwargs = {
+            "batch_size": self.cfg.training.batch_size,
+            "generator": train_gen,
+            "shuffle": True,
+        }
+        self.test_kwargs = {
+            "batch_size": self.cfg.training.test_batch_size,
+            "generator": test_gen,
+        }
         if self.use_cuda:
             self.train_kwargs.update(self.cfg.compute.cuda_kwargs)
             self.test_kwargs.update(self.cfg.compute.cuda_kwargs)
-        if self.data_path_override is not None:
-            self.data_path = self.data_path_override
+        if self._data_path_override is not None:
+            self.data_path = self._data_path_override
         else:
             self.data_path = self.cfg.paths.data_folder
+
+    def _get_generator(self, device: torch.device, seed: int) -> torch.Generator:
+        gen = torch.Generator(device=device)
+        gen.manual_seed(seed)
+        return gen
 
     @abstractmethod
     def get_train_test_loaders(self):

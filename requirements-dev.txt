@@ -10,3 +10,4 @@ jupyter
 pandas
 seaborn
 plotly
+jupytext

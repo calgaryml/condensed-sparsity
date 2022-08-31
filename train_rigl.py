@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 import pytorch_lightning as pl
 import random
+import dotenv
 from torch.utils.tensorboard import SummaryWriter
 import omegaconf
 import hydra
@@ -32,6 +33,7 @@ def set_seed(cfg: omegaconf.DictConfig) -> omegaconf.DictConfig:
 
 @hydra.main(config_path="configs/", config_name="config", version_base="1.2")
 def main(cfg: omegaconf.DictConfig) -> None:
+    dotenv.load_dotenv(dotenv_path="./.env")
     _RESUME_FROM_CHECKPOINT = False
     run_id = None
     wandb_init_resume = "never"

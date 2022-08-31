@@ -77,7 +77,9 @@ training:
 compute:
   # disables CUDA training",
   no_cuda: False
-  cuda_kwargs: {"num_workers": 1, "pin_memory": True, "shuffle": True}
+  cuda_kwargs: 
+   - num_workers: ${oc.env:NUM_WORKERS}
+   - pin_memory: True
 
 wandb:
   project: condensed-rigl
