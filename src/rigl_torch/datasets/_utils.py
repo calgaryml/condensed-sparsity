@@ -12,7 +12,11 @@ def get_dataloaders(cfg: DictConfig) -> torch.utils.data.DataLoader:
     elif cfg.dataset.name.lower() == "cifar10":
         data_stem = CIFAR10DataStem(cfg)
     elif cfg.dataset.name.lower() == "imagenet":
-        data_stem = ImageNetDataStem(cfg, data_path_override=cfg.dataset.root)
+        data_stem = ImageNetDataStem(
+            cfg,
+            data_path_override=cfg.dataset.root,
+            meta_file_root="/scratch/mklasby/",
+        )
     else:
         raise ValueError(
             f"{cfg.dataset.name.lower()} is not a recognized dataset name!"

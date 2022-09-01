@@ -33,7 +33,6 @@ def set_seed(cfg: omegaconf.DictConfig) -> omegaconf.DictConfig:
 
 @hydra.main(config_path="configs/", config_name="config", version_base="1.2")
 def main(cfg: omegaconf.DictConfig) -> None:
-    dotenv.load_dotenv(dotenv_path="./.env")
     _RESUME_FROM_CHECKPOINT = False
     run_id = None
     wandb_init_resume = "never"
@@ -269,4 +268,5 @@ def wandb_log(epoch, loss, accuracy, inputs, logits, captions, pred, step):
 
 if __name__ == "__main__":
     logger = logging.getLogger(__file__)
+    dotenv.load_dotenv(dotenv_path=".env")
     main()

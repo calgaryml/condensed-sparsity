@@ -78,8 +78,8 @@ compute:
   # disables CUDA training",
   no_cuda: False
   cuda_kwargs: 
-   - num_workers: ${oc.env:NUM_WORKERS}
-   - pin_memory: True
+    num_workers: ${ oc.decode:${oc.env:NUM_WORKERS} }  # decode casts to int
+    pin_memory: True
 
 wandb:
   project: condensed-rigl

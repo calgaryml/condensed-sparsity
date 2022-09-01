@@ -3,3 +3,5 @@ normalize: False
 num_classes: 1000
 train_len: 1281167
 root: ${oc.env:IMAGE_NET_PATH}
+# If True, load with custom ImageFolder implemented to suit Graham's cluster's ImageNet dataset on /datashare
+use_cc_data_loaders: True

@@ -4,26 +4,46 @@ import torch
 from torchvision import transforms, datasets
 
 from rigl_torch.datasets import _data_stem
+from ._cc_imagenet_folder import CCImageNetFolder
 from ._transforms import PerImageStandarization
 
 
 class ImageNetDataStem(_data_stem.ABCDataStem):
     _IMAGE_HEIGHT = 224
     _IMAGE_WIDTH = 224
+    _ARCHIVES_NOT_TO_VALIDATE = ["ILSVRC2012_devkit_t12.tar.gz"]
 
     def __init__(
-        self, cfg: Dict[str, Any], data_path_override: Union[pathlib.Path, str]
+        self,
+        cfg: Dict[str, Any],
+        data_path_override: Union[pathlib.Path, str],
+        meta_file_root,
     ):
         super().__init__(cfg, data_path_override=data_path_override)
+        self.meta_file_root = meta_file_root
 
     def get_train_test_loaders(self):
         transform = self._get_transform()
-        train_dataset = datasets.ImageNet(
-            self.data_path, split="train", transform=transform
-        )
-        test_dataset = datasets.ImageNet(
-            self.data_path, split="val", transform=transform
-        )
+        if not self.cfg.dataset.use_cc_data_loaders:
+            train_dataset = datasets.ImageNet(
+                self.data_path, split="train", transform=transform
+            )
+            test_dataset = datasets.ImageNet(
+                self.data_path, split="val", transform=transform
+            )
+        else:
+            train_dataset = CCImageNetFolder(
+                self.data_path,
+                split="train",
+                transform=transform,
+                meta_file_path=self.cfg.paths.data_folder,
+            )
+            test_dataset = CCImageNetFolder(
+                self.data_path,
+                split="validation",
+                transform=transform,
+                meta_file_path=self.cfg.paths.data_folder,
+            )
         train_loader = torch.utils.data.DataLoader(
             train_dataset, **self.train_kwargs
         )
