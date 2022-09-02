@@ -41,7 +41,10 @@ class Checkpoint(object):
         self, checkpoint_dir: Optional[Union[pathlib.Path, str]]
     ) -> pathlib.Path:
         if checkpoint_dir is None:
-            dir_name = f"{datetime.datetime.today().strftime('%Y%m%d')}{self._RUN_ID_DELIMITER}{self.run_id}"
+            dir_name = (
+                f"{datetime.datetime.today().strftime('%Y%m%d')}"
+                f"{self._RUN_ID_DELIMITER}{self.run_id}"
+            )
             checkpoint_dir = (
                 pathlib.Path(self.cfg.paths.artifacts)
                 / "checkpoints"
@@ -104,8 +107,11 @@ class Checkpoint(object):
     def load_last_checkpoint(
         cls,
         checkpoint_dir: Optional[Union[pathlib.Path, str]] = None,
+        parent_dir: Optional[Union[pathlib.Path, str]] = None,
         run_id: str = None,
     ) -> Checkpoint:
+        if parent_dir is not None:
+            cls.parent_dir = pathlib.Path(parent_dir)
         return cls._load_checkpoint(cls.f_name, checkpoint_dir, run_id)
 
     @classmethod
@@ -136,7 +142,7 @@ class Checkpoint(object):
                 raise ValueError("Must provide checkpoint_dir or run_id!")
             checkpoint_dir = cls._get_checkpoint_dir_from_run_id(run_id)
         else:
-            if type(checkpoint_dir) == "str":
+            if type(checkpoint_dir) == str:
                 checkpoint_dir = pathlib.Path(checkpoint_dir)
         if not checkpoint_dir.is_dir():
             raise ValueError(

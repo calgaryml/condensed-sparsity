@@ -49,7 +49,8 @@ def main(cfg: omegaconf.DictConfig) -> None:
                 "cfg.training.resume_from_checkpoint is True"
             )
         checkpoint = Checkpoint.load_last_checkpoint(
-            run_id=cfg.experiment.run_id
+            run_id=cfg.experiment.run_id,
+            parent_dir=cfg.paths.checkpoints,
         )
         _RESUME_FROM_CHECKPOINT = True
         wandb_init_resume = "must"
@@ -133,6 +134,7 @@ def main(cfg: omegaconf.DictConfig) -> None:
             pruner=pruner,
             epoch=0,
             step=0,
+            parent_dir=cfg.paths.checkpoints,
         )
         epoch_start = 1
     else:
@@ -162,7 +164,7 @@ def main(cfg: omegaconf.DictConfig) -> None:
         checkpoint.step = step
         checkpoint.epoch = epoch
         checkpoint.save_checkpoint()
-        if cfg.training.dry_run:
+        if cfg.training.dry_run or step > cfg.training.max_steps:
             break
 
     if cfg.training.save_model:
@@ -207,6 +209,8 @@ def train(
             )
         if cfg.training.dry_run:
             logger.warning("Dry run, exiting after one training step")
+            return step
+        if step > cfg.training.max_steps:
             return step
     return step
 

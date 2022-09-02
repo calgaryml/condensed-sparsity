@@ -24,9 +24,8 @@ class CCImageNetFolder(ImageFolder):
         self.wnids = self.classes
         self.wnid_to_idx = self.class_to_idx
         self.classes = [wnid_to_classes[wnid] for wnid in self.wnids]
-        self.class_to_idx = {
-            cls: idx for idx, clss in enumerate(self.classes) for cls in clss
-        }
+        self.class_to_idx = {clss: idx for idx, clss in enumerate(self.classes)}
+        self.idx_to_class = {v: k for k, v in self.class_to_idx.items()}
 
     def _load_meta_file(self, meta_file_path: str) -> Dict[str, str]:
         meta_file = (

@@ -20,16 +20,12 @@ class ABCDataStem(ABC):
         )
         torch.manual_seed(self.cfg.training.seed)
         self.device = torch.device("cuda" if self.use_cuda else "cpu")
-        # train_gen = self._get_generator(
-        #     seed=self.cfg.training.seed
-        # )
-        # test_gen = self._get_generator(
-        #     seed=self.cfg.training.seed
-        # )
+        # train_gen = self._get_generator(seed=self.cfg.training.seed)
+        # test_gen = self._get_generator(seed=self.cfg.training.seed)
         self.train_kwargs = {
             "batch_size": self.cfg.training.batch_size,
             # "generator": train_gen,
-            "shuffle": False,
+            "shuffle": True,
         }
         self.test_kwargs = {
             "batch_size": self.cfg.training.test_batch_size,
