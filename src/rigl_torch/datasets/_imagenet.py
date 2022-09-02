@@ -5,43 +5,42 @@ from torchvision import transforms, datasets
 
 from rigl_torch.datasets import _data_stem
 from ._cc_imagenet_folder import CCImageNetFolder
-from ._transforms import PerImageStandarization
 
 
 class ImageNetDataStem(_data_stem.ABCDataStem):
     _IMAGE_HEIGHT = 224
     _IMAGE_WIDTH = 224
-    _ARCHIVES_NOT_TO_VALIDATE = ["ILSVRC2012_devkit_t12.tar.gz"]
+    _MEAN_RGB = [0.485, 0.456, 0.406]
+    _STDDEV_RGB = [0.229, 0.224, 0.225]
 
     def __init__(
         self,
         cfg: Dict[str, Any],
         data_path_override: Union[pathlib.Path, str],
-        meta_file_root,
     ):
         super().__init__(cfg, data_path_override=data_path_override)
-        self.meta_file_root = meta_file_root
 
     def get_train_test_loaders(self):
-        transform = self._get_transform()
+        train_transform = self._get_transform()
+        test_transform = self._get_test_transform()
         if not self.cfg.dataset.use_cc_data_loaders:
             train_dataset = datasets.ImageNet(
-                self.data_path, split="train", transform=transform
+                self.data_path, split="train", transform=train_transform
             )
             test_dataset = datasets.ImageNet(
-                self.data_path, split="val", transform=transform
+                self.data_path, split="val", transform=test_transform
             )
         else:
             train_dataset = CCImageNetFolder(
                 self.data_path,
                 split="train",
-                transform=transform,
+                transform=train_transform,
                 meta_file_path=self.cfg.paths.data_folder,
             )
             test_dataset = CCImageNetFolder(
                 self.data_path,
                 split="validation",
-                transform=transform,
+                transform=test_transform,
                 meta_file_path=self.cfg.paths.data_folder,
             )
         train_loader = torch.utils.data.DataLoader(
@@ -55,14 +54,28 @@ class ImageNetDataStem(_data_stem.ABCDataStem):
     def _get_transform(self):
         transform = transforms.Compose(
             [
-                transforms.ToTensor(),
-                PerImageStandarization(inplace=False),
-                transforms.Pad(padding=4, padding_mode="reflect"),
-                # Equivalent to: https://github.com/google-research/rigl/blob/master/rigl/cifar_resnet/data_helper.py#L29  # noqa
-                transforms.CenterCrop(
+                transforms.RandomChoice(
+                    [transforms.Resize(256), transforms.Resize(480)]
+                ),
+                transforms.RandomCrop(
                     size=[self._IMAGE_WIDTH, self._IMAGE_HEIGHT]
                 ),
                 transforms.RandomHorizontalFlip(p=0.5),
+                transforms.ToTensor(),  # Applies min/max scaling
+                transforms.Normalize(mean=self._MEAN_RGB, std=self._STDDEV_RGB),
+            ]
+        )
+        return transform
+
+    def _get_test_transform(self):
+        transform = transforms.Compose(
+            [
+                transforms.Resize(256),
+                transforms.CenterCrop(
+                    size=[self._IMAGE_WIDTH, self._IMAGE_HEIGHT]
+                ),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=self._MEAN_RGB, std=self._STDDEV_RGB),
             ]
         )
         return transform
