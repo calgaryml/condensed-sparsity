@@ -31,5 +31,5 @@
 		"all"
 	],
 	// We need to run this again since the .gitconfig that was initialized in dockerfile is overwritten with host .gitconfig during devcontainer build
-	"postStartCommand": "git config --global --add safe.directory /home/condensed-sparsity && pip install -e . && git init . && pre-commit install-hooks"
+	"postStartCommand": "git config --global --add safe.directory /home/condensed-sparsity && git init . && poetry install -vvv && pre-commit install-hooks"
 }
