@@ -35,6 +35,7 @@ WORKDIR /home/condensed-sparsity/
 
 # Copy the source code
 COPY . /home/condensed-sparsity/
+COPY ./.env home/condensed-sparsity/
 
 # Set ownership of workspace to user
 RUN chown -R $USER_GID:$USER_UID /home/condensed-sparsity/
