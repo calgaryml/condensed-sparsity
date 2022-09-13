@@ -172,10 +172,16 @@ cython_debug/
 *.ipynb
 # .vscode # We will share .vscode for this project.
 logs/
-data/
+data/*
+!data/imagenet_labels.yaml
+
+
 wandb/
 !notebooks/*.ipynb
 
 # Singularity
 *.sif
 artifacts/
+
+# slurm outputs
+**slurm-*.out

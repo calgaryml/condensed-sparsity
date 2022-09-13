@@ -1,17 +1,17 @@
 defaults:
-  - dataset: mnist
-  - model: mnist
+  - dataset: imagenet
+  - model: resnet18
   - _self_
 
 experiment:
-  comment: missing_sweep_${rigl.dense_allocation}_${rigl.const_fan_in}
+  comment: ${rigl.dense_allocation}_${rigl.const_fan_in}
   name: ${model.name}_${dataset.name}_${experiment.comment}
   sweep: True
   resume_from_checkpoint: True
-  run_id: 1hz0vtiw
+  run_id: ankpidxc
 
 paths:
-  base: /home/mklasby/projects/def-rmsouza/mklasby/condensed-sparsity
+  base: ${oc.env:BASE_PATH}
   data_folder: ${paths.base}/data
   artifacts: ${paths.base}/artifacts
   logs: ${paths.base}/logs
@@ -39,18 +39,20 @@ rigl:
 training:
   # quickly check a single pass",
   dry_run: False
-  # input batch size for testing (default: 1000)
+  # input batch size for testing
   batch_size: 128
-  # number of epochs to train (default: 250)
+  # number of epochs to train
   test_batch_size: 1000
-  # number of epochs to train (default: 14)
-  epochs: 250
-  # random seed (default: 1)
+  # number of epochs to train
+  epochs: 3
+  # random seed
   seed: 42
   # Log interval (number of steps / iterations)
-  log_interval: 10000
+  log_interval: 1
   # For Saving the current Model
   save_model: True
+  # max number of steps (will override epochs)
+  max_steps: 3
 
   ## Optimization
   optimizer: sgd # "sgd", "adamw"
@@ -77,7 +79,9 @@ training:
 compute:
   # disables CUDA training",
   no_cuda: False
-  cuda_kwargs: {"num_workers": 1, "pin_memory": True, "shuffle": True}
+  cuda_kwargs: 
+    num_workers: ${ oc.decode:${oc.env:NUM_WORKERS} }  # decode casts to int
+    pin_memory: True
 
 wandb:
   project: condensed-rigl

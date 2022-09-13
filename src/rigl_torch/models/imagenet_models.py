@@ -5,10 +5,10 @@ from rigl_torch.models.model_factory import ModelFactory
 
 
 @ModelFactory.register_model_loader(model="wide_resnet22", dataset="imagenet")
-def get_wide_resnet_22():
+def get_imagenet_wide_resnet_22():
     kwargs = dict(
         width_per_group=64 * 2,
-        num_classes=10,
+        num_classes=1000,
         pretrained=False,
         progress=True,
         layers=[2, 2, 4, 2],
@@ -18,5 +18,5 @@ def get_wide_resnet_22():
 
 
 @ModelFactory.register_model_loader(model="resnet18", dataset="imagenet")
-def get_resnet18(num_classes: int):
-    return resnet18(num_classes=num_classes)
+def get_imagenet_resnet18():
+    return resnet18(num_classes=1000)
