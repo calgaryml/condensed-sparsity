@@ -2,7 +2,6 @@
 .vscode
 .devcontainer
 Dockerfile.dev
-.env
 wandb/
 !logs/
 logs/*
@@ -12,3 +11,4 @@ artifacts/
 .pytest_cache
 .git
 .github
+.venv

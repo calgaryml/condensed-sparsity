@@ -35,7 +35,6 @@ WORKDIR /home/condensed-sparsity/
 
 # Copy the source code
 COPY . /home/condensed-sparsity/
-COPY ./.env home/condensed-sparsity/
 
 # Set ownership of workspace to user
 RUN chown -R $USER_GID:$USER_UID /home/condensed-sparsity/
@@ -45,12 +44,8 @@ ENV PATH="/home/user/.local/bin:${PATH}"
 
 # Initalize conda
 RUN conda init bash \
-    && chmod -R +777 /opt/conda/ \
     && exec bash \
     && conda activate base
-
-# [Optional] Set the default user. Omit if you want to keep the default as root.
-USER $USERNAME
 
 # Install poetry
 ARG POETRY_VERSION="1.2.0"
@@ -60,6 +55,9 @@ RUN python -m pip install --upgrade pip \
 # Install project and dependencies without dev dep
 RUN poetry config virtualenvs.create false
 RUN poetry install -vvv --only main
+
+# [Optional] Set the default user. Omit if you want to keep the default as root.
+USER $USERNAME
 
 # To run default training script with configuration copied at build time
 CMD poetry run python ./train_rigl.py
