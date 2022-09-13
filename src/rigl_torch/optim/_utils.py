@@ -1,6 +1,7 @@
 import torch
 from omegaconf import DictConfig, OmegaConf
 from functools import partial
+from typing import Optional, Dict, Any
 
 from rigl_torch.models import ModelFactory
 from .cosine_annealing_with_linear_warm_up import (
@@ -8,7 +9,9 @@ from .cosine_annealing_with_linear_warm_up import (
 )
 
 
-def get_optimizer(cfg: OmegaConf, model) -> torch.optim.Optimizer:
+def get_optimizer(
+    cfg: OmegaConf, model, state_dict: Optional[Dict[str, Any]] = None
+) -> torch.optim.Optimizer:
     optimizers = {
         "sgd": partial(
             torch.optim.SGD,
@@ -38,11 +41,16 @@ def get_optimizer(cfg: OmegaConf, model) -> torch.optim.Optimizer:
             f"Unrecongized optmizier: {cfg.training.optimizer}. Select from: {list(optimizers.keys())}"
         )
     else:
-        return optimizers[cfg.training.optimizer.lower()]()
+        optim = optimizers[cfg.training.optimizer.lower()]()
+        if state_dict is not None:
+            optim.load_state_dict(state_dict)
+        return optim
 
 
 def get_lr_scheduler(
-    cfg: OmegaConf, optim: torch.optim.Optimizer
+    cfg: OmegaConf,
+    optim: torch.optim.Optimizer,
+    state_dict: Optional[Dict[str, Any]] = None,
 ) -> torch.optim.lr_scheduler._LRScheduler:
     schedulers = {
         "step_lr": partial(
@@ -72,7 +80,10 @@ def get_lr_scheduler(
             f"Select from: {list(schedulers.keys())} "
         )
     else:
-        return schedulers[cfg.training.scheduler.lower()]()
+        sch = schedulers[cfg.training.scheduler.lower()]()
+        if state_dict is not None:
+            sch.load_state_dict(state_dict)
+        return sch
 
 
 if __name__ == "__main__":
