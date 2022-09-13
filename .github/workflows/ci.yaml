@@ -29,6 +29,9 @@ jobs:
       - name: Upgrade pip
         run: pip install --upgrade pip
 
+      - name: Install poetry 1.2.0
+        run: pip install poetry==1.2.0
+
       # TODO: If we need SSH agent, need repo admin to add secret key
       # - name: Setup SSH Agent
       #   uses: webfactory/ssh-agent@v0.5.2
@@ -36,13 +39,7 @@ jobs:
       #     ssh-private-key: ${{ secrets.SSH_KEY}}
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Install development/test dependencies
-        run: pip install -r requirements-dev.txt
-
-      - name: Install rigl-torch
-        run: pip install .
+        run: poetry install
 
       - name: Lint with Flake8
         run: python -m flake8 .
