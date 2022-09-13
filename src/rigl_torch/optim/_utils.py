@@ -71,7 +71,7 @@ def get_lr_scheduler(
             T_max=cfg.training.epochs * cfg.dataset.train_len,
             eta_min=0,
             lr=cfg.training.lr,
-            warm_up_steps=cfg.training.warm_up_steps * cfg.training.batch_size,
+            warm_up_steps=cfg.training.warm_up_steps,
         ),
     }
     if cfg.training.scheduler.lower() not in list(schedulers.keys()):
