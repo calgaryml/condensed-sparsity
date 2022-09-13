@@ -185,3 +185,6 @@ artifacts/
 
 # slurm outputs
 **slurm-*.out
+
+#pyenv
+.python-version

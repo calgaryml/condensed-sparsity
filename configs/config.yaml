@@ -6,9 +6,8 @@ defaults:
 experiment:
   comment: ${rigl.dense_allocation}_${rigl.const_fan_in}
   name: ${model.name}_${dataset.name}_${experiment.comment}
-  sweep: True
-  resume_from_checkpoint: True
-  run_id: ankpidxc
+  resume_from_checkpoint: False
+  run_id: null
 
 paths:
   base: ${oc.env:BASE_PATH}
@@ -68,7 +67,7 @@ training:
   lr: 0.1
   # Learning rate for first epoch of warm up, only applies to schedulers with linear warm up
   init_lr: 0
-  # Number of epochs to warm up for linear warm ups
+  # Number of steps to warm up for linear warm ups
   warm_up_steps: 5
   # Learning rate step gamma
   gamma: 0.2

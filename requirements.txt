@@ -1,9 +1,0 @@
-torch>=1.12
-torchvision
-tensorboard
-wandb
-python-dotenv
-hydra-core
-omegaconf
-pytorch-lightning
-scipy

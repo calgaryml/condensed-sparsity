@@ -20,16 +20,12 @@ class ABCDataStem(ABC):
         )
         torch.manual_seed(self.cfg.training.seed)
         self.device = torch.device("cuda" if self.use_cuda else "cpu")
-        # train_gen = self._get_generator(seed=self.cfg.training.seed)
-        # test_gen = self._get_generator(seed=self.cfg.training.seed)
         self.train_kwargs = {
             "batch_size": self.cfg.training.batch_size,
-            # "generator": train_gen,
             "shuffle": True,
         }
         self.test_kwargs = {
             "batch_size": self.cfg.training.test_batch_size,
-            # "generator": test_gen,
         }
         if self.use_cuda:
             self.train_kwargs.update(self.cfg.compute.cuda_kwargs)
@@ -38,12 +34,6 @@ class ABCDataStem(ABC):
             self.data_path = self._data_path_override
         else:
             self.data_path = self.cfg.paths.data_folder
-
-    def _get_generator(self, seed: int) -> torch.Generator:
-        device_string = "cuda" if self.use_cuda else "cpu"
-        gen = torch.Generator(device=device_string)
-        gen.manual_seed(seed)
-        return gen
 
     @abstractmethod
     def get_train_test_loaders(self):

@@ -15,45 +15,52 @@ RUN wget https://developer.download.nvidia.com/compute/cuda/repos/$DISTRO/$ARCH/
 RUN apt-get update \
     && apt-get install -y git ssh tmux vim
 
-# # Use a non-root user
-# ARG USERNAME=user
-# ARG USER_UID=1000003
-# ARG USER_GID=100
+# Use a non-root user
+ARG USERNAME=user
+ARG USER_UID=1000
+ARG USER_GID=${USER_UID}
 
-# # Create the user
-# RUN groupadd --gid $USER_GID $USERNAME \
-#     && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME \
-#     #
-#     # [Optional] Add sudo support. Omit if you don't need to install software after connecting.
-#     && apt-get update \
-#     && apt-get install -y sudo \
-#     && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
-#     && chmod 0440 /etc/sudoers.d/$USERNAME
+# Create the user
+RUN groupadd --gid $USER_GID $USERNAME \
+    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME \
+    #
+    # [Optional] Add sudo support. Omit if you don't need to install software after connecting.
+    && apt-get update \
+    && apt-get install -y sudo \
+    && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
+    && chmod 0440 /etc/sudoers.d/$USERNAME
 
-# RUN apt-get update \
-#     && apt-get install -y sudo \
-#     && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
-#     && chmod 0440 /etc/sudoers.d/$USERNAME
+RUN apt-get update \
+    && apt-get install -y sudo \
+    && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
+    && chmod 0440 /etc/sudoers.d/$USERNAME
 
-# RUN mkdir /home/condensed-sparsity/ && \
-#     chown -R $USER_GID:$USER_UID /home/condensed-sparsity/
+RUN mkdir /home/condensed-sparsity/ && \
+    chown -R $USER_GID:$USER_UID /home/condensed-sparsity/
 
 ENV NVIDIA_DRIVER_CAPABILITIES=all
-# ENV PATH="/home/user/.local/bin:${PATH}"
+ENV PATH="/home/${USERNAME}/.local/bin:${PATH}"
+USER $USERNAME
 
-# USER $USERNAME
+# Init conda
+RUN conda init bash \
+    && sudo chmod -R +777 /opt/conda/ \
+    && exec bash \ 
+    && conda activate base
 
-# Install project requirements
-COPY requirements.txt /tmp/pip-tmp/
-RUN conda init bash
-RUN exec bash \
-    && conda activate base \
-    && conda install -c defaults -c conda-forge --file /tmp/pip-tmp/requirements.txt \
-    && rm -rf /tmp/pip-tmp
+# Install poetry
+ARG POETRY_VERSION="1.2.0"
+RUN python -m pip install --upgrade pip \
+    && python -m pip install poetry==${POETRY_VERSION}
+RUN poetry config virtualenvs.create false
 
-# Install dev requirements
-COPY requirements-dev.txt /tmp/pip-tmp/
-RUN conda install -c defaults -c conda-forge --file /tmp/pip-tmp/requirements-dev.txt \
-    && rm -rf /tmp/pip-tmp
+
+# Install project requirements 
+ARG BUILD_DIR="/tmp/build/"
+RUN mkdir ${BUILD_DIR}
+WORKDIR ${BUILD_DIR}
+COPY ./pyproject.toml ./poetry.lock ./
+RUN poetry install -vvv --no-root
+RUN rm -rf ${BUILD_DIR}
 
 WORKDIR /home/condensed-sparsity/
