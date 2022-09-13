@@ -30,7 +30,7 @@ jobs:
         run: pip install --upgrade pip
 
       - name: Install poetry 1.2.0
-        run: pip install poetry==1.2.0 && poetry config virtaulenvs.create false
+        run: pip install poetry==1.2.0 && poetry config virtualenvs.create false
 
       # TODO: If we need SSH agent, need repo admin to add secret key
       # - name: Setup SSH Agent
