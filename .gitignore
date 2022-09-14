@@ -188,3 +188,5 @@ artifacts/
 
 #pyenv
 .python-version
+
+*.whl

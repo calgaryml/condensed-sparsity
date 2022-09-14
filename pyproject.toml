@@ -23,14 +23,16 @@ packages= [
 
 [tool.poetry.dependencies]
 python = "^3.8,<3.12"
-torch = "1.12.1"
-torchvision = "^0.13.1"
+# torch = "1.12.1"
+torch = {file="torch-1.12.1+computecanada-cp38-cp38-linux_x86_64.whl"}
+# torchvision = "^0.13.1"
+torchvision = {file="torchvision-0.13.1+torch1121.computecanada-cp38-cp38-linux_x86_64.whl"}
 tensorboard = "^2.10.0"
 wandb = "^0.13.3"
 python-dotenv = "^0.21.0"
 hydra-core = "^1.2.0"
 pytorch-lightning = "^1.7.5"
-scipy = "^1.9.1"
+scipy = "^1.8.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.1.3"
