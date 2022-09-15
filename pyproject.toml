@@ -23,18 +23,29 @@ packages= [
 
 [tool.poetry.dependencies]
 python = "^3.8,<3.11"
-# torch = "1.12.1"
-torch = {file="./bin/torch-1.12.1+computecanada-cp38-cp38-linux_x86_64.whl"}
-# torchvision = "^0.13.1"
-torchvision = {file="./bin/torchvision-0.13.1+torch1121.computecanada-cp38-cp38-linux_x86_64.whl"}
 tensorboard = "^2.10.0"
 wandb = "^0.13.3"
 python-dotenv = "^0.21.0"
 hydra-core = "^1.2.0"
 pytorch-lightning = "^1.7.5"
+
+# LocalEnv
+# torch = "1.12.1"
+# torchvision = "^0.13.1"
+# scipy = "1.8.0"
+# pillow = "9.2.0"
+# Pillow_SIMD = "9.0.0"
+# grpcio = "1.47.0"
+
+# ComputeCanada wheels
+torch = {file="./bin/torch-1.12.1+computecanada-cp38-cp38-linux_x86_64.whl"}
+torchvision = {file="./bin/torchvision-0.13.1+torch1121.computecanada-cp38-cp38-linux_x86_64.whl"}
 scipy = {file="./bin/scipy-1.8.0+computecanada-cp38-cp38-linux_x86_64.whl"}
 pillow={file="./bin/Pillow-9.2.0+computecanada-cp38-cp38-linux_x86_64.whl"}
 Pillow_SIMD={file="./bin/Pillow_SIMD-9.0.0.post1+computecanada-cp38-cp38-linux_x86_64.whl"}
+grpcio={file="./bin/grpcio-1.47.0+computecanada-cp38-cp38-linux_x86_64.whl"}
+numpy={file="./bin/numpy-1.23.0+computecanada-cp38-cp38-linux_x86_64.whl"}
+
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.1.3"
@@ -45,10 +56,16 @@ pytest-cov = "^3.0.0"
 ipykernel = "^6.15.2"
 matplotlib = "^3.5.3"
 jupyter = "^1.0.0"
-pandas = "^1.4.4"
 seaborn = "^0.12.0"
 plotly = "^5.10.0"
 jupytext = "^1.14.1"
+
+# LocalEnv
+# pandas = "^1.4.1"
+
+#ComputeCanada Wheels
+pandas = {file="./bin/pandas-1.4.1+computecanada-cp38-cp38-linux_x86_64.whl"}
+
 
 [tool.poetry.scripts]
 train_rigl = "train_rigl:main"
