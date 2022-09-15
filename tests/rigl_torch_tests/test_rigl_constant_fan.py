@@ -3,7 +3,7 @@ from rigl_torch.rigl_constant_fan import RigLConstFanScheduler
 import torch
 import torch.optim as optim
 from rigl_torch.utils import rigl_utils
-from tests.utils.mocks import (
+from utils.mocks import (
     mock_image_dataloader,
     MNISTNet,
     train_model,

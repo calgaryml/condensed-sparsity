@@ -1,7 +1,7 @@
 import pytest
 from rigl_torch.utils import rigl_utils
 import torch
-from tests.utils.mocks import MNISTNet
+from utils.mocks import MNISTNet
 
 
 @pytest.fixture(scope="module")
