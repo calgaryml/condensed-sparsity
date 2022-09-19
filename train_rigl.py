@@ -273,4 +273,6 @@ def wandb_log(epoch, loss, accuracy, inputs, logits, captions, pred, step):
 if __name__ == "__main__":
     logger = logging.getLogger(__file__)
     dotenv.load_dotenv(dotenv_path=".env")
+    import os
+    print(os.environ["NUM_WORKERS"])
     main()

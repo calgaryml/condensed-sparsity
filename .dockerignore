@@ -12,3 +12,4 @@ artifacts/
 .git
 .github
 .venv
+.env

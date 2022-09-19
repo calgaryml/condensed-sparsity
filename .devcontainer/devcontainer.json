@@ -26,9 +26,16 @@
 	// We need to mount current directory to a location that we can use to install rigl-torch from in the dockerfile 
 	"workspaceMount": "source=${localWorkspaceFolder}/,target=/home/condensed-sparsity,type=bind",
 	"workspaceFolder": "/home/condensed-sparsity",
+	"mounts": [
+		"source=/datasets/ILSVRC2012,target=/datasets/ILSVRC2012,type=bind"
+	],
 	"runArgs": [
 		"--gpus",
-		"all"
+		"all",
+		"--env-file",
+		".env",
+		"--shm-size",
+		"4G"
 	],
 	// We need to run this again since the .gitconfig that was initialized in dockerfile is overwritten with host .gitconfig during devcontainer build
 	"postStartCommand": "git config --global --add safe.directory /home/condensed-sparsity && git init . && poetry install -vvv && pre-commit install-hooks"
