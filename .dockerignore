@@ -13,3 +13,5 @@ artifacts/
 .github
 .venv
 .env
+!data/
+data/*
