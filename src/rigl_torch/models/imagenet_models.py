@@ -1,5 +1,5 @@
 from torchvision.models.resnet import _resnet, Bottleneck
-from torchvision.models import resnet18
+from torchvision.models import resnet18, resnet50
 
 from rigl_torch.models.model_factory import ModelFactory
 
@@ -20,3 +20,8 @@ def get_imagenet_wide_resnet_22():
 @ModelFactory.register_model_loader(model="resnet18", dataset="imagenet")
 def get_imagenet_resnet18():
     return resnet18(num_classes=1000)
+
+
+@ModelFactory.register_model_loader(model="resnet50", dataset="imagenet")
+def get_imagenet_resnet50():
+    return resnet50(num_classes=1000)

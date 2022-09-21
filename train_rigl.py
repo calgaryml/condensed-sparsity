@@ -164,9 +164,9 @@ def main(cfg: omegaconf.DictConfig) -> None:
         checkpoint.step = step
         checkpoint.epoch = epoch
         checkpoint.save_checkpoint()
-        if cfg.training.dry_run or (
-            cfg.training.max_steps is not None and step > cfg.training.max_steps
-        ):
+        if cfg.training.dry_run:
+            break
+        if cfg.training.max_steps is not None and step > cfg.training.max_steps:
             break
 
     if cfg.training.save_model:

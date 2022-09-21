@@ -1,6 +1,6 @@
 defaults:
   - dataset: imagenet
-  - model: resnet18
+  - model: resnet50
   - _self_
 
 experiment:
@@ -19,7 +19,7 @@ paths:
 rigl: 
   # percentage of dense parameters allowed. if None, pruning will not 
   # be used. must be on the interval (0, 1]
-  dense_allocation: 0.9
+  dense_allocation: 0.1
   # delta param for pruning
   delta: 100
   # number of gradients to accumulate before scoring for rigl
@@ -37,13 +37,13 @@ rigl:
 
 training:
   # quickly check a single pass",
-  dry_run: True
+  dry_run: False
   # input batch size for testing
   batch_size: 64
   # number of epochs to train
   test_batch_size: 512
   # number of epochs to train
-  epochs: 100
+  epochs: 102
   # random seed
   seed: 42
   # Log interval (number of steps / iterations)
@@ -56,7 +56,7 @@ training:
   ## Optimization
   optimizer: sgd # "sgd", "adamw"
   # L2 Regularization for optimizer
-  weight_decay: 5.0e-4  # 5.0e-4 -> rigl value
+  weight_decay: 0.0001  # 5.0e-4 -> cifar10
   # Momentum coefficient for SGD optimizer
   momentum: 0.9  # 0.9 -> rigl value
 
@@ -72,7 +72,7 @@ training:
   # Learning rate step gamma
   gamma: 0.2
   # Step size to use in learning rate scheduler if StepLR is used.
-  step_size: 30000
+  step_size: 300000   # cifar10 -> 30000
 
 
 compute:
