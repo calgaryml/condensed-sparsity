@@ -24,4 +24,4 @@ module load singularity python/3.8.10 cuda cudnn
 source $SLURM_TMPDIR/.venv/bin/activate
 
 ## RUN SCRIPT ##
-python3 ${WORKDIR}/scripts/extract_imagenet.py
+python3 ${WORKDIR}/train_rigl.py
