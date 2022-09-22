@@ -164,7 +164,9 @@ def main(cfg: omegaconf.DictConfig) -> None:
         checkpoint.step = step
         checkpoint.epoch = epoch
         checkpoint.save_checkpoint()
-        if cfg.training.dry_run or step > cfg.training.max_steps:
+        if cfg.training.dry_run:
+            break
+        if cfg.training.max_steps is not None and step > cfg.training.max_steps:
             break
 
     if cfg.training.save_model:
@@ -210,7 +212,7 @@ def train(
         if cfg.training.dry_run:
             logger.warning("Dry run, exiting after one training step")
             return step
-        if step > cfg.training.max_steps:
+        if cfg.training.max_steps is not None and step > cfg.training.max_steps:
             return step
     return step
 
@@ -273,4 +275,7 @@ def wandb_log(epoch, loss, accuracy, inputs, logits, captions, pred, step):
 if __name__ == "__main__":
     logger = logging.getLogger(__file__)
     dotenv.load_dotenv(dotenv_path=".env")
+    import os
+
+    print(os.environ["NUM_WORKERS"])
     main()
