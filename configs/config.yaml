@@ -4,7 +4,7 @@ defaults:
   - _self_
 
 experiment:
-  comment: ${rigl.dense_allocation}_${rigl.const_fan_in}
+  comment: ${rigl.dense_allocation}_${rigl.const_fan_in}_hector-test
   name: ${model.name}_${dataset.name}_${experiment.comment}
   resume_from_checkpoint: False
   run_id: null
@@ -41,13 +41,13 @@ training:
   # input batch size for testing
   batch_size: 64
   # number of epochs to train
-  test_batch_size: 512
+  test_batch_size: 128
   # number of epochs to train
   epochs: 102
   # random seed
   seed: 42
   # Log interval (number of steps / iterations)
-  log_interval: 1
+  log_interval: 100
   # For Saving the current Model
   save_model: True
   # max number of steps (will override epochs)

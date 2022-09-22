@@ -212,7 +212,7 @@ def train(
         if cfg.training.dry_run:
             logger.warning("Dry run, exiting after one training step")
             return step
-        if step > cfg.training.max_steps:
+        if cfg.training.max_steps is not None and step > cfg.training.max_steps:
             return step
     return step
 
