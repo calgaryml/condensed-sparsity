@@ -25,4 +25,4 @@ module load singularity python/3.8.10 cuda cudnn
 source ${WORKDIR}/.venv/bin/activate
 
 ## RUN SCRIPT ##
-python3 ${WORKDIR}/scripts/train_imagenet_rigl.py
+python3 ${WORKDIR}/train_rigl.py
