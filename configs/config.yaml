@@ -81,6 +81,10 @@ compute:
   cuda_kwargs: 
     num_workers: ${ oc.decode:${oc.env:NUM_WORKERS} }  # decode casts to int
     pin_memory: True
+  # If True, use data-parallelization model for distributed training
+  distributed: True
+  # Number of CUDA devices to use for distributed training
+  dist_num_devices: 4
 
 wandb:
   project: condensed-rigl

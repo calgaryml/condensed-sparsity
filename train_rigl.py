@@ -1,16 +1,17 @@
 import torch
 import torch.nn.functional as F
+import torch.multiprocessing as mp
+from torch.utils.tensorboard import SummaryWriter
 import pytorch_lightning as pl
 import random
 import dotenv
-from torch.utils.tensorboard import SummaryWriter
 import omegaconf
 import hydra
 import logging
 import wandb
 import pathlib
-from rigl_torch.models.model_factory import ModelFactory
 
+from rigl_torch.models.model_factory import ModelFactory
 from rigl_torch.rigl_scheduler import RigLScheduler
 from rigl_torch.rigl_constant_fan import RigLConstFanScheduler
 from rigl_torch.datasets import get_dataloaders
@@ -32,8 +33,17 @@ def set_seed(cfg: omegaconf.DictConfig) -> omegaconf.DictConfig:
 
 
 @hydra.main(config_path="configs/", config_name="config", version_base="1.2")
+def initalize_distributed_training(cfg: omegaconf.DictConfig) -> None:
+    if cfg.compute.distributed:
+        if cfg.compute.no_cuda:
+            raise ValueError("Cannot use distributed training with cfg.compute.no_cuda == True")
+        if cfg.compute.dist_num_devices < torch.cuda.dist_num_devices
+    else:
+        main(cfg)
+
+
+
 def main(cfg: omegaconf.DictConfig) -> None:
-    _RESUME_FROM_CHECKPOINT = False
     run_id = None
     wandb_init_resume = "never"
     optimizer_state, scheduler_state, pruner_state, model_state = (
@@ -52,7 +62,6 @@ def main(cfg: omegaconf.DictConfig) -> None:
             run_id=cfg.experiment.run_id,
             parent_dir=cfg.paths.checkpoints,
         )
-        _RESUME_FROM_CHECKPOINT = True
         wandb_init_resume = "must"
         run_id = checkpoint.run_id
         optimizer_state = checkpoint.optimizer
@@ -85,8 +94,9 @@ def main(cfg: omegaconf.DictConfig) -> None:
     model = ModelFactory.load_model(
         model=cfg.model.name, dataset=cfg.dataset.name, state_dict=model_state
     )
-    model.to(device)
 
+
+    model.to(device)
     optimizer = get_optimizer(cfg, model, state_dict=optimizer_state)
     scheduler = get_lr_scheduler(cfg, optimizer, state_dict=scheduler_state)
 
@@ -124,7 +134,7 @@ def main(cfg: omegaconf.DictConfig) -> None:
     wandb.watch(model, criterion=F.nll_loss, log="all", log_freq=100)
     logger.info(f"Model Summary: {model}")
     step = 0
-    if not _RESUME_FROM_CHECKPOINT:
+    if not cfg.experiment.resume_from_checkpoint:
         checkpoint = Checkpoint(
             run_id=run.id,
             cfg=cfg,
