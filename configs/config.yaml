@@ -4,7 +4,7 @@ defaults:
   - _self_
 
 experiment:
-  comment: ${rigl.dense_allocation}_${rigl.const_fan_in}_cedar_test
+  comment: ${rigl.dense_allocation}_${rigl.const_fan_in}_dist_test
   name: ${model.name}_${dataset.name}_${experiment.comment}
   resume_from_checkpoint: False
   run_id: null
@@ -29,7 +29,7 @@ rigl:
   # if 1, use random sparsity topo and remain static
   static_topo: 0
   # If True, use const_fan_in scheduler.
-  const_fan_in: False
+  const_fan_in: True
   # Define layer-wise sparsity distribution. Options include `uniform` & `erk`
   sparsity_distribution: erk
   # Power scale for ERK distribution
@@ -39,9 +39,9 @@ training:
   # quickly check a single pass",
   dry_run: False
   # input batch size for testing
-  batch_size: 128
+  batch_size: 512
   # number of epochs to train
-  test_batch_size: 128
+  test_batch_size: 1024
   # number of epochs to train
   epochs: 102
   # random seed
@@ -72,7 +72,7 @@ training:
   # Learning rate step gamma
   gamma: 0.2
   # Step size to use in learning rate scheduler if StepLR is used.
-  step_size: 300000   # cifar10 -> 30000
+  step_size: 75000 # imagenet -> ~ every 30 epochs ( (1281167 / batch_size) * 30 )   # cifar10 -> 30000
 
 
 compute:
@@ -84,7 +84,8 @@ compute:
   # If True, use data-parallelization model for distributed training
   distributed: True
   # Number of CUDA devices to use for distributed training
-  dist_num_devices: 4
+  world_size: 4
+  dist_backend: "nccl"
 
 wandb:
   project: condensed-rigl

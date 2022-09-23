@@ -1,6 +1,5 @@
 from rigl_torch.datasets import _data_stem
 from typing import Dict, Any
-import torch
 from torchvision import transforms, datasets
 from ._transforms import PerImageStandarization  # noqa: F401
 
@@ -12,7 +11,7 @@ class CIFAR10DataStem(_data_stem.ABCDataStem):
     def __init__(self, cfg: Dict[str, Any]):
         super().__init__(cfg)
 
-    def get_train_test_loaders(self):
+    def _get_datasets(self):
         transform_train = self._get_transform(
             train=True, normalize=self.cfg.dataset.normalize
         )
@@ -25,13 +24,7 @@ class CIFAR10DataStem(_data_stem.ABCDataStem):
         test_dataset = datasets.CIFAR10(
             self.data_path, train=False, transform=transform_test
         )
-        train_loader = torch.utils.data.DataLoader(
-            train_dataset, **self.train_kwargs
-        )
-        test_loader = torch.utils.data.DataLoader(
-            test_dataset, **self.test_kwargs
-        )
-        return train_loader, test_loader
+        return train_dataset, test_dataset
 
     def _get_transform(self, train: bool, normalize: bool):
         transforms_list = []

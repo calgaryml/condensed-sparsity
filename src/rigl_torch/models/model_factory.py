@@ -26,7 +26,7 @@ class ModelFactory(object):
 
     @classmethod
     def load_model(
-        cls, model, dataset, state_dict=None, *args, **kwargs
+        cls, model, dataset, *args, **kwargs
     ) -> nn.Module:
         cls.__logger.info(
             f"Loading model {model}/{dataset} using "
@@ -34,6 +34,4 @@ class ModelFactory(object):
             f"kwargs: {kwargs}"
         )
         model = cls.registered_models[dataset][model](*args, **kwargs)
-        if state_dict is not None:
-            model.load_state_dict(state_dict)
         return model
