@@ -66,7 +66,7 @@ def initalize_main(cfg: omegaconf.DictConfig) -> None:
             nprocs=cfg.compute.world_size,
         )
     else:
-        main(1, cfg)  # Single GPU
+        main(0, cfg)  # Single GPU
 
 
 def _get_logger(rank, cfg: omegaconf.DictConfig) -> logging.Logger:
@@ -74,7 +74,7 @@ def _get_logger(rank, cfg: omegaconf.DictConfig) -> logging.Logger:
     logger = logging.getLogger(__file__)
     logger.setLevel(level=logging.INFO)
     current_date = date.today().strftime("%Y-%m-%d")
-    logformat = "[%(levelname)s] %(asctime)s G- %(name)s - %(funcName)s (%(lineno)d) %(rank)s: %(message)s"
+    logformat = "[%(levelname)s] %(asctime)s G- %(name)s - %(funcName)s (%(lineno)d) : %(message)s"
     logging.root.handlers = []
     logging.basicConfig(
         level=logging.INFO,
@@ -84,13 +84,12 @@ def _get_logger(rank, cfg: omegaconf.DictConfig) -> logging.Logger:
             logging.StreamHandler(),
         ],
     )
-    logger = logging.LoggerAdapter(logger, {"rank": f"rank: {rank}"})
-    logger.info("hell world")
+    # logger = logging.LoggerAdapter(logger, {"rank": f"rank: {rank}"})
+    # logger.info("hell world")
     return logger
 
 
 def main(rank: int, cfg: omegaconf.DictConfig) -> None:
-    print(rank)
     logger = _get_logger(rank, cfg)
     if cfg.experiment.resume_from_checkpoint:
         checkpoint = _get_checkpoint(cfg, rank, logger)
@@ -140,7 +139,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
     train_loader, test_loader = get_dataloaders(cfg)
 
     model = ModelFactory.load_model(
-        model=cfg.model.name, dataset=cfg.dataset.name, state_dict=model_state
+        model=cfg.model.name, dataset=cfg.dataset.name
     )
     model.to(device)
     if cfg.compute.distributed:
