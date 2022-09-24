@@ -27,7 +27,8 @@
 	"workspaceMount": "source=${localWorkspaceFolder}/,target=/home/condensed-sparsity,type=bind",
 	"workspaceFolder": "/home/condensed-sparsity",
 	"mounts": [
-		"source=/datasets/ILSVRC2012,target=/datasets/ILSVRC2012,type=bind"
+		"source=/datasets/ILSVRC2012,target=/datasets/ILSVRC2012,type=bind",
+		"source=/scratch/datasets/ILSVRC2012,target=/scratch/datasets/ILSVRC2012,type=bind"
 	],
 	"runArgs": [
 		"--gpus",
