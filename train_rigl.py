@@ -201,7 +201,8 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
         checkpoint.optimizer = optimizer
         checkpoint.scheduler = scheduler
         checkpoint.pruner = pruner
-        epoch_start = checkpoint.epoch
+        # Start at the next epoch after the last that successfully was saved
+        epoch_start =  checkpoint.epoch + 1
     for epoch in range(epoch_start, cfg.training.epochs + 1):
         logger.info(pruner)
         if cfg.compute.distributed:

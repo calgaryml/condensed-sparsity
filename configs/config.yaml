@@ -37,11 +37,11 @@ rigl:
 
 training:
   # quickly check a single pass",
-  dry_run: False
+  dry_run: True
   # input batch size for testing
-  batch_size: 512
+  batch_size: 128
   # number of epochs to train
-  test_batch_size: 1024
+  test_batch_size: 512
   # number of epochs to train
   epochs: 102
   # random seed

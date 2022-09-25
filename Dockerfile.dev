@@ -1,5 +1,7 @@
 FROM pytorch/pytorch:1.11.0-cuda11.3-cudnn8-devel
 
+SHELL ["/bin/bash", "-c"]
+
 # Deal with nvidia GPG key issues
 # https://developer.nvidia.com/blog/updating-the-cuda-linux-gpg-repository-key/
 ARG DISTRO=ubuntu1804
@@ -13,7 +15,7 @@ RUN wget https://developer.download.nvidia.com/compute/cuda/repos/$DISTRO/$ARCH/
 
 # Install git/ssh/tmux
 RUN apt-get update \
-    && apt-get install -y git ssh tmux vim
+    && apt-get install -y git ssh tmux vim curl htop
 
 # Use a non-root user
 ARG USERNAME=user
@@ -40,27 +42,33 @@ RUN mkdir /home/condensed-sparsity/ && \
 
 ENV NVIDIA_DRIVER_CAPABILITIES=all
 ENV PATH="/home/${USERNAME}/.local/bin:${PATH}"
-USER $USERNAME
 
 # Init conda
+USER $USERNAME
 RUN conda init bash \
     && sudo chmod -R +777 /opt/conda/ \
     && exec bash \ 
     && conda activate base
 
 # Install poetry
-ARG POETRY_VERSION="1.2.0"
-RUN python -m pip install --upgrade pip \
-    && python -m pip install poetry==${POETRY_VERSION}
-RUN poetry config virtualenvs.create false
+# https://python-poetry.org/docs/configuration/#using-environment-variables
+ENV POETRY_VERSION="1.2.0" \
+    POETRY_HOME="/home/${USERNAME}/poetry" \
+    POETRY_NO_INTERACTION=1 \
+    POETRY_VIRTUALENVS_IN_PROJECT=true \
+    BUILD_PATH="/home/${USERNAME}/build" \
+    VENV_PATH="/home/${USERNAME}/build/.venv"
 
+ENV PATH="$POETRY_HOME/bin:$VENV_PATH/bin:$PATH"
+
+RUN curl -sSL https://install.python-poetry.org | python3 -
 
 # Install project requirements 
-ARG BUILD_DIR="/tmp/build/"
-RUN mkdir ${BUILD_DIR}
-WORKDIR ${BUILD_DIR}
+RUN mkdir ${BUILD_PATH}
+WORKDIR ${BUILD_PATH}
 COPY ./pyproject.toml ./poetry.lock ./
+RUN exec bash
+RUN python -m venv .venv && source .venv/bin/activate
 RUN poetry install -vvv --no-root
-RUN rm -rf ${BUILD_DIR}
 
 WORKDIR /home/condensed-sparsity/
