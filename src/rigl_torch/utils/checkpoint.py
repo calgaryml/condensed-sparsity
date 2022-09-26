@@ -97,11 +97,14 @@ class Checkpoint(object):
         cls,
         checkpoint_dir: Optional[Union[pathlib.Path, str]] = None,
         run_id: str = None,
+        rank: int = 0,
     ) -> Checkpoint:
         checkpoint_dir = cls._get_existing_checkpoint_dir(
             checkpoint_dir, run_id
         )
-        return cls._load_checkpoint(cls.best_file_name, checkpoint_dir, run_id)
+        return cls._load_checkpoint(
+            cls.best_file_name, checkpoint_dir, run_id, rank
+        )
 
     @classmethod
     def load_last_checkpoint(
@@ -109,10 +112,11 @@ class Checkpoint(object):
         checkpoint_dir: Optional[Union[pathlib.Path, str]] = None,
         parent_dir: Optional[Union[pathlib.Path, str]] = None,
         run_id: str = None,
+        rank: int = 0,
     ) -> Checkpoint:
         if parent_dir is not None:
             cls.parent_dir = pathlib.Path(parent_dir)
-        return cls._load_checkpoint(cls.f_name, checkpoint_dir, run_id)
+        return cls._load_checkpoint(cls.f_name, checkpoint_dir, run_id, rank)
 
     @classmethod
     def _load_checkpoint(
@@ -120,6 +124,7 @@ class Checkpoint(object):
         f_name: str,
         checkpoint_dir: Optional[Union[pathlib.Path, str]] = None,
         run_id: str = None,
+        rank: int = 0,
     ) -> Checkpoint:
         checkpoint_dir = cls._get_existing_checkpoint_dir(
             checkpoint_dir, run_id
@@ -128,7 +133,7 @@ class Checkpoint(object):
         if not checkpoint_path.is_file():
             raise ValueError(f"{checkpoint_path} not found!")
         cls._logger.info(f"Loading checkpoint from {checkpoint_path}...")
-        state = torch.load(checkpoint_path)
+        state = torch.load(checkpoint_path, map_location=f"cuda:{rank}")
         return Checkpoint(**state)
 
     @classmethod

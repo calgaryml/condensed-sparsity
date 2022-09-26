@@ -1,6 +1,5 @@
 from typing import Dict, Any, Union
 import pathlib
-import torch
 from torchvision import transforms, datasets
 
 from rigl_torch.datasets import _data_stem
@@ -20,7 +19,7 @@ class ImageNetDataStem(_data_stem.ABCDataStem):
     ):
         super().__init__(cfg, data_path_override=data_path_override)
 
-    def get_train_test_loaders(self):
+    def _get_datasets(self):
         train_transform = self._get_transform()
         test_transform = self._get_test_transform()
         if not self.cfg.dataset.use_cc_data_loaders:
@@ -43,13 +42,7 @@ class ImageNetDataStem(_data_stem.ABCDataStem):
                 transform=test_transform,
                 meta_file_path=self.cfg.paths.data_folder,
             )
-        train_loader = torch.utils.data.DataLoader(
-            train_dataset, **self.train_kwargs
-        )
-        test_loader = torch.utils.data.DataLoader(
-            test_dataset, **self.test_kwargs
-        )
-        return train_loader, test_loader
+        return train_dataset, test_dataset
 
     def _get_transform(self):
         transform = transforms.Compose(

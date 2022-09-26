@@ -23,14 +23,22 @@ packages= [
 
 [tool.poetry.dependencies]
 python = "^3.8,<3.11"
-torch = "1.12.1"
-torchvision = "^0.13.1"
+torch={version="1.12.1+cu116*", source="torch_repo"}
+torchvision={version="^0.13.1+cu116*", source="torch_repo"}
+# torch = "1.12.1"
+# torchvision = "^0.13.1"
 tensorboard = "^2.10.0"
 hydra-core = "^1.2.0"
 python-dotenv="0.20.0"
 pytorch-lightning="1.6.5"
 scipy="1.8.0"
 wandb="0.12.5"
+
+[[tool.poetry.source]]
+name="torch_repo"
+url = "https://download.pytorch.org/whl/cu116"
+secondary = true
+default = false
 
 [tool.poetry.group.dev.dependencies]
 flake8 = "3.8.4"
@@ -113,6 +121,7 @@ exclude ='''
     | examples/main.py
     | examples/models.py
     | wandb/*
+    | .venv/*
 )
 '''
 

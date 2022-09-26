@@ -27,7 +27,7 @@ jobs:
         run: pip install --upgrade pip
 
       - name: Install poetry 1.2.0
-        run: pip install poetry==1.2.0 && poetry config virtualenvs.create false
+        run: pip install poetry==1.2.0
 
       # TODO: If we need SSH agent, need repo admin to add secret key
       # - name: Setup SSH Agent
@@ -36,13 +36,13 @@ jobs:
       #     ssh-private-key: ${{ secrets.SSH_KEY}}
 
       - name: Install dependencies
-        run: poetry install 
+        run: poetry install -vvv
 
       - name: Lint with Flake8
-        run: python -m flake8 .
+        run: poetry run python -m flake8 .
 
       - name: Test with pytest
-        run: python -m pytest tests -vs
+        run: poetry run python -m pytest tests -vs
 
       - name: Formatter check with black
-        run: python -m black --check .
+        run: poetry run python -m black --check .

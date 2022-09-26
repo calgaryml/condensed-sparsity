@@ -19,14 +19,27 @@ class ABCDataStem(ABC):
             not self.cfg.compute.no_cuda and torch.cuda.is_available()
         )
         torch.manual_seed(self.cfg.training.seed)
-        self.device = torch.device("cuda" if self.use_cuda else "cpu")
-        self.train_kwargs = {
-            "batch_size": self.cfg.training.batch_size,
-            "shuffle": True,
-        }
-        self.test_kwargs = {
-            "batch_size": self.cfg.training.test_batch_size,
-        }
+        if self.cfg.compute.distributed:
+            self.train_kwargs = {
+                "batch_size": int(
+                    self.cfg.training.batch_size / self.cfg.compute.world_size
+                ),
+                "shuffle": False,
+            }
+            self.test_kwargs = {
+                "batch_size": int(
+                    self.cfg.training.test_batch_size
+                    / self.cfg.compute.world_size
+                ),
+            }
+        else:
+            self.train_kwargs = {
+                "batch_size": self.cfg.training.batch_size,
+                "shuffle": True,
+            }
+            self.test_kwargs = {
+                "batch_size": self.cfg.training.test_batch_size,
+            }
         if self.use_cuda:
             self.train_kwargs.update(self.cfg.compute.cuda_kwargs)
             self.test_kwargs.update(self.cfg.compute.cuda_kwargs)
@@ -35,8 +48,28 @@ class ABCDataStem(ABC):
         else:
             self.data_path = self.cfg.paths.data_folder
 
-    @abstractmethod
     def get_train_test_loaders(self):
+        train_dataset, test_dataset = self._get_datasets()
+        if self.cfg.compute.distributed:
+            train_sampler = torch.utils.data.distributed.DistributedSampler(
+                train_dataset
+            )
+            test_sampler = torch.utils.data.distributed.DistributedSampler(
+                test_dataset, shuffle=False, drop_last=True
+            )
+        else:
+            train_sampler = None
+            test_sampler = None
+        train_loader = torch.utils.data.DataLoader(
+            train_dataset, sampler=train_sampler, **self.train_kwargs
+        )
+        test_loader = torch.utils.data.DataLoader(
+            test_dataset, sampler=test_sampler, **self.test_kwargs
+        )
+        return train_loader, test_loader
+
+    @abstractmethod
+    def _get_datasets(self):
         ...
 
     @abstractmethod
