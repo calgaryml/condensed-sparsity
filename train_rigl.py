@@ -270,8 +270,14 @@ def train(
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         logits = model(data)
-        output = F.log_softmax(logits, dim=1)
-        loss = F.nll_loss(output, target)
+        # output = F.log_softmax(logits, dim=1)
+        # loss = F.nll_loss(output, target)
+        loss = F.cross_entropy(
+            logits,
+            target,
+            label_smoothing=cfg.training.label_smoothing,
+            reduction="sum",
+        )
         loss.backward()
 
         if pruner is not None and pruner():
@@ -304,11 +310,17 @@ def test(cfg, model, device, test_loader, epoch, step, rank, logger):
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
             logits = model(data)
-            output = F.log_softmax(logits, dim=1)
-            test_loss += F.nll_loss(
-                output, target, reduction="sum"
-            )  # sum up batch loss
-            pred = output.argmax(
+            # output = F.log_softmax(logits, dim=1)
+            test_loss = F.cross_entropy(
+                logits,
+                target,
+                label_smoothing=cfg.training.label_smoothing,
+                reduction="sum",
+            )
+            # test_loss += F.nll_loss(
+            #     output, target, reduction="sum"
+            # )  # sum up batch loss
+            pred = logits.argmax(
                 dim=1, keepdim=True
             )  # get the index of the max log-probability
             correct += pred.eq(target.view_as(pred)).sum()
@@ -323,7 +335,7 @@ def test(cfg, model, device, test_loader, epoch, step, rank, logger):
             test_loss,
             correct / len(test_loader.dataset),
             data,
-            output,
+            logits,
             target,
             pred,
             step,
@@ -382,7 +394,4 @@ def _validate_distributed_cfg(cfg: omegaconf.DictConfig) -> None:
 
 if __name__ == "__main__":
     dotenv.load_dotenv(dotenv_path=".env", override=True)
-    import os
-
-    print(os.environ["NUM_WORKERS"])
     initalize_main()
