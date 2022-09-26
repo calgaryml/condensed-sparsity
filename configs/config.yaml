@@ -37,11 +37,11 @@ rigl:
 
 training:
   # quickly check a single pass",
-  dry_run: True
+  dry_run: False
   # input batch size for testing
-  batch_size: 128
+  batch_size: 512
   # number of epochs to train
-  test_batch_size: 512
+  test_batch_size: 1024
   # number of epochs to train
   epochs: 102
   # random seed
@@ -51,7 +51,7 @@ training:
   # For Saving the current Model
   save_model: True
   # max number of steps (will override epochs)
-  max_steps: null
+  max_steps: 100
 
   ## Optimization
   optimizer: sgd # "sgd", "adamw"
@@ -82,7 +82,7 @@ compute:
     num_workers: ${ oc.decode:${oc.env:NUM_WORKERS} }  # decode casts to int
     pin_memory: True
   # If True, use data-parallelization model for distributed training
-  distributed: False
+  distributed: True
   # Number of CUDA devices to use for distributed training
   world_size: 4
   # Backend to use for distributed training, options: ["nccl", "gloo"]

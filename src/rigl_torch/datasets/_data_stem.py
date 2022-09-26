@@ -25,7 +25,7 @@ class ABCDataStem(ABC):
                 "shuffle": False,
             }
             self.test_kwargs = {
-                "batch_size": (self.cfg.training.test_batch_size / self.cfg.compute.world_size),
+                "batch_size": int(self.cfg.training.test_batch_size / self.cfg.compute.world_size),
             }
         else:
             self.train_kwargs = {

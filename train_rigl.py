@@ -74,6 +74,7 @@ def _get_logger(rank, cfg: omegaconf.DictConfig) -> logging.Logger:
     logger = logging.getLogger(__file__)
     logger.setLevel(level=logging.INFO)
     current_date = date.today().strftime("%Y-%m-%d")
+    # logformat = "[%(levelname)s] %(asctime)s G- %(name)s -%(rank)s - %(funcName)s (%(lineno)d) : %(message)s"
     logformat = "[%(levelname)s] %(asctime)s G- %(name)s - %(funcName)s (%(lineno)d) : %(message)s"
     logging.root.handlers = []
     logging.basicConfig(
@@ -141,11 +142,11 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
     model = ModelFactory.load_model(
         model=cfg.model.name, dataset=cfg.dataset.name
     )
-    model.to(device)
     if cfg.compute.distributed:
         model = DistributedDataParallel(model, device_ids=[rank])
     if model_state is not None:
         model.load_state_dict(model_state)
+    model.to(device)
     optimizer = get_optimizer(cfg, model, state_dict=optimizer_state)
     scheduler = get_lr_scheduler(cfg, optimizer, state_dict=scheduler_state)
 
@@ -179,22 +180,23 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
         )
 
     writer = SummaryWriter(log_dir="./graphs")
-
-    wandb.watch(model, criterion=F.nll_loss, log="all", log_freq=100)
+    if rank == 0:
+        wandb.watch(model, criterion=F.nll_loss, log="all", log_freq=100)
     logger.info(f"Model Summary: {model}")
-    step = 0
     if not cfg.experiment.resume_from_checkpoint:
-        checkpoint = Checkpoint(
-            run_id=run.id,
-            cfg=cfg,
-            model=model,
-            optimizer=optimizer,
-            scheduler=scheduler,
-            pruner=pruner,
-            epoch=0,
-            step=0,
-            parent_dir=cfg.paths.checkpoints,
-        )
+        step = 0
+        if rank == 0:
+            checkpoint = Checkpoint(
+                run_id=run.id,
+                cfg=cfg,
+                model=model,
+                optimizer=optimizer,
+                scheduler=scheduler,
+                pruner=pruner,
+                epoch=0,
+                step=step,
+                parent_dir=cfg.paths.checkpoints,
+            )
         epoch_start = 1
     else:
         checkpoint.model = model
@@ -202,7 +204,8 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
         checkpoint.scheduler = scheduler
         checkpoint.pruner = pruner
         # Start at the next epoch after the last that successfully was saved
-        epoch_start =  checkpoint.epoch + 1
+        epoch_start = checkpoint.epoch + 1
+        step = checkpoint.step
     for epoch in range(epoch_start, cfg.training.epochs + 1):
         logger.info(pruner)
         if cfg.compute.distributed:
@@ -219,14 +222,17 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             step=step,
             logger=logger,
         )
-        loss, acc = test(model, device, test_loader, epoch, step, logger)
-        writer.add_scalar("loss", loss, epoch)
-        writer.add_scalar("accuracy", acc, epoch)
-        wandb.log({"Learning Rate": scheduler.get_last_lr()[0]}, step=step)
-        checkpoint.current_acc = acc
-        checkpoint.step = step
-        checkpoint.epoch = epoch
-        checkpoint.save_checkpoint()
+        loss, acc = test(
+            cfg, model, device, test_loader, epoch, step, rank, logger
+        )
+        if rank == 0:
+            writer.add_scalar("loss", loss, epoch)
+            writer.add_scalar("accuracy", acc, epoch)
+            wandb.log({"Learning Rate": scheduler.get_last_lr()[0]}, step=step)
+            checkpoint.current_acc = acc
+            checkpoint.step = step
+            checkpoint.epoch = epoch
+            checkpoint.save_checkpoint()
         if cfg.training.dry_run:
             break
         if cfg.training.max_steps is not None and step > cfg.training.max_steps:
@@ -290,7 +296,7 @@ def train(
     return step
 
 
-def test(model, device, test_loader, epoch, step, rank, logger):
+def test(cfg, model, device, test_loader, epoch, step, rank, logger):
     model.eval()
     test_loss = 0
     correct = 0
@@ -306,8 +312,16 @@ def test(model, device, test_loader, epoch, step, rank, logger):
                 dim=1, keepdim=True
             )  # get the index of the max log-probability
             correct += pred.eq(target.view_as(pred)).sum()
-    dist.all_reduce(test_loss, dist.ReduceOp.AVG, async_op=False)
-    dist.all_reduce(correct, dist.ReduceOp.SUM, async_op=False)
+    if cfg.compute.distributed:
+        if rank == 0:
+            logger.info(f"test loss before all reduce: {test_loss}")
+            logger.info(f"correct before all reduce: {correct}")
+        dist.all_reduce(test_loss, dist.ReduceOp.AVG, async_op=False)
+        dist.all_reduce(correct, dist.ReduceOp.SUM, async_op=False)
+        if rank == 0:
+            logger.info(f"test loss after all reduce: {test_loss}")
+            logger.info(f"correct after all reduce: {correct}")
+    logger.info(f"len of test loader: {len(test_loader.dataset)}")
     test_loss /= len(test_loader.dataset)
     if rank == 0:
         wandb_log(
@@ -373,9 +387,8 @@ def _validate_distributed_cfg(cfg: omegaconf.DictConfig) -> None:
 
 
 if __name__ == "__main__":
-    dotenv.load_dotenv(dotenv_path=".env")
+    dotenv.load_dotenv(dotenv_path=".env", override=True)
     import os
 
-    os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = "29500"
+    print(os.environ["NUM_WORKERS"])
     initalize_main()
