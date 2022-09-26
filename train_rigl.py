@@ -280,7 +280,6 @@ def train(
             logits,
             target,
             label_smoothing=cfg.training.label_smoothing,
-            reduction="sum",
         )
         loss.backward()
 
@@ -294,7 +293,7 @@ def train(
                     batch_idx * len(data),
                     len(train_loader.dataset),
                     100.0 * batch_idx / len(train_loader),
-                    loss.item(),
+                    torch.mean(loss).item(),
                 )
             )
         if cfg.training.dry_run:
