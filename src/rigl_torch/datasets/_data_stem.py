@@ -21,11 +21,16 @@ class ABCDataStem(ABC):
         torch.manual_seed(self.cfg.training.seed)
         if self.cfg.compute.distributed:
             self.train_kwargs = {
-                "batch_size": int(self.cfg.training.batch_size / self.cfg.compute.world_size),
+                "batch_size": int(
+                    self.cfg.training.batch_size / self.cfg.compute.world_size
+                ),
                 "shuffle": False,
             }
             self.test_kwargs = {
-                "batch_size": int(self.cfg.training.test_batch_size / self.cfg.compute.world_size),
+                "batch_size": int(
+                    self.cfg.training.test_batch_size
+                    / self.cfg.compute.world_size
+                ),
             }
         else:
             self.train_kwargs = {

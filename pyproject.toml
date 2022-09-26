@@ -121,6 +121,7 @@ exclude ='''
     | examples/main.py
     | examples/models.py
     | wandb/*
+    | .venv/*
 )
 '''
 
