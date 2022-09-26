@@ -51,7 +51,7 @@ training:
   # For Saving the current Model
   save_model: True
   # max number of steps (will override epochs)
-  max_steps: 100
+  max_steps: null
 
   ## Optimization
   optimizer: sgd # "sgd", "adamw"

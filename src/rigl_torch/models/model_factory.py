@@ -25,9 +25,7 @@ class ModelFactory(object):
         return wrapper
 
     @classmethod
-    def load_model(
-        cls, model, dataset, *args, **kwargs
-    ) -> nn.Module:
+    def load_model(cls, model, dataset, *args, **kwargs) -> nn.Module:
         cls.__logger.info(
             f"Loading model {model}/{dataset} using "
             f"{cls.registered_models[dataset][model]} with args: {args} and "

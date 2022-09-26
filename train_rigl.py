@@ -142,11 +142,11 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
     model = ModelFactory.load_model(
         model=cfg.model.name, dataset=cfg.dataset.name
     )
+    model.to(device)
     if cfg.compute.distributed:
         model = DistributedDataParallel(model, device_ids=[rank])
     if model_state is not None:
         model.load_state_dict(model_state)
-    model.to(device)
     optimizer = get_optimizer(cfg, model, state_dict=optimizer_state)
     scheduler = get_lr_scheduler(cfg, optimizer, state_dict=scheduler_state)
 
@@ -313,14 +313,8 @@ def test(cfg, model, device, test_loader, epoch, step, rank, logger):
             )  # get the index of the max log-probability
             correct += pred.eq(target.view_as(pred)).sum()
     if cfg.compute.distributed:
-        if rank == 0:
-            logger.info(f"test loss before all reduce: {test_loss}")
-            logger.info(f"correct before all reduce: {correct}")
         dist.all_reduce(test_loss, dist.ReduceOp.AVG, async_op=False)
         dist.all_reduce(correct, dist.ReduceOp.SUM, async_op=False)
-        if rank == 0:
-            logger.info(f"test loss after all reduce: {test_loss}")
-            logger.info(f"correct after all reduce: {correct}")
     logger.info(f"len of test loader: {len(test_loader.dataset)}")
     test_loss /= len(test_loader.dataset)
     if rank == 0:
