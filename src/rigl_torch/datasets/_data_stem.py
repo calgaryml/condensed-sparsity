@@ -52,10 +52,10 @@ class ABCDataStem(ABC):
         train_dataset, test_dataset = self._get_datasets()
         if self.cfg.compute.distributed:
             train_sampler = torch.utils.data.distributed.DistributedSampler(
-                train_dataset
+                train_dataset, drop_last=True
             )
             test_sampler = torch.utils.data.distributed.DistributedSampler(
-                test_dataset, shuffle=False, drop_last=True
+                test_dataset, shuffle=False, drop_last=False
             )
         else:
             train_sampler = None

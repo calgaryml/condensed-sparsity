@@ -41,7 +41,7 @@ training:
   # input batch size for testing
   batch_size: 512
   # number of epochs to train
-  test_batch_size: 1024
+  test_batch_size: 1000
   # number of epochs to train
   epochs: 103  # For imagenet, training will finish at ~ epoch 102.31
   # random seed
