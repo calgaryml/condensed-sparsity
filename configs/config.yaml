@@ -43,7 +43,7 @@ training:
   # number of epochs to train
   test_batch_size: 1024
   # number of epochs to train
-  epochs: 102
+  epochs: 103  # For imagenet, training will finish at ~ epoch 102.31
   # random seed
   seed: 42
   # Log interval (number of steps / iterations)
@@ -51,7 +51,7 @@ training:
   # For Saving the current Model
   save_model: True
   # max number of steps (will override epochs)
-  max_steps: null
+  max_steps: 256000
 
   ## Optimization
   optimizer: sgd # "sgd", "adamw"

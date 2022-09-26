@@ -152,7 +152,10 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
 
     pruner = None  # noqa: E731
     if cfg.rigl.dense_allocation is not None:
-        T_end = int(0.75 * cfg.training.epochs * len(train_loader))
+        if cfg.training.max_steps is None:
+            T_end = int(0.75 * cfg.training.epochs * len(train_loader))
+        else:
+            T_end = int(0.75 * cfg.training.max_steps)
         if cfg.rigl.const_fan_in:
             rigl_scheduler = RigLConstFanScheduler
             logger.info("Using constant fan in rigl scheduler...")
@@ -310,16 +313,12 @@ def test(cfg, model, device, test_loader, epoch, step, rank, logger):
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
             logits = model(data)
-            # output = F.log_softmax(logits, dim=1)
-            test_loss = F.cross_entropy(
+            test_loss += F.cross_entropy(
                 logits,
                 target,
                 label_smoothing=cfg.training.label_smoothing,
-                reduction="sum",
+                reduction="mean",
             )
-            # test_loss += F.nll_loss(
-            #     output, target, reduction="sum"
-            # )  # sum up batch loss
             pred = logits.argmax(
                 dim=1, keepdim=True
             )  # get the index of the max log-probability
@@ -327,8 +326,6 @@ def test(cfg, model, device, test_loader, epoch, step, rank, logger):
     if cfg.compute.distributed:
         dist.all_reduce(test_loss, dist.ReduceOp.AVG, async_op=False)
         dist.all_reduce(correct, dist.ReduceOp.SUM, async_op=False)
-    logger.info(f"len of test loader: {len(test_loader.dataset)}")
-    test_loss /= len(test_loader.dataset)
     if rank == 0:
         wandb_log(
             epoch,
