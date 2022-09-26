@@ -240,6 +240,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             break
         if cfg.training.max_steps is not None and step > cfg.training.max_steps:
             break
+        scheduler.step()
 
     if cfg.training.save_model and rank == 0:
         save_path = pathlib.Path(cfg.paths.artifacts)
@@ -285,7 +286,6 @@ def train(
 
         if pruner is not None and pruner():
             optimizer.step()
-        scheduler.step()
 
         if batch_idx % cfg.training.log_interval == 0:
             logger.info(

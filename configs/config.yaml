@@ -4,7 +4,7 @@ defaults:
   - _self_
 
 experiment:
-  comment: ${rigl.dense_allocation}_${rigl.const_fan_in}_dist_test
+  comment: ${rigl.dense_allocation}_${rigl.const_fan_in}_dist
   name: ${model.name}_${dataset.name}_${experiment.comment}
   resume_from_checkpoint: False
   run_id: null
@@ -51,7 +51,7 @@ training:
   # For Saving the current Model
   save_model: True
   # max number of steps (will override epochs)
-  max_steps: 256000
+  max_steps: 256000  # 4096 * 32000 / 512 from rigl paper
 
   ## Optimization
   optimizer: sgd # "sgd", "adamw"
@@ -64,17 +64,17 @@ training:
 
 
   ## Scheduler
-  scheduler: step_lr # cosine_annealing_with_warm_up, step_lr_with_warm_up
+  scheduler: step_lr_with_warm_up # cosine_annealing_with_warm_up, step_lr_with_warm_up
   # Learning rate after warmup (default: 0.01)",
-  lr: 0.1
+  lr: 1.6
   # Learning rate for first epoch of warm up, only applies to schedulers with linear warm up
   init_lr: 0
-  # Number of steps to warm up for linear warm ups
+  # Number of epochs to warm up for linear warm ups
   warm_up_steps: 5
   # Learning rate step gamma
-  gamma: 0.2
+  gamma: 0.1
   # Step size to use in learning rate scheduler if StepLR is used.
-  step_size: 75000 # imagenet -> ~ every 30 epochs ( (1281167 / batch_size) * 30 )   # cifar10 -> 30000
+  step_size: [30,70,90]
 
 
 compute:

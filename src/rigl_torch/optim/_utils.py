@@ -7,6 +7,7 @@ from rigl_torch.models import ModelFactory
 from .cosine_annealing_with_linear_warm_up import (
     CosineAnnealingWithLinearWarmUp,
 )
+from .step_lr_with_linear_warm_up import StepLrWithLinearWarmUp
 
 
 def get_optimizer(
@@ -59,12 +60,15 @@ def get_lr_scheduler(
             step_size=cfg.training.step_size,
             gamma=cfg.training.gamma,
         ),
-        # "step_lr_with_warm_up": partial( # For imagnet
-        #     torch.optim.Adadelta,
-        #     params=model.parameters(),
-        #     lr=cfg.training.lr,
-        #     weight_decay=cfg.training.weight_decay,
-        # ),
+        "step_lr_with_warm_up": partial(  # For imagnet
+            StepLrWithLinearWarmUp,
+            optimizer=optim,
+            step_size=cfg.training.step_size,
+            warm_up_steps=cfg.training.warm_up_steps,
+            gamma=cfg.training.gamma,
+            init_lr=cfg.training.init_lr,
+            lr=cfg.training.lr,
+        ),
         "cosine_annealing_with_warm_up": partial(
             CosineAnnealingWithLinearWarmUp,
             optimizer=optim,
