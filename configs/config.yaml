@@ -4,7 +4,7 @@ defaults:
   - _self_
 
 experiment:
-  comment: ${rigl.dense_allocation}_${rigl.const_fan_in}_dist_test
+  comment: ${rigl.dense_allocation}_${rigl.const_fan_in}_dist
   name: ${model.name}_${dataset.name}_${experiment.comment}
   resume_from_checkpoint: False
   run_id: null
@@ -20,10 +20,10 @@ rigl:
   # percentage of dense parameters allowed. if None, pruning will not 
   # be used. must be on the interval (0, 1]
   dense_allocation: 0.1
-  # delta param for pruning
-  delta: 100
+  # number of steps between rigl pruning / regrow iterations
+  delta: 800  # 4096 * 100 / 512
   # number of gradients to accumulate before scoring for rigl
-  grad_accumulation_n: 1
+  grad_accumulation_n: 8  # 4096 / 512
   # alpha param for pruning for cosine decay in determining how many connections to prune/regrow
   alpha: 0.3
   # if 1, use random sparsity topo and remain static
@@ -41,17 +41,17 @@ training:
   # input batch size for testing
   batch_size: 512
   # number of epochs to train
-  test_batch_size: 1024
+  test_batch_size: 1000
   # number of epochs to train
-  epochs: 103  # For imagenet, training will finish at ~ epoch 102.31
+  epochs: 110  # For imagenet, training will finish at ~ epoch 102.31
   # random seed
   seed: 42
-  # Log interval (number of steps / iterations)
+  # Log interval (number of mini-batch steps)
   log_interval: 100
   # For Saving the current Model
   save_model: True
   # max number of steps (will override epochs)
-  max_steps: 256000
+  max_steps: 256000  # 4096 * 32000 / 512 from rigl paper
 
   ## Optimization
   optimizer: sgd # "sgd", "adamw"
@@ -64,17 +64,17 @@ training:
 
 
   ## Scheduler
-  scheduler: step_lr # cosine_annealing_with_warm_up, step_lr_with_warm_up
-  # Learning rate after warmup (default: 0.01)",
-  lr: 0.1
+  scheduler: step_lr_with_warm_up # cosine_annealing_with_warm_up, step_lr_with_warm_up
+  # Learning rate after warmup
+  lr: 1.6
   # Learning rate for first epoch of warm up, only applies to schedulers with linear warm up
   init_lr: 0
-  # Number of steps to warm up for linear warm ups
+  # Number of epochs to warm up for linear warm ups
   warm_up_steps: 5
   # Learning rate step gamma
-  gamma: 0.2
-  # Step size to use in learning rate scheduler if StepLR is used.
-  step_size: 75000 # imagenet -> ~ every 30 epochs ( (1281167 / batch_size) * 30 )   # cifar10 -> 30000
+  gamma: 0.1
+  # Step size to use in learning rate scheduler if StepLR is used. List[int] || int
+  step_size: [30,70,90]
 
 
 compute:

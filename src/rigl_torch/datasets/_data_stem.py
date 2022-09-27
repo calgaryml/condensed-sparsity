@@ -52,19 +52,25 @@ class ABCDataStem(ABC):
         train_dataset, test_dataset = self._get_datasets()
         if self.cfg.compute.distributed:
             train_sampler = torch.utils.data.distributed.DistributedSampler(
-                train_dataset
+                train_dataset, shuffle=True
             )
             test_sampler = torch.utils.data.distributed.DistributedSampler(
-                test_dataset, shuffle=False, drop_last=True
+                test_dataset, shuffle=False
             )
         else:
             train_sampler = None
             test_sampler = None
         train_loader = torch.utils.data.DataLoader(
-            train_dataset, sampler=train_sampler, **self.train_kwargs
+            train_dataset,
+            sampler=train_sampler,
+            drop_last=True,
+            **self.train_kwargs
         )
         test_loader = torch.utils.data.DataLoader(
-            test_dataset, sampler=test_sampler, **self.test_kwargs
+            test_dataset,
+            sampler=test_sampler,
+            drop_last=False,
+            **self.test_kwargs
         )
         return train_loader, test_loader
 

@@ -153,7 +153,17 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
     pruner = None  # noqa: E731
     if cfg.rigl.dense_allocation is not None:
         if cfg.training.max_steps is None:
-            T_end = int(0.75 * cfg.training.epochs * len(train_loader))
+            if cfg.compute.distributed:
+                # In distributed mode, len(train_loader) will be reduced by
+                # 1/world_size compared to single device
+                T_end = int(
+                    0.75
+                    * cfg.training.epochs
+                    * len(train_loader)  # Dataset length // batch_size
+                    * cfg.compute.world_size
+                )
+            else:
+                T_end = int(0.75 * cfg.training.epochs * len(train_loader))
         else:
             T_end = int(0.75 * cfg.training.max_steps)
         if cfg.rigl.const_fan_in:
@@ -221,7 +231,6 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             optimizer,
             epoch,
             pruner=pruner,
-            scheduler=scheduler,
             step=step,
             logger=logger,
         )
@@ -240,6 +249,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             break
         if cfg.training.max_steps is not None and step > cfg.training.max_steps:
             break
+        scheduler.step()
 
     if cfg.training.save_model and rank == 0:
         save_path = pathlib.Path(cfg.paths.artifacts)
@@ -263,7 +273,6 @@ def train(
     optimizer,
     epoch,
     pruner,
-    scheduler,
     step,
     logger,
 ):
@@ -273,25 +282,26 @@ def train(
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         logits = model(data)
-        # output = F.log_softmax(logits, dim=1)
-        # loss = F.nll_loss(output, target)
         loss = F.cross_entropy(
             logits,
             target,
             label_smoothing=cfg.training.label_smoothing,
-            reduction="sum",
         )
         loss.backward()
 
         if pruner is not None and pruner():
             optimizer.step()
-        scheduler.step()
 
         if batch_idx % cfg.training.log_interval == 0:
+            world_size = (
+                1
+                if cfg.compute.distributed is False
+                else cfg.compute.world_size
+            )
             logger.info(
                 "Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
                     epoch,
-                    batch_idx * len(data),
+                    batch_idx * len(data) * world_size,
                     len(train_loader.dataset),
                     100.0 * batch_idx / len(train_loader),
                     loss.item(),
