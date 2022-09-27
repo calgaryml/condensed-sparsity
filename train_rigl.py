@@ -293,13 +293,16 @@ def train(
             optimizer.step()
 
         if batch_idx % cfg.training.log_interval == 0:
+            world_size = (
+                1 if cfg.compute.distributed is False else cfg.compute.world_size
+            )
             logger.info(
                 "Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
                     epoch,
-                    batch_idx * len(data),
+                    batch_idx * len(data) * world_size,
                     len(train_loader.dataset),
                     100.0 * batch_idx / len(train_loader),
-                    torch.mean(loss).item(),
+                    loss.item(),
                 )
             )
         if cfg.training.dry_run:
