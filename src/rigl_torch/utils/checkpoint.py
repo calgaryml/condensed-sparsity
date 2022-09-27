@@ -165,3 +165,20 @@ class Checkpoint(object):
             f"run_id :{run_id} not found in {cls.parent_dir}. "
             f"I can see files: {dir_glob}"
         )
+
+    def get_single_process_model_state_from_distributed_state(
+        self,
+    ) -> Dict[str, torch.Tensor]:
+        """Returns model state from a distributed training run in a format
+        suitable for a single process model.
+
+        In distributed training, `module.<param_name>` is appended to every
+        parameter. If we wish to test/train this model further in a single
+        process, we simply strip the `module` prefix to match keys expected in
+        the model.
+
+        Returns:
+            Dict[str, torch.Tensor]: Model state ordered dict from distributed
+                trained model for loading in single process.
+        """
+        return {".".join(k.split(".")[1:]): v for k, v in self.model.items()}

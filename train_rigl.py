@@ -153,7 +153,17 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
     pruner = None  # noqa: E731
     if cfg.rigl.dense_allocation is not None:
         if cfg.training.max_steps is None:
-            T_end = int(0.75 * cfg.training.epochs * len(train_loader))
+            if cfg.compute.distributed:
+                # In distributed mode, len(train_loader) will be reduced by
+                # 1/world_size compared to single device
+                T_end = int(
+                    0.75
+                    * cfg.training.epochs
+                    * len(train_loader)  # Dataset length // batch_size
+                    * cfg.compute.world_size
+                )
+            else:
+                T_end = int(0.75 * cfg.training.epochs * len(train_loader))
         else:
             T_end = int(0.75 * cfg.training.max_steps)
         if cfg.rigl.const_fan_in:

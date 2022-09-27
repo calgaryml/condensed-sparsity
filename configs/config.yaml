@@ -20,16 +20,16 @@ rigl:
   # percentage of dense parameters allowed. if None, pruning will not 
   # be used. must be on the interval (0, 1]
   dense_allocation: 0.1
-  # delta param for pruning
-  delta: 100
+  # number of steps between rigl pruning / regrow iterations
+  delta: 800  # 4096 * 100 / 512
   # number of gradients to accumulate before scoring for rigl
-  grad_accumulation_n: 1
+  grad_accumulation_n: 8  # 4096 / 512
   # alpha param for pruning for cosine decay in determining how many connections to prune/regrow
   alpha: 0.3
   # if 1, use random sparsity topo and remain static
   static_topo: 0
   # If True, use const_fan_in scheduler.
-  const_fan_in: True
+  const_fan_in: False
   # Define layer-wise sparsity distribution. Options include `uniform` & `erk`
   sparsity_distribution: erk
   # Power scale for ERK distribution
@@ -39,14 +39,14 @@ training:
   # quickly check a single pass",
   dry_run: False
   # input batch size for testing
-  batch_size: 32
+  batch_size: 512
   # number of epochs to train
   test_batch_size: 1000
   # number of epochs to train
-  epochs: 103  # For imagenet, training will finish at ~ epoch 102.31
+  epochs: 110  # For imagenet, training will finish at ~ epoch 102.31
   # random seed
   seed: 42
-  # Log interval (number of steps / iterations)
+  # Log interval (number of mini-batch steps)
   log_interval: 100
   # For Saving the current Model
   save_model: True
@@ -60,12 +60,12 @@ training:
   # Momentum coefficient for SGD optimizer
   momentum: 0.9  # 0.9 -> rigl value
   # Label smoothing for cross entropy
-  label_smoothing: 0 # 0.1
+  label_smoothing: 0.1
 
 
   ## Scheduler
   scheduler: step_lr_with_warm_up # cosine_annealing_with_warm_up, step_lr_with_warm_up
-  # Learning rate after warmup (default: 0.01)",
+  # Learning rate after warmup
   lr: 1.6
   # Learning rate for first epoch of warm up, only applies to schedulers with linear warm up
   init_lr: 0
@@ -73,7 +73,7 @@ training:
   warm_up_steps: 5
   # Learning rate step gamma
   gamma: 0.1
-  # Step size to use in learning rate scheduler if StepLR is used.
+  # Step size to use in learning rate scheduler if StepLR is used. List[int] || int
   step_size: [30,70,90]
 
 
@@ -84,7 +84,7 @@ compute:
     num_workers: ${ oc.decode:${oc.env:NUM_WORKERS} }  # decode casts to int
     pin_memory: True
   # If True, use data-parallelization model for distributed training
-  distributed: False
+  distributed: True
   # Number of CUDA devices to use for distributed training
   world_size: 4
   # Backend to use for distributed training, options: ["nccl", "gloo"]
