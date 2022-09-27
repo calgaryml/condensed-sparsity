@@ -294,7 +294,9 @@ def train(
 
         if batch_idx % cfg.training.log_interval == 0:
             world_size = (
-                1 if cfg.compute.distributed is False else cfg.compute.world_size
+                1
+                if cfg.compute.distributed is False
+                else cfg.compute.world_size
             )
             logger.info(
                 "Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(

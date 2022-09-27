@@ -1,15 +1,8 @@
-import torch
-import torch.nn.functional as F
 import torch.multiprocessing as mp
 import torch.distributed as dist
-from torch.nn.parallel import DistributedDataParallel
-import torchvision
 from rigl_torch.datasets import get_dataloaders
-from omegaconf import DictConfig
 import dotenv
-from rigl_torch.models import ModelFactory
 import hydra
-from rigl_torch.datasets import get_dataloaders
 
 
 def main(rank, cfg):
