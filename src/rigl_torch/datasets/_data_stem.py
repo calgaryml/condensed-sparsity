@@ -61,7 +61,10 @@ class ABCDataStem(ABC):
             train_sampler = None
             test_sampler = None
         train_loader = torch.utils.data.DataLoader(
-            train_dataset, sampler=train_sampler, **self.train_kwargs
+            train_dataset,
+            sampler=train_sampler,
+            **self.train_kwargs,
+            drop_last=True
         )
         test_loader = torch.utils.data.DataLoader(
             test_dataset, sampler=test_sampler, **self.test_kwargs

@@ -45,9 +45,7 @@ class StepLrWithLinearWarmUp(_LRScheduler):
                     and self.last_epoch == self.step_size[0]
                 ):
                     self.step_size.pop(0)
-                    self._logger.info(
-                        f"Reducing LR to {self.get_last_lr() * self.gamma}"
-                    )
+                    self._log_update()
                     return [
                         group["lr"] * self.gamma
                         for group in self.optimizer.param_groups
@@ -64,10 +62,14 @@ class StepLrWithLinearWarmUp(_LRScheduler):
                         group["lr"] for group in self.optimizer.param_groups
                     ]
                 else:
-                    self._logger.info(
-                        f"Reducing LR to {self.get_last_lr() * self.gamma}"
-                    )
+                    self._log_update()
                     return [
                         group["lr"] * self.gamma
                         for group in self.optimizer.param_groups
                     ]
+
+    def _log_update(self) -> None:
+        self._logger.info(
+            f"Reducing LR to {self.get_last_lr()[0] * self.gamma} @ epoch "
+            f"{self.last_epoch}"
+        )

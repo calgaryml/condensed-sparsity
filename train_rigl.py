@@ -221,7 +221,6 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             optimizer,
             epoch,
             pruner=pruner,
-            scheduler=scheduler,
             step=step,
             logger=logger,
         )
@@ -264,7 +263,6 @@ def train(
     optimizer,
     epoch,
     pruner,
-    scheduler,
     step,
     logger,
 ):
@@ -274,8 +272,6 @@ def train(
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         logits = model(data)
-        # output = F.log_softmax(logits, dim=1)
-        # loss = F.nll_loss(output, target)
         loss = F.cross_entropy(
             logits,
             target,

@@ -39,7 +39,7 @@ training:
   # quickly check a single pass",
   dry_run: False
   # input batch size for testing
-  batch_size: 512
+  batch_size: 32
   # number of epochs to train
   test_batch_size: 1000
   # number of epochs to train
@@ -60,7 +60,7 @@ training:
   # Momentum coefficient for SGD optimizer
   momentum: 0.9  # 0.9 -> rigl value
   # Label smoothing for cross entropy
-  label_smoothing: 0.1
+  label_smoothing: 0 # 0.1
 
 
   ## Scheduler
@@ -84,7 +84,7 @@ compute:
     num_workers: ${ oc.decode:${oc.env:NUM_WORKERS} }  # decode casts to int
     pin_memory: True
   # If True, use data-parallelization model for distributed training
-  distributed: True
+  distributed: False
   # Number of CUDA devices to use for distributed training
   world_size: 4
   # Backend to use for distributed training, options: ["nccl", "gloo"]
