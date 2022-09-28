@@ -66,7 +66,7 @@ training:
   ## Scheduler
   scheduler: step_lr_with_warm_up # cosine_annealing_with_warm_up, step_lr_with_warm_up
   # Learning rate after warmup
-  lr: 1.6
+  lr: 0.2  # 0.1 * batch size / 256 per original paper
   # Learning rate for first epoch of warm up, only applies to schedulers with linear warm up
   init_lr: 0
   # Number of epochs to warm up for linear warm ups
