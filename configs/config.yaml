@@ -68,7 +68,7 @@ training:
   # Learning rate after warmup
   lr: 0.2  # 0.1 * batch size / 256 per original paper
   # Learning rate for first epoch of warm up, only applies to schedulers with linear warm up
-  init_lr: 0
+  init_lr: 1.0e-6
   # Number of epochs to warm up for linear warm ups
   warm_up_steps: 5
   # Learning rate step gamma
