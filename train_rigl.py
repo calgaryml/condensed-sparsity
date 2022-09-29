@@ -150,7 +150,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
     optimizer = get_optimizer(cfg, model, state_dict=optimizer_state)
     scheduler = get_lr_scheduler(cfg, optimizer, state_dict=scheduler_state)
 
-    pruner = None  # noqa: E731
+    pruner = None
     if cfg.rigl.dense_allocation is not None:
         if cfg.training.max_steps is None:
             if cfg.compute.distributed:
@@ -220,7 +220,8 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
         epoch_start = checkpoint.epoch + 1
         step = checkpoint.step
     for epoch in range(epoch_start, cfg.training.epochs + 1):
-        logger.info(pruner)
+        if pruner is not None:
+            logger.info(pruner)
         if cfg.compute.distributed:
             train_loader.sampler.set_epoch(epoch)
         step = train(
@@ -277,10 +278,17 @@ def train(
     logger,
 ):
     model.train()
+    steps_to_accumulate_grad = _get_steps_to_accumulate_grad(
+        cfg.training.simulated_batch_size, cfg.training.batch_size
+    )
     for batch_idx, (data, target) in enumerate(train_loader):
+        apply_grads = (
+            True
+            if (batch_idx != 0 and batch_idx % steps_to_accumulate_grad == 0)
+            else False
+        )
         step += 1
         data, target = data.to(device), target.to(device)
-        optimizer.zero_grad()
         logits = model(data)
         loss = F.cross_entropy(
             logits,
@@ -289,8 +297,12 @@ def train(
         )
         loss.backward()
 
-        if pruner is not None and pruner():
-            optimizer.step()
+        if apply_grads:
+            if pruner is None:  # Dense case, we call optimizer always
+                optimizer.step()
+            elif pruner():
+                # We only call optimizer if rigl did not update topology
+                optimizer.step()
 
         if batch_idx % cfg.training.log_interval == 0:
             world_size = (
@@ -312,6 +324,8 @@ def train(
             return step
         if cfg.training.max_steps is not None and step > cfg.training.max_steps:
             return step
+        if apply_grads:
+            optimizer.zero_grad()
     return step
 
 
@@ -346,6 +360,7 @@ def test(cfg, model, device, test_loader, epoch, step, rank, logger):
             target,
             pred,
             step,
+            cfg.wandb.log_images,
         )
         logger.info(
             "\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n".format(
@@ -358,19 +373,20 @@ def test(cfg, model, device, test_loader, epoch, step, rank, logger):
     return test_loss, correct / len(test_loader.dataset)
 
 
-def wandb_log(epoch, loss, accuracy, inputs, logits, captions, pred, step):
-    wandb.log(
-        {
-            "epoch": epoch,
-            "loss": loss.item(),
-            "accuracy": accuracy.item(),
-            "inputs": wandb.Image(inputs),
-            "logits": wandb.Histogram(logits.cpu()),
-            "captions": wandb.Html(captions.cpu().numpy().__str__()),
-            "predictions": wandb.Html(pred.cpu().numpy().__str__()),
-        },
-        step=step,
-    )
+def wandb_log(
+    epoch, loss, accuracy, inputs, logits, captions, pred, step, log_images
+):
+    log_data = {
+        "epoch": epoch,
+        "loss": loss.item(),
+        "accuracy": accuracy.item(),
+        "logits": wandb.Histogram(logits.cpu()),
+        "captions": wandb.Html(captions.cpu().numpy().__str__()),
+        "predictions": wandb.Html(pred.cpu().numpy().__str__()),
+    }
+    if log_images:
+        log_data.extend({"inputs": wandb.Image(inputs)})
+    wandb.log(log_data, step=step)
 
 
 def set_seed(cfg: omegaconf.DictConfig) -> omegaconf.DictConfig:
@@ -397,6 +413,19 @@ def _validate_distributed_cfg(cfg: omegaconf.DictConfig) -> None:
             f" but I only see {torch.cuda.device_count()} cuda devices!"
         )
     return
+
+
+def _get_steps_to_accumulate_grad(
+    simulated_batch_size: int, batch_size: int
+) -> int:
+    if simulated_batch_size is None:
+        return 1
+    if simulated_batch_size % batch_size != 0:
+        raise ValueError(
+            "Effective batch size must be a multiple of batch size! "
+            f"{simulated_batch_size} % {batch_size} !=0"
+        )
+    return int(simulated_batch_size / batch_size)
 
 
 if __name__ == "__main__":
