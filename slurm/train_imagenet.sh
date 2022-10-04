@@ -4,9 +4,9 @@
 
 #SBATCH --job-name=train_imagenet
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=4
+#SBATCH --cpus-per-task=16
 #SBATCH --gres=gpu:v100l:2
-#SBATCH --mem=16G    
+#SBATCH --mem=32G    
 #SBATCH --time=2-00:00:00
 #SBATCH --mail-user=mklasby@ucalgary.ca
 #SBATCH --mail-type=BEGIN,END,FAIL

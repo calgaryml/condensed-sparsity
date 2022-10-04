@@ -14,6 +14,7 @@ import wandb
 from datetime import date
 import pathlib
 from typing import Dict, Any
+from copy import deepcopy
 
 from rigl_torch.models.model_factory import ModelFactory
 from rigl_torch.rigl_scheduler import RigLScheduler
@@ -58,12 +59,15 @@ def init_wandb(cfg: omegaconf.DictConfig, wandb_init_kwargs: Dict[str, Any]):
 @hydra.main(config_path="configs/", config_name="config", version_base="1.2")
 def initalize_main(cfg: omegaconf.DictConfig) -> None:
     if cfg.compute.distributed:
-         # We initalize train and val loaders here to ensure .tar balls have
-         # been decompressed before parallel workers try and write the same
-         # directories!
-        train_loader, test_loader = get_dataloaders(cfg)
+        # We initalize train and val loaders here to ensure .tar balls have
+        # been decompressed before parallel workers try and write the same
+        # directories!
+        single_proc_cfg = deepcopy(cfg)
+        single_proc_cfg.compute.distributed = False
+        train_loader, test_loader = get_dataloaders(single_proc_cfg)
         del train_loader
         del test_loader
+        del single_proc_cfg
         wandb.setup()
         _validate_distributed_cfg(cfg)
         mp.spawn(
@@ -80,8 +84,12 @@ def _get_logger(rank, cfg: omegaconf.DictConfig) -> logging.Logger:
     logger = logging.getLogger(__file__)
     logger.setLevel(level=logging.INFO)
     current_date = date.today().strftime("%Y-%m-%d")
-    # logformat = "[%(levelname)s] %(asctime)s G- %(name)s -%(rank)s - %(funcName)s (%(lineno)d) : %(message)s"
-    logformat = "[%(levelname)s] %(asctime)s G- %(name)s - %(funcName)s (%(lineno)d) : %(message)s"
+    # logformat = "[%(levelname)s] %(asctime)s G- %(name)s -%(rank)s -
+    # %(funcName)s (%(lineno)d) : %(message)s"
+    logformat = (
+        "[%(levelname)s] %(asctime)s G- %(name)s - %(funcName)s "
+        "(%(lineno)d) : %(message)s"
+    )
     logging.root.handlers = []
     logging.basicConfig(
         level=logging.INFO,
@@ -369,7 +377,9 @@ def test(cfg, model, device, test_loader, epoch, step, rank, logger):
             cfg.wandb.log_images,
         )
         logger.info(
-            "\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n".format(
+            (
+                "\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n"
+            ).format(
                 test_loss,
                 correct,
                 len(test_loader.dataset),
