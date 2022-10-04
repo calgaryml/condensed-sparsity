@@ -58,6 +58,12 @@ def init_wandb(cfg: omegaconf.DictConfig, wandb_init_kwargs: Dict[str, Any]):
 @hydra.main(config_path="configs/", config_name="config", version_base="1.2")
 def initalize_main(cfg: omegaconf.DictConfig) -> None:
     if cfg.compute.distributed:
+         # We initalize train and val loaders here to ensure .tar balls have
+         # been decompressed before parallel workers try and write the same
+         # directories!
+        train_loader, test_loader = get_dataloaders(cfg)
+        del train_loader
+        del test_loader
         wandb.setup()
         _validate_distributed_cfg(cfg)
         mp.spawn(
