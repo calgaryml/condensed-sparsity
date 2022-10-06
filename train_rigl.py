@@ -146,6 +146,11 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
 
     cfg = set_seed(cfg)
     use_cuda = not cfg.compute.no_cuda and torch.cuda.is_available()
+    if not use_cuda:
+        logger.warning(
+            "Using CPU! Verify cfg.compute.no_cuda and "
+            "torch.cuda.is_available() are properly set if this is unexpected"
+        )
 
     if cfg.compute.distributed:
         device = torch.device(f"cuda:{rank}")
