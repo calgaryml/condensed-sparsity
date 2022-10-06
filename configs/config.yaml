@@ -4,7 +4,7 @@ defaults:
   - _self_
 
 experiment:
-  comment: ${rigl.dense_allocation}_${rigl.const_fan_in}
+  comment: ${rigl.dense_allocation}_${rigl.const_fan_in}_optim_fix
   name: ${model.name}_${dataset.name}_${experiment.comment}
   resume_from_checkpoint: False
   run_id: null
@@ -19,7 +19,7 @@ paths:
 rigl: 
   # percentage of dense parameters allowed. if None, pruning will not 
   # be used. must be on the interval (0, 1]
-  dense_allocation: null
+  dense_allocation: 0.1
   # number of steps between rigl pruning / regrow iterations
   delta: 800  # 4096 * 100 / 512
   # number of gradients to accumulate before scoring for rigl -> Based on simulated batch step number!
@@ -29,7 +29,7 @@ rigl:
   # if 1, use random sparsity topo and remain static
   static_topo: 0
   # If True, use const_fan_in scheduler.
-  const_fan_in: False
+  const_fan_in: True
   # Define layer-wise sparsity distribution. Options include `uniform` & `erk`
   sparsity_distribution: erk
   # Power scale for ERK distribution
@@ -88,7 +88,7 @@ compute:
   # If True, use data-parallelization model for distributed training
   distributed: True
   # Number of CUDA devices to use for distributed training
-  world_size: 2
+  world_size: 4
   # Backend to use for distributed training, options: ["nccl", "gloo"]
   dist_backend: "nccl"
 

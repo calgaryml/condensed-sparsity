@@ -298,7 +298,8 @@ def train(
     for batch_idx, (data, target) in enumerate(train_loader):
         apply_grads = (
             True
-            if (batch_idx != 0 and batch_idx % steps_to_accumulate_grad == 0)
+            if steps_to_accumulate_grad == 1
+            or (batch_idx != 0 and batch_idx % steps_to_accumulate_grad == 0)
             else False
         )
         step += 1
@@ -312,11 +313,15 @@ def train(
         loss.backward()
 
         if apply_grads:
-            if pruner is None:  # Dense case, we call optimizer always
-                optimizer.step()
-            elif pruner():
-                # We only call optimizer if rigl did not update topology
-                optimizer.step()
+            optimizer.step()
+            if pruner is not None:
+                pruner()
+            optimizer.zero_grad()
+            # if pruner is None:  # Dense case, we call optimizer always
+            #     optimizer.step()
+            # elif pruner():
+            #     # We only call optimizer if rigl did not update topology
+            #     optimizer.step()
 
         if batch_idx % cfg.training.log_interval == 0:
             world_size = (
@@ -338,8 +343,6 @@ def train(
             return step
         if cfg.training.max_steps is not None and step > cfg.training.max_steps:
             return step
-        if apply_grads:
-            optimizer.zero_grad()
     return step
 
 
@@ -423,7 +426,7 @@ def _validate_distributed_cfg(cfg: omegaconf.DictConfig) -> None:
         )
     if not torch.cuda.is_available():
         raise ValueError("torch.cuda.is_available() returned False!")
-    if cfg.compute.world_size < torch.cuda.device_count():
+    if cfg.compute.world_size > torch.cuda.device_count():
         raise ValueError(
             f"cfg.compute.world_size == {cfg.compute.world_size}"
             f" but I only see {torch.cuda.device_count()} cuda devices!"
