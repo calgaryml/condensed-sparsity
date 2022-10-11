@@ -4,10 +4,10 @@ defaults:
   - _self_
 
 experiment:
-  comment: dense_alloc=${rigl.dense_allocation}_const_fan=${rigl.const_fan_in}_ckp_fix
+  comment: dense_alloc=${rigl.dense_allocation}_const_fan=${rigl.const_fan_in}_dense_benchmark
   name: ${model.name}_${dataset.name}_${experiment.comment}
-  resume_from_checkpoint: True
-  run_id: 1px5m5cp
+  resume_from_checkpoint: False
+  run_id: null
 
 paths:
   base: ${oc.env:BASE_PATH}
@@ -17,9 +17,9 @@ paths:
   checkpoints: ${paths.artifacts}/checkpoints
 
 rigl: 
-  # percentage of dense parameters allowed. if None, pruning will not 
+  # percentage of dense parameters allowed. if null, pruning will not 
   # be used. must be on the interval (0, 1]
-  dense_allocation: 0.01
+  dense_allocation: null
   # number of steps between rigl pruning / regrow iterations
   delta: 800  # 4096 * 100 / 512
   # number of gradients to accumulate before scoring for rigl -> Based on simulated batch step number!
