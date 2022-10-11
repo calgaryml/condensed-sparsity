@@ -28,13 +28,14 @@ from rigl_torch.utils.checkpoint import Checkpoint
 
 
 def _get_checkpoint(cfg: omegaconf.DictConfig, rank: int, logger) -> Checkpoint:
-    if cfg.experiment.run_id is None:
+    run_id = cfg.experiment.run_id
+    if run_id is None:
         raise ValueError(
             "Must provide wandb run_id when "
             "cfg.training.resume_from_checkpoint is True"
         )
     checkpoint = Checkpoint.load_last_checkpoint(
-        run_id=cfg.experiment.run_id,
+        run_id=run_id,
         parent_dir=cfg.paths.checkpoints,
         rank=rank,
     )
@@ -111,6 +112,8 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
         wandb_init_resume = "must"
         run_id = checkpoint.run_id
         cfg = checkpoint.cfg
+        cfg.experiment.run_id = run_id
+        cfg.experiment.resume_from_checkpoint = True
     else:
         run_id = None
         wandb_init_resume = "never"
