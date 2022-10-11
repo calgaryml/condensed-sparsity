@@ -15,9 +15,17 @@
 ## SET ENV ##:
 export PATH=~/software/miniconda3/bin:$PATH
 export WORKDIR=/work/souza_lab/lasby/condensed-sparsity
+export SLURM_TMPDIR=/dev/shm
+export SCRATCH=/work/souza_lab/Data/ILSVRC2012
+
+cp $SCRATCH/ILSVRC2012_devkit_t12.tar.gz $SLURM_TMPDIR
+cp $SCRATCH/ILSVRC2012_img_train.tar $SLURM_TMPDIR
+cp $SCRATCH/ILSVRC2012_img_val.tar $SLURM_TMPDIR
+cp -r $WORKDIR/.venv $SLURM_TMPDIR
+
 eval "$(conda shell.bash hook)"
 conda activate py38
-source ${WORKDIR}/.venv/bin/activate
+source ${SLURM_TMPDIR}/.venv/bin/activate
 
 ## RUN SCRIPT ##
 python ${WORKDIR}/train_rigl.py
