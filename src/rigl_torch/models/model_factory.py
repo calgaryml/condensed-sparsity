@@ -12,7 +12,7 @@ class ModelFactory(object):
 
     @classmethod
     def register_model_loader(cls, model: str, dataset: str) -> Callable:
-        cls.__logger.info(
+        cls.__logger.debug(
             f"Registering {model} for {dataset} dataset to ModelFactory..."
         )
 
