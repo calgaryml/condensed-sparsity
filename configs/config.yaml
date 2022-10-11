@@ -4,7 +4,7 @@ defaults:
   - _self_
 
 experiment:
-  comment: ${rigl.dense_allocation}_${rigl.const_fan_in}_optim_fix
+  comment: dense_alloc=${rigl.dense_allocation}_const_fan=${rigl.const_fan_in}
   name: ${model.name}_${dataset.name}_${experiment.comment}
   resume_from_checkpoint: False
   run_id: null
@@ -19,7 +19,7 @@ paths:
 rigl: 
   # percentage of dense parameters allowed. if None, pruning will not 
   # be used. must be on the interval (0, 1]
-  dense_allocation: 0.1
+  dense_allocation: 0.01
   # number of steps between rigl pruning / regrow iterations
   delta: 800  # 4096 * 100 / 512
   # number of gradients to accumulate before scoring for rigl -> Based on simulated batch step number!
