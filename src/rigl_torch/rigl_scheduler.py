@@ -360,7 +360,7 @@ class RigLScheduler:
         s += "num_rigl_steps=" + str(self.rigl_steps) + ",\n"
         s += "ignoring_linear_layers=" + str(self.ignore_linear_layers) + ",\n"
         s += "sparsity_distribution=" + str(self.sparsity_distribution) + ",\n"
-        s += "ITOP rate=" + f"{self.itop_rs:.2f}" + ",/n"
+        s += "ITOP rate=" + f"{self.itop_rs:.4f}" + ",\n"
 
         return s + ")"
 
@@ -522,13 +522,19 @@ class RigLScheduler:
             self.explored_params = []
             for weight_tensor in self.W:
                 self.explored_params.append(
-                    torch.zeros(size=weight_tensor.shape, dtype=torch.bool)
+                    torch.zeros(
+                        size=weight_tensor.shape,
+                        dtype=torch.bool,
+                        device=weight_tensor.device,
+                    )
                 )
         for mask_idx in list(range(len(self.explored_params))):
             this_mask = self.backward_masks[mask_idx]
             if this_mask is None:
                 this_mask = torch.ones(
-                    size=self.W[mask_idx].shape, dtype=torch.bool
+                    size=self.W[mask_idx].shape,
+                    dtype=torch.bool,
+                    device=self.W[0].device,
                 )
             self.explored_params[mask_idx] += this_mask
         for ep in self.explored_params:
