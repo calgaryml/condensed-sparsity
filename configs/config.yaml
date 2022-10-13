@@ -4,7 +4,7 @@ defaults:
   - _self_
 
 experiment:
-  comment: dense_alloc=${rigl.dense_allocation}_const_fan=${rigl.const_fan_in}_dense_benchmark
+  comment: dense_alloc=${rigl.dense_allocation}_const_fan=${rigl.const_fan_in}_ITOP_hyperparams
   name: ${model.name}_${dataset.name}_${experiment.comment}
   resume_from_checkpoint: False
   run_id: null
@@ -19,41 +19,43 @@ paths:
 rigl: 
   # percentage of dense parameters allowed. if null, pruning will not 
   # be used. must be on the interval (0, 1]
-  dense_allocation: null
+  dense_allocation: 0.1
   # number of steps between rigl pruning / regrow iterations
-  delta: 800  # 4096 * 100 / 512
+  delta: 4000  # 4096 * 100 / 512 = 800
   # number of gradients to accumulate before scoring for rigl -> Based on simulated batch step number!
   grad_accumulation_n: 8  # 4096 / 512 without simulated batch size, 1 otheriwse
   # alpha param for pruning for cosine decay in determining how many connections to prune/regrow
-  alpha: 0.3
+  alpha: 0.5  # 0.3 for vanilla rigl, 0.5 for ITOP -> Inital fraction of weights to update every pruner step
   # if 1, use random sparsity topo and remain static
   static_topo: 0
   # If True, use const_fan_in scheduler.
-  const_fan_in: True
+  const_fan_in: False
   # Define layer-wise sparsity distribution. Options include `uniform` & `erk`
   sparsity_distribution: erk
   # Power scale for ERK distribution
   erk_power_scale: 1.0
+  # Use T_end from vanilla rigl, if False, explore new topologies until end of training
+  use_t_end: False
 
 training:
   # quickly check a single pass",
   dry_run: False
   # batch size for training
-  batch_size: 512
+  batch_size: 64
   # Batch size to simulate by taking multiple steps per optimizer update (accumulate grads)
   simulated_batch_size: null
   # batch size for testing
   test_batch_size: 1000
   # number of epochs to train
-  epochs: 110  # For imagenet, training will finish at ~ epoch 102.31
+  epochs: 100  # For imagenet, training will finish at ~ epoch 102.31
   # random seed
   seed: 42
   # Log interval (number of mini-batch steps)
-  log_interval: 100
+  log_interval: 1000
   # For Saving the current Model
   save_model: True
   # max number of steps (will override epochs) -> Based on mini-batch steps (NOT SIMULATED BATCHES!)
-  max_steps: 256000  # 4096 * 32000 / 512 from rigl paper
+  max_steps: null  # 4096 * 32000 / 512 = 256000 from rigl paper
 
   ## Optimization
   optimizer: sgd # "sgd", "adamw"
@@ -68,7 +70,7 @@ training:
   ## Scheduler
   scheduler: step_lr_with_warm_up # cosine_annealing_with_warm_up, step_lr_with_warm_up
   # Learning rate after warmup
-  lr: 0.2  # 0.1 * batch size / 256 per original paper -> Use 1.6 for 4096 simulated batch size
+  lr: 0.1  # 0.1 * batch size / 256 per original paper -> Use 1.6 for 4096 simulated batch size. 0.1 for ITOP
   # Learning rate for first epoch of warm up, only applies to schedulers with linear warm up
   init_lr: 1.0e-6
   # Number of epochs to warm up for linear warm ups
@@ -76,7 +78,7 @@ training:
   # Learning rate step gamma
   gamma: 0.1
   # Step size to use in learning rate scheduler if StepLR is used. List[int] || int
-  step_size: [30,70,90]
+  step_size: [30,60,90]
 
 
 compute:
@@ -86,7 +88,7 @@ compute:
     num_workers: ${ oc.decode:${oc.env:NUM_WORKERS} }  # decode casts to int
     pin_memory: True
   # If True, use data-parallelization model for distributed training
-  distributed: True
+  distributed: False
   # Number of CUDA devices to use for distributed training
   world_size: 4
   # Backend to use for distributed training, options: ["nccl", "gloo"]

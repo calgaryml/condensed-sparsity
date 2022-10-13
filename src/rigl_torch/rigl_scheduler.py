@@ -61,6 +61,7 @@ class RigLScheduler:
         state_dict=None,
         erk_power_scale=1.0,
     ):
+        self.explored_params = None
         self._implemented_sparsity_distributions = ["uniform", "erk"]
         self._logger = logging.getLogger(__file__)
         self.erk_power_scale = erk_power_scale
@@ -109,6 +110,7 @@ class RigLScheduler:
             self.delta_T = delta
             self.alpha = alpha
             self.T_end = T_end
+            self._update_itop_rs()
 
         # also, register backward hook so sparse elements cannot be recovered
         # during normal training
@@ -358,6 +360,7 @@ class RigLScheduler:
         s += "num_rigl_steps=" + str(self.rigl_steps) + ",\n"
         s += "ignoring_linear_layers=" + str(self.ignore_linear_layers) + ",\n"
         s += "sparsity_distribution=" + str(self.sparsity_distribution) + ",\n"
+        s += "ITOP rate=" + f"{self.itop_rs:.2f}" + ",/n"
 
         return s + ")"
 
@@ -512,6 +515,28 @@ class RigLScheduler:
             self.reset_momentum()
             self.apply_mask_to_weights()
             self.apply_mask_to_gradients()
+            self._update_itop_rs()
+
+    def _update_itop_rs(self):
+        if self.explored_params is None:
+            self.explored_params = []
+            for weight_tensor in self.W:
+                self.explored_params.append(
+                    torch.zeros(size=weight_tensor.shape, dtype=torch.bool)
+                )
+        for mask_idx in list(range(len(self.explored_params))):
+            this_mask = self.backward_masks[mask_idx]
+            if this_mask is None:
+                this_mask = torch.ones(
+                    size=self.W[mask_idx].shape, dtype=torch.bool
+                )
+            self.explored_params[mask_idx] += this_mask
+        for ep in self.explored_params:
+            if ep is None:
+                print("found empty ep")
+        self.itop_rs = sum([ep.sum() for ep in self.explored_params]) / sum(
+            [ep.numel() for ep in self.explored_params]
+        )
 
 
 if __name__ == "__main__":

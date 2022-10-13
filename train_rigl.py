@@ -188,6 +188,8 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
                 T_end = int(0.75 * cfg.training.epochs * len(train_loader))
         else:
             T_end = int(0.75 * cfg.training.max_steps)
+        if not cfg.rigl.use_t_end:
+            T_end = int(1 / 0.75 * T_end)  # We use the full number of steps
         if cfg.rigl.const_fan_in:
             rigl_scheduler = RigLConstFanScheduler
             logger.info("Using constant fan in rigl scheduler...")
@@ -346,6 +348,7 @@ def train(
                     loss.item(),
                 )
             )
+            wandb.log({"ITOP Rate": pruner.itop_rs})
         if cfg.training.dry_run:
             logger.warning("Dry run, exiting after one training step")
             return step
