@@ -258,6 +258,8 @@ class RigLScheduler:
             "rigl_steps": self.rigl_steps,
             "backward_masks": self.backward_masks,
             "_linear_layers_mask": self._linear_layers_mask,
+            "itop_rs": self.itop_rs,
+            "explored_params": self.explored_params,
         }
 
         return obj
