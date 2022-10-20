@@ -4,7 +4,7 @@ defaults:
   - _self_
 
 experiment:
-  comment: dense_alloc=${rigl.dense_allocation}_const_fan=${rigl.const_fan_in}_ITOP_hyperparams
+  comment: dense_alloc${rigl.dense_allocation}_const_fan${rigl.const_fan_in}_ITOP_hyperparams
   name: ${model.name}_${dataset.name}_${experiment.comment}
   resume_from_checkpoint: False
   run_id: null

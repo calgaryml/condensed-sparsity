@@ -358,7 +358,7 @@ def test(cfg, model, device, test_loader, epoch, step, rank, logger):
     model.eval()
     test_loss = 0
     correct = 0
-    # top_k_correct = 0
+    top_k_correct = 0
     with torch.no_grad():
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
@@ -372,18 +372,24 @@ def test(cfg, model, device, test_loader, epoch, step, rank, logger):
             pred = logits.argmax(
                 dim=1, keepdim=True
             )  # get the index of the max log-probability
-            # correct += pred.eq(target.view_as(pred)).sum()
-            # if cfg.dataset.name == "imagenet":
-            #     _, top_5_indices = torch.topk(logits, k=5,dim=1,largest=True)
-            #     top_5_pred = (top_5_indices == target.view_as())
+            correct += pred.eq(target.view_as(pred)).sum()
+            if cfg.dataset.name == "imagenet":
+                _, top_5_indices = torch.topk(logits, k=5, dim=1, largest=True)
+                top_5_pred = (
+                    target.reshape(-1, 1).expand_as(top_5_indices)
+                    == top_5_indices
+                ).any(dim=1)
+                top_k_correct += top_5_pred.sum()
     if cfg.compute.distributed:
         dist.all_reduce(test_loss, dist.ReduceOp.AVG, async_op=False)
         dist.all_reduce(correct, dist.ReduceOp.SUM, async_op=False)
+        dist.all_reduce(top_k_correct, dist.ReduceOp.SUM, async_op=False)
     if rank == 0:
         wandb_log(
             epoch,
             test_loss,
             correct / len(test_loader.dataset),
+            top_k_correct / len(test_loader.dataset),
             data,
             logits,
             target,
@@ -405,12 +411,22 @@ def test(cfg, model, device, test_loader, epoch, step, rank, logger):
 
 
 def wandb_log(
-    epoch, loss, accuracy, inputs, logits, captions, pred, step, log_images
+    epoch,
+    loss,
+    accuracy,
+    top_k_accuracy,
+    inputs,
+    logits,
+    captions,
+    pred,
+    step,
+    log_images,
 ):
     log_data = {
         "epoch": epoch,
         "loss": loss.item(),
         "accuracy": accuracy.item(),
+        "top_5_accuracy": top_k_accuracy.item(),
         "logits": wandb.Histogram(logits.cpu()),
         "captions": wandb.Html(captions.cpu().numpy().__str__()),
         "predictions": wandb.Html(pred.cpu().numpy().__str__()),
