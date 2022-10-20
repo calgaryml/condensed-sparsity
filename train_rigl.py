@@ -358,6 +358,7 @@ def test(cfg, model, device, test_loader, epoch, step, rank, logger):
     model.eval()
     test_loss = 0
     correct = 0
+    # top_k_correct = 0
     with torch.no_grad():
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
@@ -371,7 +372,10 @@ def test(cfg, model, device, test_loader, epoch, step, rank, logger):
             pred = logits.argmax(
                 dim=1, keepdim=True
             )  # get the index of the max log-probability
-            correct += pred.eq(target.view_as(pred)).sum()
+            # correct += pred.eq(target.view_as(pred)).sum()
+            # if cfg.dataset.name == "imagenet":
+            #     _, top_5_indices = torch.topk(logits, k=5,dim=1,largest=True)
+            #     top_5_pred = (top_5_indices == target.view_as())
     if cfg.compute.distributed:
         dist.all_reduce(test_loss, dist.ReduceOp.AVG, async_op=False)
         dist.all_reduce(correct, dist.ReduceOp.SUM, async_op=False)
