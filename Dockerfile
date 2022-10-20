@@ -1,4 +1,19 @@
-FROM pytorch/pytorch:1.11.0-cuda11.3-cudnn8-devel
+# Global ARGs for all build stages
+# https://docs.docker.com/build/building/multi-stage/
+
+ARG USERNAME=user
+ARG WORKSPACE_DIR=/home/condensed-sparsity
+ARG USER_UID=1000
+ARG USER_GID=${USER_UID}
+
+# We use this image as latest tag is still on py37
+FROM pytorch/pytorch:1.11.0-cuda11.3-cudnn8-devel AS pytorch-base
+ARG USERNAME
+ARG WORKSPACE_DIR
+ARG USER_UID
+ARG USER_GID
+
+SHELL ["/bin/bash", "-c"]
 
 # Deal with nvidia GPG key issues
 # https://developer.nvidia.com/blog/updating-the-cuda-linux-gpg-repository-key/
@@ -11,56 +26,53 @@ RUN apt-get update && apt-get install -y wget
 RUN wget https://developer.download.nvidia.com/compute/cuda/repos/$DISTRO/$ARCH/cuda-keyring_1.0-1_all.deb \
     && dpkg -i cuda-keyring_1.0-1_all.deb
 
-# Use a non-root user
-ARG USERNAME=user
-ARG USER_UID=1001
-ARG USER_GID=$USER_UID
-
 # Create the user
-RUN groupadd --gid $USER_GID $USERNAME \
-    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME 
-#
-# [Optional] Add sudo support. Omit if you don't need to install software after connecting.
-# && apt-get update \
-# && apt-get install -y sudo \
-# && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
-# && chmod 0440 /etc/sudoers.d/$USERNAME
+RUN groupadd --gid $USER_GID ${USERNAME} \
+    && useradd --uid $USER_UID --gid $USER_GID -m ${USERNAME}
 
-# ********************************************************
-# * Anything else you want to do like clean up goes here *
-# ********************************************************
+# Development extras
+FROM pytorch-base AS dev-container-base
+ARG USERNAME
+ARG WORKSPACE_DIR
+ARG USER_UID
+ARG USER_GID
 
-# Set the working directory.
-WORKDIR /home/condensed-sparsity/
+# Install git/ssh/tmux
+RUN apt-get update \
+    && apt-get install -y git ssh curl
 
-# Copy the source code
-COPY . /home/condensed-sparsity/
-
-# Set ownership of workspace to user
-RUN chown -R $USER_GID:$USER_UID /home/condensed-sparsity/
-
-# Append path, some binaries will be installed here by python packages
-ENV PATH="/home/user/.local/bin:${PATH}"
-
-# Initalize conda
-RUN conda init bash \
-    && exec bash \
-    && conda activate base
-
+FROM dev-container-base AS poetry-base
 # Install poetry
-ARG POETRY_VERSION="1.2.0"
-RUN python -m pip install --upgrade pip \
-    && python -m pip install poetry==${POETRY_VERSION}
+# https://python-poetry.org/docs/configuration/#using-environment-variables
+ARG USERNAME
+ARG WORKSPACE_DIR
+ARG USER_UID
+ARG USER_GID
+ENV POETRY_VERSION="1.2.0" \
+    POETRY_HOME="/home/${USERNAME}/poetry" \
+    POETRY_NO_INTERACTION=1 \
+    POETRY_VIRTUALENVS_IN_PROJECT=false \
+    VENV_PATH="${WORKSPACE_DIR}/.venv" \
+    NVIDIA_DRIVER_CAPABILITIES="all" \
+    WORKSPACE_DIR=${WORKSPACE_DIR} \
+    PATH="/home/${USERNAME}/.local/bin:${PATH}" \
+    VIRTUAL_ENV=$VENV_PATH
 
-# Install project and dependencies without dev dep
-RUN poetry config virtualenvs.create false
-RUN poetry install -vvv --only main
+ENV PATH="$VENV_PATH/bin:$POETRY_HOME/bin:$PATH"
 
-# [Optional] Set the default user. Omit if you want to keep the default as root.
-USER $USERNAME
+RUN curl -sSL https://install.python-poetry.org | python3 - && exec bash
 
-# To run default training script with configuration copied at build time
-CMD poetry run python ./train_rigl.py
+# Install project requirements 
+RUN mkdir ${WORKSPACE_DIR}/ && \
+    chown -R $USER_GID:$USER_UID ${WORKSPACE_DIR}
+WORKDIR ${WORKSPACE_DIR}
+COPY --chown=${USER_UID}:${USER_GID} . ${WORKSPACE_DIR}
 
-# For joining existing sweep
-# CMD poetry run wandb agent ${WANDB_SWEEP_AGENT_HOST}
+RUN python -m venv .venv && \ 
+    source .venv/bin/activate && \
+    pip install --upgrade pip && \
+    poetry install -vvv
+
+RUN echo "source ${VENV_PATH}/bin/activate" >> /home/$USERNAME/.bashrc
+USER user
+# ENTRYPOINT [ "/bin/bash", "python", "${WORKSPACE_DIR}/train_rigl.py" ]

@@ -188,6 +188,8 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
                 T_end = int(0.75 * cfg.training.epochs * len(train_loader))
         else:
             T_end = int(0.75 * cfg.training.max_steps)
+        if not cfg.rigl.use_t_end:
+            T_end = int(1 / 0.75 * T_end)  # We use the full number of steps
         if cfg.rigl.const_fan_in:
             rigl_scheduler = RigLConstFanScheduler
             logger.info("Using constant fan in rigl scheduler...")
@@ -256,6 +258,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             pruner=pruner,
             step=step,
             logger=logger,
+            rank=rank,
         )
         loss, acc = test(
             cfg, model, device, test_loader, epoch, step, rank, logger
@@ -298,6 +301,7 @@ def train(
     pruner,
     step,
     logger,
+    rank,
 ):
     model.train()
     steps_to_accumulate_grad = _get_steps_to_accumulate_grad(
@@ -325,13 +329,8 @@ def train(
             if pruner is not None:
                 pruner()
             optimizer.zero_grad()
-            # if pruner is None:  # Dense case, we call optimizer always
-            #     optimizer.step()
-            # elif pruner():
-            #     # We only call optimizer if rigl did not update topology
-            #     optimizer.step()
 
-        if batch_idx % cfg.training.log_interval == 0:
+        if batch_idx % cfg.training.log_interval == 0 and rank == 0:
             world_size = (
                 1
                 if cfg.compute.distributed is False
@@ -346,6 +345,7 @@ def train(
                     loss.item(),
                 )
             )
+            wandb.log({"ITOP Rate": pruner.itop_rs}, step=step)
         if cfg.training.dry_run:
             logger.warning("Dry run, exiting after one training step")
             return step
@@ -358,6 +358,7 @@ def test(cfg, model, device, test_loader, epoch, step, rank, logger):
     model.eval()
     test_loss = 0
     correct = 0
+    top_k_correct = 0
     with torch.no_grad():
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
@@ -372,14 +373,23 @@ def test(cfg, model, device, test_loader, epoch, step, rank, logger):
                 dim=1, keepdim=True
             )  # get the index of the max log-probability
             correct += pred.eq(target.view_as(pred)).sum()
+            if cfg.dataset.name == "imagenet":
+                _, top_5_indices = torch.topk(logits, k=5, dim=1, largest=True)
+                top_5_pred = (
+                    target.reshape(-1, 1).expand_as(top_5_indices)
+                    == top_5_indices
+                ).any(dim=1)
+                top_k_correct += top_5_pred.sum()
     if cfg.compute.distributed:
         dist.all_reduce(test_loss, dist.ReduceOp.AVG, async_op=False)
         dist.all_reduce(correct, dist.ReduceOp.SUM, async_op=False)
+        dist.all_reduce(top_k_correct, dist.ReduceOp.SUM, async_op=False)
     if rank == 0:
         wandb_log(
             epoch,
             test_loss,
             correct / len(test_loader.dataset),
+            top_k_correct / len(test_loader.dataset),
             data,
             logits,
             target,
@@ -401,12 +411,22 @@ def test(cfg, model, device, test_loader, epoch, step, rank, logger):
 
 
 def wandb_log(
-    epoch, loss, accuracy, inputs, logits, captions, pred, step, log_images
+    epoch,
+    loss,
+    accuracy,
+    top_k_accuracy,
+    inputs,
+    logits,
+    captions,
+    pred,
+    step,
+    log_images,
 ):
     log_data = {
         "epoch": epoch,
         "loss": loss.item(),
         "accuracy": accuracy.item(),
+        "top_5_accuracy": top_k_accuracy.item(),
         "logits": wandb.Histogram(logits.cpu()),
         "captions": wandb.Html(captions.cpu().numpy().__str__()),
         "predictions": wandb.Html(pred.cpu().numpy().__str__()),
