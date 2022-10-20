@@ -258,6 +258,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             pruner=pruner,
             step=step,
             logger=logger,
+            rank=rank,
         )
         loss, acc = test(
             cfg, model, device, test_loader, epoch, step, rank, logger
@@ -300,6 +301,7 @@ def train(
     pruner,
     step,
     logger,
+    rank,
 ):
     model.train()
     steps_to_accumulate_grad = _get_steps_to_accumulate_grad(
@@ -327,13 +329,8 @@ def train(
             if pruner is not None:
                 pruner()
             optimizer.zero_grad()
-            # if pruner is None:  # Dense case, we call optimizer always
-            #     optimizer.step()
-            # elif pruner():
-            #     # We only call optimizer if rigl did not update topology
-            #     optimizer.step()
 
-        if batch_idx % cfg.training.log_interval == 0:
+        if batch_idx % cfg.training.log_interval == 0 and rank == 0:
             world_size = (
                 1
                 if cfg.compute.distributed is False
@@ -348,7 +345,7 @@ def train(
                     loss.item(),
                 )
             )
-            wandb.log({"ITOP Rate": pruner.itop_rs})
+            wandb.log({"ITOP Rate": pruner.itop_rs}, step=step)
         if cfg.training.dry_run:
             logger.warning("Dry run, exiting after one training step")
             return step

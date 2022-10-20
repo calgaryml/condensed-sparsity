@@ -422,6 +422,7 @@ class RigLScheduler:
         ) == 0 and self.step < self.T_end:  # check schedule
             self._rigl_step()
             self.rigl_steps += 1
+            self._update_itop_rs()
             return False
         return True
 
@@ -517,7 +518,6 @@ class RigLScheduler:
             self.reset_momentum()
             self.apply_mask_to_weights()
             self.apply_mask_to_gradients()
-            self._update_itop_rs()
 
     def _update_itop_rs(self):
         if self.explored_params is None:
