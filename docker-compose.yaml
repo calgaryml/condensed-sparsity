@@ -62,8 +62,8 @@ docker run -itd --env-file ./.env \
   itop-rigl:latest
 
 docker run -itd --env-file ./.env \
-  --mount source=/home/mike/condensed-sparsity/artifacts,target=${BASE_PATH}/artifacts,type=bind \
-  --mount source=/home/mike/condensed-sparsity/configs,target=${BASE_PATH}/configs,type=bind \
+  --mount source=/home/mike/condensed-sparsity/artifacts,target=/home/user/condensed-sparsity/artifacts,type=bind \
+  --mount source=/home/mike/condensed-sparsity/configs,target=/home/user/condensed-sparsity/configs,type=bind \
   --mount source=/datasets/ILSVRC2012,target=/datasets/ILSVRC2012,type=bind \
   --mount source=/scratch/datasets/ILSVRC2012,target=/scratch/datasets/ILSVRC2012,type=bind \
   --gpus '"device=0"' \

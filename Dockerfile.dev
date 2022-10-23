@@ -2,7 +2,7 @@
 # https://docs.docker.com/build/building/multi-stage/
 
 ARG USERNAME=user
-ARG WORKSPACE_DIR=/home/condensed-sparsity
+ARG WORKSPACE_DIR=/home/user/condensed-sparsity
 
 # We use this image as latest tag is still on py37
 FROM pytorch/pytorch:1.11.0-cuda11.3-cudnn8-devel AS pytorch-base

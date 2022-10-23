@@ -14,3 +14,5 @@ graphs/*
 htmlcov/
 !data/
 data/*
+!artifacts/
+artifacts/*

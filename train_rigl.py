@@ -25,6 +25,7 @@ from rigl_torch.optim import (
     get_lr_scheduler,
 )
 from rigl_torch.utils.checkpoint import Checkpoint
+from rigl_torch.utils.rigl_utils import get_T_end
 
 
 def _get_checkpoint(cfg: omegaconf.DictConfig, rank: int, logger) -> Checkpoint:
@@ -174,22 +175,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
 
     pruner = None
     if cfg.rigl.dense_allocation is not None:
-        if cfg.training.max_steps is None:
-            if cfg.compute.distributed:
-                # In distributed mode, len(train_loader) will be reduced by
-                # 1/world_size compared to single device
-                T_end = int(
-                    0.75
-                    * cfg.training.epochs
-                    * len(train_loader)  # Dataset length // batch_size
-                    * cfg.compute.world_size
-                )
-            else:
-                T_end = int(0.75 * cfg.training.epochs * len(train_loader))
-        else:
-            T_end = int(0.75 * cfg.training.max_steps)
-        if not cfg.rigl.use_t_end:
-            T_end = int(1 / 0.75 * T_end)  # We use the full number of steps
+        T_end = get_T_end(cfg, train_loader)
         if cfg.rigl.const_fan_in:
             rigl_scheduler = RigLConstFanScheduler
             logger.info("Using constant fan in rigl scheduler...")
@@ -218,7 +204,12 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
 
     writer = SummaryWriter(log_dir="./graphs")
     if rank == 0:
-        wandb.watch(model, criterion=F.nll_loss, log="all", log_freq=100)
+        wandb.watch(
+            model,
+            criterion=F.nll_loss,
+            log="all",
+            log_freq=cfg.training.log_interval,
+        )
     logger.info(f"Model Summary: {model}")
     if not cfg.experiment.resume_from_checkpoint:
         step = 0
