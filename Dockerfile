@@ -2,9 +2,9 @@
 # https://docs.docker.com/build/building/multi-stage/
 
 ARG USERNAME=user
-ARG WORKSPACE_DIR=/home/condensed-sparsity
-ARG USER_UID=1000
-ARG USER_GID=${USER_UID}
+ARG WORKSPACE_DIR=/home/user/condensed-sparsity
+ARG USER_UID=1000003
+ARG USER_GID=1000001
 
 # We use this image as latest tag is still on py37
 FROM pytorch/pytorch:1.11.0-cuda11.3-cudnn8-devel AS pytorch-base
@@ -64,15 +64,17 @@ RUN curl -sSL https://install.python-poetry.org | python3 - && exec bash
 
 # Install project requirements 
 RUN mkdir ${WORKSPACE_DIR}/ && \
-    chown -R $USER_GID:$USER_UID ${WORKSPACE_DIR}
+    chown -R ${USER_UID}:${USER_GID} ${WORKSPACE_DIR} && \
+    chmod -R a+rX ${WORKSPACE_DIR}
 WORKDIR ${WORKSPACE_DIR}
 COPY --chown=${USER_UID}:${USER_GID} . ${WORKSPACE_DIR}
-
+RUN mkdir ${VENV_PATH}/ && \
+    chown -R ${USER_UID}:${USER_GID} ${VENV_PATH} && \
+    chmod -R a+rX ${VENV_PATH}
+USER user
 RUN python -m venv .venv && \ 
     source .venv/bin/activate && \
     pip install --upgrade pip && \
     poetry install -vvv
 
 RUN echo "source ${VENV_PATH}/bin/activate" >> /home/$USERNAME/.bashrc
-USER user
-# ENTRYPOINT [ "/bin/bash", "python", "${WORKSPACE_DIR}/train_rigl.py" ]
