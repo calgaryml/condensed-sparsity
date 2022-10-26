@@ -155,7 +155,11 @@ class RigLConstFanScheduler(RigLScheduler):
                 except ValueError:
                     raise ConstantFanInException(get_fan_in_tensor(mask))
 
-        s = f"{s}constant fan ins={str(const_fan_ins)}\n)"
+        s = f"{s}constant fan ins={str(const_fan_ins)}\n"
+        s = (
+            f"{s}Neurons Ablated per layer = "
+            f"{str(self.inital_ablated_filters)}\n)"
+        )
         return s
 
     @torch.no_grad()

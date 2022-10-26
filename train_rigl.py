@@ -195,6 +195,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             sparsity_distribution=cfg.rigl.sparsity_distribution,
             erk_power_scale=cfg.rigl.erk_power_scale,
             state_dict=pruner_state,
+            filter_ablation_threshold=cfg.rigl.filter_ablation_threshold,
         )
     else:
         logger.warning(

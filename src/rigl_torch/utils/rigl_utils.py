@@ -306,16 +306,19 @@ def get_filters_to_ablate(
     with torch.no_grad():
         dense_fan_in, _ = calculate_fan_in_and_fan_out(weight_tensor)
         receptive_field_size = _get_receptive_field_size(weight_tensor)
-        out_channels = weight_tensor.shape[1]
+        out_channels = weight_tensor.shape[0]
         sparse_fan_in = int(dense_fan_in * (1 - sparsity))
         unadjusted_filter_sparsity = sparse_fan_in / (
             out_channels * receptive_field_size
         )
         if unadjusted_filter_sparsity < filter_ablation_threshold:
-            return out_channels - int(
+            filters_to_ablate = out_channels - int(
                 sparse_fan_in
                 / (filter_ablation_threshold * receptive_field_size)
             )
+            if filters_to_ablate >= out_channels:
+                filters_to_ablate = out_channels - 1
+            return filters_to_ablate
         else:
             return 0  # No filters to remove
 
@@ -330,7 +333,8 @@ def get_fan_in_after_ablation(
         remaining_non_zero_elements = int(
             weight_tensor.numel() * (1 - sparsity)
         )
-        return remaining_non_zero_elements // active_neurons
+        fan_in_after_ablation = remaining_non_zero_elements // active_neurons
+        return fan_in_after_ablation
 
 
 def _get_receptive_field_size(tensor: torch.Tensor) -> int:
