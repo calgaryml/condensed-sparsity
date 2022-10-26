@@ -3,10 +3,10 @@
 import numpy as np
 import torch
 import torch.distributed as dist
-from typing import List
+from typing import List, Optional
 import logging
 
-from rigl_torch.utils.rigl_utils import get_W
+from rigl_torch.utils.rigl_utils import get_W, get_filters_to_ablate
 
 
 class IndexMaskHook:
@@ -60,17 +60,22 @@ class RigLScheduler:
         grad_accumulation_n=1,
         state_dict=None,
         erk_power_scale=1.0,
+        filter_ablation_threshold: Optional[float] = None,
     ):
         self.explored_params = None
+        self.filter_ablation_threshold = filter_ablation_threshold
         self._implemented_sparsity_distributions = ["uniform", "erk"]
         self._logger = logging.getLogger(__file__)
         self.erk_power_scale = erk_power_scale
-        if dense_allocation <= 0 or dense_allocation > 1:
-            raise Exception(
-                "Dense allocation must be on the interval (0, 1]. Got: %f"
-                % dense_allocation
-            )
-
+        self._validate_percent_params(dense_allocation, "dense_allocation")
+        self._validate_percent_params(
+            filter_ablation_threshold, "filter_ablation_threshold"
+        )
+        if (
+            filter_ablation_threshold is not None
+            and filter_ablation_threshold != 0.0
+        ):
+            print("Filter Ablation not implemented for vanilla rigl yet!!!")
         self.model = model
         self.optimizer = optimizer
 
@@ -97,6 +102,12 @@ class RigLScheduler:
 
             # define sparsity allocation
             self.S = self._allocate_sparsity()
+
+            # determine if any filters must be ablated to meet filter-wise
+            # sparsity threshold
+            self.inital_ablated_filters = (
+                self.get_inital_num_filters_to_ablate()
+            )
 
             # randomly sparsify model according to S
             self.random_sparsify()
@@ -135,6 +146,33 @@ class RigLScheduler:
             self.sparsity_distribution
             in self._implemented_sparsity_distributions
         )
+
+    @torch.no_grad()
+    def get_inital_num_filters_to_ablate(self) -> List[int]:
+        """Populate list of filters to ablate with index of list corresponding
+            to layer.
+
+        Returns:
+            List[int]: Layerwise filters to ablate.
+        """
+        inital_ablated_filters = []
+        for idx, w in enumerate(self.W):
+            # if sparsity is 0%, no neurons to ablate by defn.
+            if (
+                self.S[idx] <= 0
+                or self.filter_ablation_threshold is None
+                or self.filter_ablation_threshold <= 0
+            ):
+                inital_ablated_filters.append(0)
+            else:
+                inital_ablated_filters.append(
+                    get_filters_to_ablate(
+                        weight_tensor=w,
+                        sparsity=self.S[idx],
+                        filter_ablation_threshold=self.filter_ablation_threshold,  # noqa E501
+                    )
+                )
+        return inital_ablated_filters
 
     def _allocate_sparsity(self) -> List[float]:
         sparsity_dist = []
@@ -423,6 +461,7 @@ class RigLScheduler:
             self._rigl_step()
             self.rigl_steps += 1
             self._update_itop_rs()
+            self._update_filter_ablation()
             return False
         return True
 
@@ -434,16 +473,16 @@ class RigLScheduler:
         is_dist = dist.is_initialized()
         world_size = dist.get_world_size() if is_dist else None
 
-        for l, w in enumerate(self.W):
+        for idx, w in enumerate(self.W):
             # if sparsity is 0%, skip
-            if self.S[l] <= 0:
+            if self.S[idx] <= 0:
                 continue
 
-            current_mask = self.backward_masks[l]
+            current_mask = self.backward_masks[idx]
 
             # calculate raw scores
             score_drop = torch.abs(w)
-            score_grow = torch.abs(self.backward_hook_objects[l].dense_grad)
+            score_grow = torch.abs(self.backward_hook_objects[idx].dense_grad)
 
             # if is distributed, synchronize scores
             if is_dist:
@@ -458,7 +497,7 @@ class RigLScheduler:
                 )
 
             # calculate drop/grow quantities
-            n_total = self.N[l]
+            n_total = self.N[idx]
             n_ones = torch.sum(current_mask).item()
             n_prune = int(n_ones * drop_fraction)
             n_keep = n_ones - n_prune
@@ -545,6 +584,44 @@ class RigLScheduler:
         self.itop_rs = sum([ep.sum() for ep in self.explored_params]) / sum(
             [ep.numel() for ep in self.explored_params]
         )
+
+    def _validate_percent_params(
+        self, param_value: float, param_name: str
+    ) -> bool:
+        if param_value is None:
+            return True
+        if param_value <= 0 or param_value > 1:
+            raise Exception(
+                f"{param_name} must be on the interval (0, 1]."
+                f"Got: {param_value}"
+            )
+        return True
+
+    def _update_current_filter_ablation(self) -> None:
+        def get_num_ablated_filters(mask: Optional[torch.Tensor]) -> int:
+            if mask is None:
+                return 0
+            else:
+                return torch.sum(
+                    torch.stack([~filter.any() for filter in mask])
+                )
+
+        self.ablated_filters = [
+            get_num_ablated_filters(filter) for filter in self.backward_masks
+        ]
+        return
+
+    def get_global_sparsity_from_masks(self) -> float:
+        total_els = 0
+        total_non_zero_els = 0
+        for w, m in list(zip(self.W, self.backward_masks)):
+            if m is None:
+                total_non_zero_els += w.numel()
+                total_els += w.numel()
+            else:
+                total_non_zero_els += m.sum()
+                total_els += w.numel()
+        return 1 - (total_non_zero_els / total_els)
 
 
 if __name__ == "__main__":

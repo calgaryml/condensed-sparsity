@@ -36,6 +36,8 @@ rigl:
   erk_power_scale: 1.0
   # Use T_end from vanilla rigl, if False, explore new topologies until end of training
   use_t_end: False
+  # Filter abalation threshold criterion
+  filter_ablation_threshold: 0.01  # 1%
 
 training:
   # quickly check a single pass",
