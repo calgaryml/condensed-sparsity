@@ -13,11 +13,13 @@ class FilterMeter(object):
         self.idx = idx
         self.weight_history = []
         self.mask_history = []
+        self.grad_history = []
         self._weight_tensor = weight_tensor
         self._mask_tensor = mask_tensor
         self.weight_tensor = weight_tensor  # Call setter to populate history
         self.mask_tensor = mask_tensor
         self._ablated = False
+        self._grad = None
 
     def _check_ablated(fn) -> Callable:
         def wrapper(
@@ -56,6 +58,16 @@ class FilterMeter(object):
         self.mask_history.append(self.mask_tensor)
         self._mask_tensor = new_mask_tensor
 
+    @property
+    def grad(self):
+        return self._grad
+
+    @grad.setter
+    def grad(self, new_grad: torch.Tensor) -> None:
+        if self.grad is not None:
+            self.grad_history.append(self.grad)
+        self._grad = new_grad
+
     def update_weight_history(self, weights: torch.Tensor) -> None:
         self.weight_history.append(weights)
 
@@ -79,8 +91,16 @@ class FilterMeter(object):
         return torch.min(self.weight_tensor).item()
 
     @_check_ablated
-    def get_fan_in(self) -> int:
+    def fan_in(self) -> int:
         return self.mask_tensor.sum().item()
+
+    @_check_ablated
+    def sum_weight(self) -> float:
+        return self.weight_tensor.sum().item()
+
+    @_check_ablated
+    def weight_magnitude(self) -> float:
+        return torch.abs(self.weight_tensor).sum().item()
 
 
 if __name__ == "__main__":
@@ -91,7 +111,7 @@ if __name__ == "__main__":
             filter_meter.median_weight,
             filter_meter.max_weight,
             filter_meter.min_weight,
-            filter_meter.get_fan_in,
+            filter_meter.fan_in,
         ]
         for c in callables:
             print(c())
