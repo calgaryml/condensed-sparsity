@@ -173,6 +173,11 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
     optimizer = get_optimizer(cfg, model, state_dict=optimizer_state)
     scheduler = get_lr_scheduler(cfg, optimizer, state_dict=scheduler_state)
 
+    if "filter_ablation_threshold" not in cfg.rigl:
+        from omegaconf import open_dict
+
+        with open_dict(cfg):
+            cfg.rigl.filter_ablation_threshold = None
     pruner = None
     if cfg.rigl.dense_allocation is not None:
         T_end = get_T_end(cfg, train_loader)

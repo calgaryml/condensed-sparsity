@@ -461,7 +461,7 @@ class RigLScheduler:
             self._rigl_step()
             self.rigl_steps += 1
             self._update_itop_rs()
-            self._update_filter_ablation()
+            self._update_current_filter_ablation()
             return False
         return True
 
@@ -588,17 +588,45 @@ class RigLScheduler:
     def _validate_percent_params(
         self, param_value: float, param_name: str
     ) -> bool:
+        """Validate float parameters that are intended to be in range (0,1).
+
+        Args:
+            param_value (float): Value of parameter expected to be in range
+                (0,1)
+            param_name (str): Name of param, used for logging error to user.
+
+        Raises:
+            ValueError: If param value not in range 0,1
+
+        Returns:
+            bool: Returns True if param value is valid.
+        """
         if param_value is None:
             return True
         if param_value <= 0 or param_value > 1:
-            raise Exception(
+            raise ValueError(
                 f"{param_name} must be on the interval (0, 1]."
                 f"Got: {param_value}"
             )
         return True
 
     def _update_current_filter_ablation(self) -> None:
+        """Update list of ablated filters.
+
+        Intended to monitor neuron ablation of vanilla rigl. Const-fan in rigl
+        will have the same neuron ablations from initalization depending on
+        value of cfg.rigl.filter_ablation_threshold
+        """
+
         def get_num_ablated_filters(mask: Optional[torch.Tensor]) -> int:
+            """Return number of filters in mask that are all False.
+
+            Args:
+                mask (Optional[torch.Tensor]): Mask from self.backward_masks.
+
+            Returns:
+                int: Number of filters with all elements == False.
+            """
             if mask is None:
                 return 0
             else:
@@ -606,12 +634,21 @@ class RigLScheduler:
                     torch.stack([~filter.any() for filter in mask])
                 )
 
-        self.ablated_filters = [
-            get_num_ablated_filters(filter) for filter in self.backward_masks
-        ]
+        if not hasattr(self, "ablated_filters"):
+            self.ablated_filters = []
+
+        self.ablated_filters.append(
+            [get_num_ablated_filters(filter) for filter in self.backward_masks]
+        )
         return
 
     def get_global_sparsity_from_masks(self) -> float:
+        """Return overall network sparsity based on backward mask values.
+
+        Returns:
+            float: Number of elements == False divided by total number of
+                elements.
+        """
         total_els = 0
         total_non_zero_els = 0
         for w, m in list(zip(self.W, self.backward_masks)):

@@ -49,7 +49,7 @@ training:
   # batch size for testing
   test_batch_size: 1000
   # number of epochs to train
-  epochs: 102  # For imagenet, training will finish at ~ epoch 102.31
+  epochs: 103  # For imagenet, training will finish at ~ epoch 102.31
   # random seed
   seed: 42
   # Log interval (number of mini-batch steps)
