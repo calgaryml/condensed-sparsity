@@ -2,11 +2,26 @@ import torch
 import torch.nn as nn
 import torchvision
 from omegaconf import DictConfig
-from typing import Tuple, Union, Optional
+from typing import Tuple, Union, Optional, List
 import logging
 import math
 
 EXCLUDED_TYPES = (torch.nn.BatchNorm2d,)
+
+
+def get_names_and_W(
+    model: torch.nn.Module,
+) -> List[torch.nn.parameter.Parameter]:
+    """Much simpler implementation"""
+    target_types = [torch.nn.Conv2d, torch.nn.Linear]
+    target_layers = []
+    names = []
+    for n, m in model.named_modules():
+        if type(m) in target_types:
+            target_layers.append(m)
+            names.append(n)
+    weights = [layer.weight for layer in target_layers]
+    return names, weights
 
 
 def get_weighted_layers(model, i=0, layers=None, linear_layers_mask=None):
@@ -286,7 +301,7 @@ def calculate_gain(nonlinearity, param=None):
         raise ValueError("Unsupported nonlinearity {}".format(nonlinearity))
 
 
-def get_filters_to_ablate(
+def get_static_filters_to_ablate(
     weight_tensor: torch.Tensor,
     sparsity: float,
     filter_ablation_threshold: float,

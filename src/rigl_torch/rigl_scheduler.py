@@ -5,8 +5,14 @@ import torch
 import torch.distributed as dist
 from typing import List, Optional
 import logging
+import wandb
 
-from rigl_torch.utils.rigl_utils import get_W, get_filters_to_ablate
+from rigl_torch.utils.rigl_utils import (
+    get_W,
+    get_static_filters_to_ablate,
+    get_names_and_W,
+)
+from rigl_torch.meters.layer_meter import LayerMeter
 
 
 class IndexMaskHook:
@@ -46,6 +52,8 @@ def _create_step_wrapper(scheduler, optimizer):
 
 
 class RigLScheduler:
+    _implemented_sparsity_distributions: List[str] = ["uniform", "erk"]
+
     def __init__(
         self,
         model,
@@ -61,32 +69,29 @@ class RigLScheduler:
         state_dict=None,
         erk_power_scale=1.0,
         filter_ablation_threshold: Optional[float] = None,
+        static_ablation: bool = True,
+        dynamic_ablation: bool = False,
     ):
-        self.explored_params = None
-        self.filter_ablation_threshold = filter_ablation_threshold
-        self._implemented_sparsity_distributions = ["uniform", "erk"]
         self._logger = logging.getLogger(__file__)
+        self.explored_params = None
+        self.static_ablation = static_ablation
+        self.dynamic_ablation = dynamic_ablation
+        self.filter_ablation_threshold = filter_ablation_threshold
         self.erk_power_scale = erk_power_scale
-        self._validate_percent_params(dense_allocation, "dense_allocation")
-        self._validate_percent_params(
-            filter_ablation_threshold, "filter_ablation_threshold"
-        )
-        if (
-            filter_ablation_threshold is not None
-            and filter_ablation_threshold != 0.0
-        ):
-            print("Filter Ablation not implemented for vanilla rigl yet!!!")
+        # define the actual schedule
+        self.delta_T = delta
+        self.alpha = alpha
+        self.T_end = T_end
+        self.dense_allocation = dense_allocation
         self.model = model
         self.optimizer = optimizer
 
         self.W, self._linear_layers_mask = get_W(
             model, return_linear_layers_mask=True
         )
-
         # modify optimizer.step() function to call "reset_momentum" after
         _create_step_wrapper(self, optimizer)
 
-        self.dense_allocation = dense_allocation
         self.N = [torch.numel(w) for w in self.W]
 
         if state_dict is not None:
@@ -105,9 +110,12 @@ class RigLScheduler:
 
             # determine if any filters must be ablated to meet filter-wise
             # sparsity threshold
-            self.inital_ablated_filters = (
-                self.get_inital_num_filters_to_ablate()
-            )
+            if self.static_ablation:
+                self.static_ablated_filters = (
+                    self.get_inital_num_filters_to_ablate()
+                )
+            else:
+                self.static_ablated_filters = [0 for _ in range(len(self.W))]
 
             # randomly sparsify model according to S
             self.random_sparsify()
@@ -116,11 +124,6 @@ class RigLScheduler:
             # it does its scheduling
             self.step = 0
             self.rigl_steps = 0
-
-            # define the actual schedule
-            self.delta_T = delta
-            self.alpha = alpha
-            self.T_end = T_end
             self._update_itop_rs()
 
         # also, register backward hook so sparse elements cannot be recovered
@@ -140,8 +143,24 @@ class RigLScheduler:
             self.backward_hook_objects.append(IndexMaskHook(i, self))
             w.register_hook(self.backward_hook_objects[-1])
             setattr(w, "_has_rigl_backward_hook", True)
+            self._register_meters()
+            self._update_active_neurons()
+            self._validate_params()
 
-        assert self.grad_accumulation_n > 0 and self.grad_accumulation_n < delta
+    def _validate_params(self) -> None:
+        if self.static_ablation and self.dynamic_ablation:
+            raise ValueError(
+                "Only one of `static_ablation` and "
+                "`dynamic ablation` may be True!"
+            )
+        self._validate_percent_params(self.dense_allocation, "dense_allocation")
+        self._validate_percent_params(
+            self.filter_ablation_threshold, "filter_ablation_threshold"
+        )
+        assert (
+            self.grad_accumulation_n > 0
+            and self.grad_accumulation_n < self.delta_T
+        )
         assert (
             self.sparsity_distribution
             in self._implemented_sparsity_distributions
@@ -166,7 +185,7 @@ class RigLScheduler:
                 inital_ablated_filters.append(0)
             else:
                 inital_ablated_filters.append(
-                    get_filters_to_ablate(
+                    get_static_filters_to_ablate(
                         weight_tensor=w,
                         sparsity=self.S[idx],
                         filter_ablation_threshold=self.filter_ablation_threshold,  # noqa E501
@@ -277,6 +296,21 @@ class RigLScheduler:
             sparsity_dist.append(sparsity)
         return sparsity_dist
 
+    def _update_active_neurons(self) -> None:
+        self.active_neurons = []
+        for layer in self.backward_masks:
+            active_neurons_this_layer = []
+            for idx, filter_mask in enumerate(layer):
+                if filter_mask.any():
+                    active_neurons_this_layer.append(idx)
+            self.active_neurons.append(active_neurons_this_layer)
+        self.active_neuron_count = sum(
+            [len(layer_neurons) for layer_neurons in self.active_neurons]
+        )
+
+    def _update_neuron_statistics(self) -> None:
+        pass
+
     def state_dict(self):
         obj = {
             "dense_allocation": self.dense_allocation,
@@ -298,6 +332,7 @@ class RigLScheduler:
             "_linear_layers_mask": self._linear_layers_mask,
             "itop_rs": self.itop_rs,
             "explored_params": self.explored_params,
+            "active_neurons": self.active_neurons,
         }
 
         return obj
@@ -401,7 +436,11 @@ class RigLScheduler:
         s += "ignoring_linear_layers=" + str(self.ignore_linear_layers) + ",\n"
         s += "sparsity_distribution=" + str(self.sparsity_distribution) + ",\n"
         s += "ITOP rate=" + f"{self.itop_rs:.4f}" + ",\n"
-
+        active_neuron_count = [
+            (len(self.active_neurons[idx]), self.W[idx].shape[0])
+            for idx in range(len(self.W))
+        ]
+        s += "Active Neuron Count=" + f"{active_neuron_count}" + ",\n"
         return s + ")"
 
     @torch.no_grad()
@@ -461,7 +500,8 @@ class RigLScheduler:
             self._rigl_step()
             self.rigl_steps += 1
             self._update_itop_rs()
-            self._update_current_filter_ablation()
+            # self._update_current_filter_ablation()
+            self._update_active_neurons()
             return False
         return True
 
@@ -554,9 +594,9 @@ class RigLScheduler:
             # update the mask
             current_mask.data = mask_combined
 
-            self.reset_momentum()
-            self.apply_mask_to_weights()
-            self.apply_mask_to_gradients()
+        self.reset_momentum()
+        self.apply_mask_to_weights()
+        self.apply_mask_to_gradients()
 
     def _update_itop_rs(self):
         if self.explored_params is None:
@@ -611,7 +651,8 @@ class RigLScheduler:
         return True
 
     def _update_current_filter_ablation(self) -> None:
-        """Update list of ablated filters.
+        """Update list of ablated filters. TODO: Unused currently in favour of
+            active neurons, consider removal
 
         Intended to monitor neuron ablation of vanilla rigl. Const-fan in rigl
         will have the same neuron ablations from initalization depending on
@@ -659,6 +700,37 @@ class RigLScheduler:
                 total_non_zero_els += m.sum()
                 total_els += w.numel()
         return 1 - (total_non_zero_els / total_els)
+
+    def _register_meters(self) -> None:
+        self.meters = []
+        names, weights = get_names_and_W(self.model)
+        assert weights == self.W
+        for idx, _ in enumerate(self.backward_masks):
+            self.meters.append(
+                LayerMeter(
+                    idx=idx,
+                    weight=weights[idx],
+                    mask=self.backward_masks[idx],
+                    name=names[idx],
+                )
+            )
+
+    def log_meters(self, step: int) -> None:
+        for idx, meter in enumerate(self.meters):
+            meter.log_to_wandb(
+                dense_grads=self.backward_hook_objects[idx].dense_grad,
+                step=step,
+            )
+        total_neurons = sum([len(x) for x in self.backward_masks])
+        wandb.log(
+            {
+                "_TOTAL_ACTIVE_NEURONS": self.active_neuron_count,
+                "_TOTAL_PERCENTAGE_ACTIVE_NEURONS": self.active_neuron_count
+                / total_neurons
+                * 100,
+            },
+            step=step,
+        )
 
 
 if __name__ == "__main__":
