@@ -117,7 +117,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
         cfg.experiment.resume_from_checkpoint = True
     else:
         run_id = None
-        wandb_init_resume = "never"
+        wandb_init_resume = None
         checkpoint = None
     logger.info(f"Running train_rigl.py with config:\n{cfg}")
 

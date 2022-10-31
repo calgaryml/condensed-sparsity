@@ -8,6 +8,9 @@
 # docker run --cpus 12 --memory 30G --env-file .env --gpus '"device=3"' -i -t --name gpu-3 rigl-sweep-agent:latest
 # docker run -itd --env-file ./.env --mount source=/home/mike/condensed-sparsity,target=/home/condensed-sparsity,type=bind --mount source=/datasets/ILSVRC2012,target=/datasets/ILSVRC2012,type=bind --mount source=/scratch/datasets/ILSVRC2012,target=/scratch/datasets/ILSVRC2012,type=bind --gpus all --shm-size 16G --name cond-rigl-dev ac605476a22f
 
+wandb agent condensed-sparsity/condensed-rigl/jkhfnesu
+
+
 docker run -itd --env-file ./.env \
   --mount source=/home/mike/condensed-sparsity,target=/home/condensed-sparsity,type=bind \
   --mount source=/datasets/ILSVRC2012,target=/datasets/ILSVRC2012,type=bind \

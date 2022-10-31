@@ -4,8 +4,7 @@ defaults:
   - _self_
 
 experiment:
-  # comment: dense_alloc-${rigl.dense_allocation}_const_fan-${rigl.const_fan_in}_ablation-${rigl.filter_ablation_threshold}_sparse_init-${rigl.use_sparse_initialization}
-  comment: filter_instrumentation_test
+  comment: dense_alloc-${rigl.dense_allocation}_ablation-exp
   name: ${model.name}_${dataset.name}_${experiment.comment}
   resume_from_checkpoint: False
   run_id: null
