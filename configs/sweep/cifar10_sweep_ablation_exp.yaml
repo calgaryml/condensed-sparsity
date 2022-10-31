@@ -15,7 +15,7 @@ parameters:
       # percentage of dense parameters allowed. if None, pruning will not 
       # be used. must be on the interval (0, 1]
   rigl.const_fan_in: 
-    values: [True]
+    values: [False]
   training.seed:
     values: [8746, 6037, 7303, 2078, 42]
 

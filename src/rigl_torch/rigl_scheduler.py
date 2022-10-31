@@ -298,7 +298,10 @@ class RigLScheduler:
 
     def _update_active_neurons(self) -> None:
         self.active_neurons = []
-        for layer in self.backward_masks:
+        for idx, layer in enumerate(self.backward_masks):
+            if layer is None:  # No Sparisty, all active
+                self.active_neurons.append([i for i in range(len(self.W[idx]))])
+                continue
             active_neurons_this_layer = []
             for idx, filter_mask in enumerate(layer):
                 if filter_mask.any():
@@ -458,11 +461,15 @@ class RigLScheduler:
 
     @torch.no_grad()
     def apply_mask_to_weights(self):
+        self._max_inactive_weights = []
         for w, mask, s in zip(self.W, self.backward_masks, self.S):
             # if sparsity is 0%, skip
             if s <= 0:
+                self._max_inactive_weights.append(0.0)
                 continue
-
+            self._max_inactive_weights.append(
+                torch.abs(w[mask == False]).max().item()  # noqa: E712
+            )
             w *= mask
 
     @torch.no_grad()
@@ -717,17 +724,23 @@ class RigLScheduler:
 
     def log_meters(self, step: int) -> None:
         for idx, meter in enumerate(self.meters):
+            if self.backward_hook_objects[idx] is None:
+                dense_grad = self.W[idx].grad
+            else:
+                dense_grad = self.backward_hook_objects[idx].dense_grad
             meter.log_to_wandb(
-                dense_grads=self.backward_hook_objects[idx].dense_grad,
+                dense_grads=dense_grad,
+                max_inactive_weights=self._max_inactive_weights,
                 step=step,
             )
-        total_neurons = sum([len(x) for x in self.backward_masks])
+        total_neurons = sum([len(x) for x in self.W])
         wandb.log(
             {
                 "_TOTAL_ACTIVE_NEURONS": self.active_neuron_count,
                 "_TOTAL_PERCENTAGE_ACTIVE_NEURONS": self.active_neuron_count
                 / total_neurons
                 * 100,
+                "_PRUNING_RATE": self.cosine_annealing(),
             },
             step=step,
         )

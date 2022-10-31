@@ -16,7 +16,7 @@ docker run -itd --env-file ./.env \
   --shm-size 16G \
   --name gpu-0 \
   itop-rigl:latest \
-  python train_rigl.py  rigl.dense_allocation=0.1 rigl.const_fan_in=True
+  python wandb sweep
 
 
 docker run -itd --env-file ./.env \

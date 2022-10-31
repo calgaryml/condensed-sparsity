@@ -3,6 +3,8 @@ import torch
 import wandb
 from typing import List
 
+from rigl_torch.utils.rigl_utils import calculate_fan_in_and_fan_out
+
 
 class LayerMeter(object):
     def __init__(
@@ -17,7 +19,12 @@ class LayerMeter(object):
         if self._append_name:
             self.name = f"z-{self.name}"  # Place at the end of panels
 
-    def log_to_wandb(self, dense_grads: List[float], step: int):
+    def log_to_wandb(
+        self,
+        dense_grads: List[float],
+        max_inactive_weights: List[float],
+        step: int,
+    ):
         # Populate layerwise data
         active_neuron_count = self.active_neuron_count()
         fan_ins = self.fan_ins()
@@ -38,6 +45,7 @@ class LayerMeter(object):
             grads_std = [
                 torch.std(torch.abs(grad)).item() for grad in dense_grads
             ]
+        max_inactive_grad = self.max_inactive_grad(dense_grads)
         log_data = {}
 
         # Per neuron data
@@ -75,6 +83,10 @@ class LayerMeter(object):
                 f"{self.name}-Grad-Dist": wandb.Histogram(
                     dense_grads.flatten().detach().cpu()
                 ),
+                f"{self.name}-Max-Inactive_Weight": max_inactive_weights[
+                    self.idx
+                ],
+                f"{self.name}-Max-Inactive_Grad": max_inactive_grad,
             }
         )
         wandb.log(log_data, step=step)
@@ -82,9 +94,12 @@ class LayerMeter(object):
     @torch.no_grad()
     def active_neurons(self) -> List[int]:
         active_neurons = []
-        for idx, neuron in enumerate(self.mask):
-            if neuron.any():
-                active_neurons.append(idx)
+        if self.mask is not None:
+            for idx, neuron in enumerate(self.mask):
+                if neuron.any():
+                    active_neurons.append(idx)
+        else:
+            active_neurons = [i for i in range(len(self.weight))]
         return active_neurons
 
     @torch.no_grad()
@@ -93,9 +108,14 @@ class LayerMeter(object):
 
     @torch.no_grad()
     def fan_ins(self) -> List[int]:
-        fan_ins = [
-            torch.sum(self.mask[idx]).item() for idx in range(len(self.mask))
-        ]
+        if self.mask is not None:
+            fan_ins = [
+                torch.sum(self.mask[idx]).item()
+                for idx in range(len(self.mask))
+            ]
+        else:
+            fan_in, _ = calculate_fan_in_and_fan_out(self.weight)
+            fan_ins = [fan_in for _ in range(len(self.weight))]
         return fan_ins
 
     @torch.no_grad()
@@ -105,6 +125,20 @@ class LayerMeter(object):
     @torch.no_grad()
     def max_abs_weights(self) -> List[float]:
         return [torch.max(torch.abs(w)).item() for w in self.weight]
+
+    @torch.no_grad()
+    def max_inactive_grad(self, dense_grads) -> float:
+        max_grad = 0.0
+        if self.mask is None:
+            return 0.0
+        for m, g in list(zip(self.mask, dense_grads)):
+            if m is None:
+                continue
+            elif not m.any():  # neuron inactive
+                g_max = torch.abs(g).max().item()
+                if g_max > max_grad:
+                    max_grad = g_max
+        return max_grad
 
     @torch.no_grad()
     def min_abs_weights(self) -> List[float]:
