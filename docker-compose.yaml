@@ -18,8 +18,10 @@ docker run -itd --env-file ./.env \
   --gpus '"device=0"' \
   --shm-size 16G \
   --name gpu-0 \
+  --cpus 24 \
+  --memory 30G \
   itop-rigl:latest \
-  python wandb sweep
+  wandb agent condensed-sparsity/condensed-rigl/jkhfnesu
 
 
 docker run -itd --env-file ./.env \
@@ -29,8 +31,10 @@ docker run -itd --env-file ./.env \
   --gpus '"device=1"' \
   --shm-size 16G \
   --name gpu-1 \
+  --cpus 24 \
+  --memory 30G \
   itop-rigl:latest \
-  python train_rigl.py  rigl.dense_allocation=0.1 rigl.const_fan_in=False
+  wandb agent condensed-sparsity/condensed-rigl/jkhfnesu
 
 docker run -itd --env-file ./.env \
   --mount source=/home/mike/condensed-sparsity,target=/home/condensed-sparsity,type=bind \
@@ -39,8 +43,10 @@ docker run -itd --env-file ./.env \
   --gpus '"device=2"' \
   --shm-size 16G \
   --name gpu-2 \
+  --cpus 12 \
+  --memory 30G \
   itop-rigl:latest \
-  python train_rigl.py  rigl.dense_allocation=0.01 rigl.const_fan_in=True
+  wandb agent condensed-sparsity/condensed-rigl/jkhfnesu
 
   docker run -itd --env-file ./.env \
   --mount source=/home/mike/condensed-sparsity/artifacts,target=/home/condensed-sparsity/artifacts,type=bind \
@@ -49,8 +55,10 @@ docker run -itd --env-file ./.env \
   --gpus '"device=3"' \
   --shm-size 16G \
   --name gpu-3 \
+  --cpus 12 \
+  --memory 30G \
   itop-rigl:latest \
-  python train_rigl.py  rigl.dense_allocation=0.01 rigl.const_fan_in=False
+  wandb agent condensed-sparsity/condensed-rigl/jkhfnesu
 
 
   
