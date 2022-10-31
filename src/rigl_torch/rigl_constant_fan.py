@@ -31,6 +31,8 @@ class RigLConstFanScheduler(RigLScheduler):
         state_dict: Optional[Dict[str, Any]] = None,
         erk_power_scale=1.0,
         filter_ablation_threshold: Optional[float] = None,
+        static_ablation: bool = True,
+        dynamic_ablation: bool = False,
     ):
         """RigL Scheduler with constant fan-in.
 
@@ -74,6 +76,8 @@ class RigLConstFanScheduler(RigLScheduler):
             state_dict,
             erk_power_scale,
             filter_ablation_threshold,
+            static_ablation,
+            dynamic_ablation,
         )
 
     @torch.no_grad()
@@ -213,16 +217,16 @@ class RigLConstFanScheduler(RigLScheduler):
             current_mask = self.backward_masks[idx]
 
             # calculate drop/grow quantities
-            try:
-                n_fan_in = (
-                    get_fan_in_tensor(
-                        current_mask[self.inital_ablated_filters[idx] :]  # noqa
-                    )
-                    .unique()
-                    .item()
-                )
-            except ValueError:
-                raise ConstantFanInException(get_fan_in_tensor(current_mask))
+            # try:
+            #     n_fan_in = (
+            #         get_fan_in_tensor(
+            #             current_mask[self.inital_ablated_filters[idx] :]  # noqa
+            #         )
+            #         .unique()
+            #         .item()
+            #     )
+            # except ValueError:
+            #     raise ConstantFanInException(get_fan_in_tensor(current_mask))
             n_ones = torch.sum(current_mask).item()
             n_prune = int(n_ones * drop_fraction)
             n_keep = int(n_ones - n_prune)
@@ -233,6 +237,11 @@ class RigLConstFanScheduler(RigLScheduler):
                 # prune amounts to suit
                 n_keep = n_non_zero_weights
                 n_prune = n_ones - n_keep
+
+            # Get neurons to ablate
+            if self.dyn
+            neurons_to_ablate = self._get_neurons_to_ablate(drop_mask = drop_mask, grow_mask = grow_mask, n_keep = n_keep, )            
+            n_fan_in = get_fan_in_after_ablation(weight_tensor=w, num_neurons_to_ablate=len(neurons_to_ablate), sparsity=self.S[idx])
 
             # create drop mask
             drop_mask = self._get_drop_mask(score_drop, n_keep)
@@ -408,3 +417,9 @@ class RigLConstFanScheduler(RigLScheduler):
             else:
                 if not ~(m[:n].any()):
                     raise InvalidAblatedNeuronException(mask_index)
+
+    def _get_neurons_to_ablate(self, drop_mask, grow_mask,n_keep, ) -> List[int]:
+        is self.dynamic_ablation:
+            raise NotImplementedError("not yet")
+        if self.static_ablation:
+            return self.inital_ablated_filters  # Check type -> Need to convert to list of indices
