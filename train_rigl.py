@@ -13,7 +13,7 @@ import logging
 import wandb
 from datetime import date
 import pathlib
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from copy import deepcopy
 
 from rigl_torch.models.model_factory import ModelFactory
@@ -117,7 +117,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
         cfg.experiment.resume_from_checkpoint = True
     else:
         run_id = None
-        wandb_init_resume = "never"
+        wandb_init_resume = None
         checkpoint = None
     logger.info(f"Running train_rigl.py with config:\n{cfg}")
 
@@ -173,6 +173,11 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
     optimizer = get_optimizer(cfg, model, state_dict=optimizer_state)
     scheduler = get_lr_scheduler(cfg, optimizer, state_dict=scheduler_state)
 
+    if "filter_ablation_threshold" not in cfg.rigl:
+        from omegaconf import open_dict
+
+        with open_dict(cfg):
+            cfg.rigl.filter_ablation_threshold = None
     pruner = None
     if cfg.rigl.dense_allocation is not None:
         T_end = get_T_end(cfg, train_loader)
@@ -195,6 +200,9 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             sparsity_distribution=cfg.rigl.sparsity_distribution,
             erk_power_scale=cfg.rigl.erk_power_scale,
             state_dict=pruner_state,
+            filter_ablation_threshold=cfg.rigl.filter_ablation_threshold,
+            static_ablation=cfg.rigl.static_ablation,
+            dynamic_ablation=cfg.rigl.dynamic_ablation,
         )
     else:
         logger.warning(
@@ -204,10 +212,14 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
 
     writer = SummaryWriter(log_dir="./graphs")
     if rank == 0:
+        if cfg.wandb.watch_model_grad_and_weights:
+            log = "all"
+        else:
+            log = None
         wandb.watch(
             model,
             criterion=F.nll_loss,
-            log="all",
+            log=log,
             log_freq=cfg.training.log_interval,
         )
     logger.info(f"Model Summary: {model}")
@@ -319,7 +331,11 @@ def train(
         if apply_grads:
             optimizer.step()
             if pruner is not None:
-                pruner()
+                # pruner.__call__ returns False if rigl step taken
+                if not pruner() and cfg.wandb.log_filter_stats:
+                    # If we update the pruner
+                    # log filter-wise statistics to wandb
+                    pruner.log_meters(step=step)
             optimizer.zero_grad()
 
         if batch_idx % cfg.training.log_interval == 0 and rank == 0:
@@ -372,16 +388,20 @@ def test(cfg, model, device, test_loader, epoch, step, rank, logger):
                     == top_5_indices
                 ).any(dim=1)
                 top_k_correct += top_5_pred.sum()
+            else:
+                top_k_correct = None
     if cfg.compute.distributed:
         dist.all_reduce(test_loss, dist.ReduceOp.AVG, async_op=False)
         dist.all_reduce(correct, dist.ReduceOp.SUM, async_op=False)
-        dist.all_reduce(top_k_correct, dist.ReduceOp.SUM, async_op=False)
+        if cfg.dataset.name == "imagenet":
+            dist.all_reduce(top_k_correct, dist.ReduceOp.SUM, async_op=False)
+            top_k_correct = top_k_correct / len(test_loader.dataset)
     if rank == 0:
         wandb_log(
             epoch,
             test_loss,
             correct / len(test_loader.dataset),
-            top_k_correct / len(test_loader.dataset),
+            top_k_correct,
             data,
             logits,
             target,
@@ -406,7 +426,7 @@ def wandb_log(
     epoch,
     loss,
     accuracy,
-    top_k_accuracy,
+    top_k_accuracy: Optional[torch.Tensor],
     inputs,
     logits,
     captions,
@@ -418,13 +438,18 @@ def wandb_log(
         "epoch": epoch,
         "loss": loss.item(),
         "accuracy": accuracy.item(),
-        "top_5_accuracy": top_k_accuracy.item(),
         "logits": wandb.Histogram(logits.cpu()),
-        "captions": wandb.Html(captions.cpu().numpy().__str__()),
-        "predictions": wandb.Html(pred.cpu().numpy().__str__()),
     }
+    if top_k_accuracy is not None:
+        log_data.update({"top_5_accuracy": top_k_accuracy.item()})
     if log_images:
-        log_data.extend({"inputs": wandb.Image(inputs)})
+        log_data.update(
+            {
+                "inputs": wandb.Image(inputs),
+                "captions": wandb.Html(captions.cpu().numpy().__str__()),
+                "predictions": wandb.Html(pred.cpu().numpy().__str__()),
+            }
+        )
     wandb.log(log_data, step=step)
 
 

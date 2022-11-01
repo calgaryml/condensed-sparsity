@@ -34,7 +34,10 @@ class Checkpoint(object):
     _RUN_ID_DELIMITER: str = "_"
 
     def __post_init__(self) -> None:
-        self.checkpoint_dir = self._format_checkpoint_dir(self.checkpoint_dir)
+        if self.checkpoint_dir is None:
+            self.checkpoint_dir = self._format_checkpoint_dir(
+                self.checkpoint_dir
+            )
 
     def _format_checkpoint_dir(
         self, checkpoint_dir: Optional[Union[pathlib.Path, str]]

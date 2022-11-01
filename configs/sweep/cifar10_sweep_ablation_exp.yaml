@@ -1,7 +1,7 @@
 program: train_rigl.py
 method: grid
 project: condensed-rigl
-name: cifar10_sweep_init_and_ablation
+name: cifar10_sweep_ablation_exp
 metric:
   goal: maximize
   name: accuracy
@@ -11,14 +11,11 @@ parameters:
   dataset:
     value: cifar10
   rigl.dense_allocation: 
-    values: [0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, null]
+    values: [0.01, 0.05, 0.1, 0.75, 0.5]
       # percentage of dense parameters allowed. if None, pruning will not 
       # be used. must be on the interval (0, 1]
   rigl.const_fan_in: 
-    values: [True, False]
-      # If True, use const_fan_in scheduler.
-      # sparsity_distribution: erk
-      # # Define layer-wise sparsity distribution. Options include `uniform` & `erk`
+    values: [False]
   training.seed:
     values: [8746, 6037, 7303, 2078, 42]
 

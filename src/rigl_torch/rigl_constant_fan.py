@@ -4,11 +4,15 @@ from typing import Optional, Dict, Any, List
 import torch
 import torch.distributed as dist
 from rigl_torch.utils.rigl_utils import (
-    calculate_fan_in_and_fan_out,
     get_fan_in_tensor,
+    get_fan_in_after_ablation,
+    calculate_fan_in_and_fan_out,
 )
 from rigl_torch.rigl_scheduler import RigLScheduler
-from rigl_torch.exceptions import ConstantFanInException
+from rigl_torch.exceptions import (
+    ConstantFanInException,
+    InvalidAblatedNeuronException,
+)
 
 
 class RigLConstFanScheduler(RigLScheduler):
@@ -26,6 +30,7 @@ class RigLConstFanScheduler(RigLScheduler):
         grad_accumulation_n: int = 1,
         state_dict: Optional[Dict[str, Any]] = None,
         erk_power_scale=1.0,
+        filter_ablation_threshold: Optional[float] = None,
     ):
         """RigL Scheduler with constant fan-in.
 
@@ -68,6 +73,7 @@ class RigLConstFanScheduler(RigLScheduler):
             grad_accumulation_n,
             state_dict,
             erk_power_scale,
+            filter_ablation_threshold,
         )
 
     @torch.no_grad()
@@ -77,18 +83,26 @@ class RigLConstFanScheduler(RigLScheduler):
         """
         is_dist: bool = dist.is_initialized()
         self.backward_masks: List[torch.tensor] = []
-        for l, w in enumerate(self.W):
+        for idx, (w, num_neurons_to_ablate) in enumerate(
+            list(zip(self.W, self.inital_ablated_filters))
+        ):
             # if sparsity is 0%, skip
-            if self.S[l] <= 0:
+            if self.S[idx] <= 0:
                 self.backward_masks.append(None)
                 continue
 
-            fan_in, _ = calculate_fan_in_and_fan_out(w)
-            s = int(fan_in * self.S[l])  # Number of connections to drop
+            dense_fan_in, _ = calculate_fan_in_and_fan_out(module=w)
+            fan_in = get_fan_in_after_ablation(
+                weight_tensor=w,
+                num_neurons_to_ablate=num_neurons_to_ablate,
+                sparsity=self.S[idx],
+            )
+            # Number of connections to drop per filter
+            s = dense_fan_in - fan_in
             perm = torch.concat(
                 [
-                    torch.randperm(fan_in).reshape(1, -1)
-                    for i in range(w.shape[0])
+                    torch.randperm(dense_fan_in).reshape(1, -1)
+                    for _ in range(w.shape[0])
                 ]
             )
             # Generate random perm of indices to mask per filter / neuron
@@ -96,11 +110,16 @@ class RigLConstFanScheduler(RigLScheduler):
                 :, :s
             ]  # Drop s elements from n to achieve desired sparsity
             mask = torch.concat(
-                [torch.ones(fan_in).reshape(1, -1) for i in range(w.shape[0])]
+                [
+                    torch.ones(dense_fan_in).reshape(1, -1)
+                    for _ in range(w.shape[0])
+                ]
             )
-            for m in range(mask.shape[0]):  # TODO: vectorize?
-                mask[m][perm[m]] = 0
+            for filter_idx in range(mask.shape[0]):  # TODO: vectorize?
+                mask[filter_idx][perm[filter_idx]] = 0
             mask = mask.reshape(w.shape).to(device=w.device)
+            # Ablate top n neurons according to filter sparsity criterion
+            mask[:num_neurons_to_ablate] = 0
 
             if is_dist:
                 dist.broadcast(mask, 0)
@@ -121,9 +140,10 @@ class RigLConstFanScheduler(RigLScheduler):
         s = super().__str__()
         s = s[:-1]  # Remove trailing ')'
         const_fan_ins = []
-        for mask, W, in zip(
+        for mask, W, neurons_ablated in zip(
             self.backward_masks,
             self.W,
+            self.inital_ablated_filters,
         ):
             if mask is None:
                 fan_in, _ = calculate_fan_in_and_fan_out(W)
@@ -131,12 +151,18 @@ class RigLConstFanScheduler(RigLScheduler):
             else:
                 try:
                     const_fan_ins.append(
-                        get_fan_in_tensor(mask).unique().item()
+                        get_fan_in_tensor(mask)[neurons_ablated:]
+                        .unique()
+                        .item()
                     )
                 except ValueError:
                     raise ConstantFanInException(get_fan_in_tensor(mask))
 
-        s = f"{s}constant fan ins={str(const_fan_ins)}\n)"
+        s = f"{s}constant fan ins={str(const_fan_ins)}\n"
+        s = (
+            f"{s}Neurons Ablated per layer = "
+            f"{str(self.inital_ablated_filters)}\n)"
+        )
         return s
 
     @torch.no_grad()
@@ -152,14 +178,26 @@ class RigLConstFanScheduler(RigLScheduler):
         is_dist = dist.is_initialized()
         world_size = dist.get_world_size() if is_dist else None
 
-        for l, w in enumerate(self.W):
+        for idx, w in enumerate(self.W):
             # if sparsity is 0%, skip
-            if self.S[l] <= 0:
+            if self.S[idx] <= 0:
                 continue
 
             # calculate raw scores
             score_drop = torch.abs(w)
-            score_grow = torch.abs(self.backward_hook_objects[l].dense_grad)
+
+            # Set ablated filter drop scores to min of score_grow to avoid
+            # pruning already inactive weights
+            score_drop[
+                : self.inital_ablated_filters[idx]
+            ] = score_drop.min().item()
+
+            score_grow = torch.abs(self.backward_hook_objects[idx].dense_grad)
+
+            # Set ablated filter scores to min of score_grow to avoid regrowing
+            score_grow[
+                : self.inital_ablated_filters[idx]
+            ] = score_grow.min().item()
 
             # if is distributed, synchronize scores
             if is_dist:
@@ -172,11 +210,17 @@ class RigLConstFanScheduler(RigLScheduler):
                     world_size  # divide by world size (average the grow scores)
                 )
 
-            current_mask = self.backward_masks[l]
+            current_mask = self.backward_masks[idx]
 
             # calculate drop/grow quantities
             try:
-                n_fan_in = get_fan_in_tensor(current_mask).unique().item()
+                n_fan_in = (
+                    get_fan_in_tensor(
+                        current_mask[self.inital_ablated_filters[idx] :]  # noqa
+                    )
+                    .unique()
+                    .item()
+                )
             except ValueError:
                 raise ConstantFanInException(get_fan_in_tensor(current_mask))
             n_ones = torch.sum(current_mask).item()
@@ -194,7 +238,12 @@ class RigLConstFanScheduler(RigLScheduler):
             drop_mask = self._get_drop_mask(score_drop, n_keep)
 
             # create growth mask per filter
-            grow_mask = self._get_grow_mask(score_grow, drop_mask, n_fan_in)
+            grow_mask = self._get_grow_mask(
+                score_grow,
+                drop_mask,
+                n_fan_in,
+                self.inital_ablated_filters[idx],
+            )
 
             # get new weights
             new_weights = self._get_new_weights(w, current_mask, grow_mask)
@@ -206,6 +255,7 @@ class RigLConstFanScheduler(RigLScheduler):
             self.reset_momentum()
             self.apply_mask_to_weights()
             self.apply_mask_to_gradients()
+            self._verify_neuron_ablation()
 
     def _get_drop_mask(
         self, score_drop: torch.Tensor, n_keep: int
@@ -246,6 +296,7 @@ class RigLConstFanScheduler(RigLScheduler):
         score_grow: torch.Tensor,
         drop_mask: torch.Tensor,
         n_fan_in: int,
+        n_neurons_ablated: Optional[int] = 0,
     ) -> torch.Tensor:
         """Get weights to grow by selecting abs(score_grow) where not already
             active with constant fan-in.
@@ -270,7 +321,10 @@ class RigLConstFanScheduler(RigLScheduler):
         for idx, (drop_mask_filter, grow_mask_filter) in enumerate(
             list(zip(drop_mask, grow_mask))
         ):  # Iterate over filters
-            if drop_mask_filter.sum() < n_fan_in:
+            if idx < n_neurons_ablated:
+                grow_mask_filter[:] = False
+                grow_mask[idx] = grow_mask_filter
+            elif drop_mask_filter.sum() < n_fan_in:
                 # set scores of the enabled connections(ones) to min(s) - 1,
                 # so that they have the lowest scores
                 score_grow_lifted = torch.where(
@@ -290,12 +344,21 @@ class RigLConstFanScheduler(RigLScheduler):
                 grow_mask_filter[idx_to_grow] = True
                 grow_mask[idx] = grow_mask_filter.reshape(drop_mask[idx].shape)
             elif drop_mask_filter.sum() > n_fan_in:
-                self._logger.error(get_fan_in_tensor(drop_mask))
+                self._logger.error(
+                    get_fan_in_tensor(
+                        drop_mask[self.inital_ablated_filters[idx] :]  # noqa
+                    )
+                )
                 raise ValueError(
                     f"Filter with {drop_mask_filter.sum()} fan in > than ",
                     "n_fan_in ({n_fan_in})",
                 )
-        assert (get_fan_in_tensor(drop_mask + grow_mask) == n_fan_in).all()
+        assert (
+            get_fan_in_tensor(
+                drop_mask[n_neurons_ablated:] + grow_mask[n_neurons_ablated:]
+            )
+            == n_fan_in
+        ).all()
         return grow_mask
 
     def _get_new_weights(
@@ -322,12 +385,26 @@ class RigLConstFanScheduler(RigLScheduler):
         new_connections = ~current_mask & grow_mask.to(
             device=current_mask.device
         )
-        # new_connections = (current_mask == 0) & (
-        #     grow_mask.to(device=current_mask.device) == 1
-        # )
         new_weights = torch.where(
             new_connections,
             grow_tensor,  # init to 0
             w,  # else keep existing weight
         )
         return new_weights
+
+    def _verify_neuron_ablation(self) -> None:
+        """Verify that backward_masks do not have any active elements i
+        initally ablated filters.
+
+        Raises:
+            InvalidAblatedNeuronException: If an ablated filter has a value !=
+                False.
+        """
+        for mask_index, (m, n) in enumerate(
+            list(zip(self.backward_masks, self.inital_ablated_filters))
+        ):
+            if m is None:
+                continue
+            else:
+                if not ~(m[:n].any()):
+                    raise InvalidAblatedNeuronException(mask_index)

@@ -3,10 +3,16 @@
 import numpy as np
 import torch
 import torch.distributed as dist
-from typing import List
+from typing import List, Optional
 import logging
+import wandb
 
-from rigl_torch.utils.rigl_utils import get_W
+from rigl_torch.utils.rigl_utils import (
+    get_W,
+    get_static_filters_to_ablate,
+    get_names_and_W,
+)
+from rigl_torch.meters.layer_meter import LayerMeter
 
 
 class IndexMaskHook:
@@ -46,6 +52,8 @@ def _create_step_wrapper(scheduler, optimizer):
 
 
 class RigLScheduler:
+    _implemented_sparsity_distributions: List[str] = ["uniform", "erk"]
+
     def __init__(
         self,
         model,
@@ -60,28 +68,30 @@ class RigLScheduler:
         grad_accumulation_n=1,
         state_dict=None,
         erk_power_scale=1.0,
+        filter_ablation_threshold: Optional[float] = None,
+        static_ablation: bool = True,
+        dynamic_ablation: bool = False,
     ):
-        self.explored_params = None
-        self._implemented_sparsity_distributions = ["uniform", "erk"]
         self._logger = logging.getLogger(__file__)
+        self.explored_params = None
+        self.static_ablation = static_ablation
+        self.dynamic_ablation = dynamic_ablation
+        self.filter_ablation_threshold = filter_ablation_threshold
         self.erk_power_scale = erk_power_scale
-        if dense_allocation <= 0 or dense_allocation > 1:
-            raise Exception(
-                "Dense allocation must be on the interval (0, 1]. Got: %f"
-                % dense_allocation
-            )
-
+        # define the actual schedule
+        self.delta_T = delta
+        self.alpha = alpha
+        self.T_end = T_end
+        self.dense_allocation = dense_allocation
         self.model = model
         self.optimizer = optimizer
 
         self.W, self._linear_layers_mask = get_W(
             model, return_linear_layers_mask=True
         )
-
         # modify optimizer.step() function to call "reset_momentum" after
         _create_step_wrapper(self, optimizer)
 
-        self.dense_allocation = dense_allocation
         self.N = [torch.numel(w) for w in self.W]
 
         if state_dict is not None:
@@ -98,6 +108,15 @@ class RigLScheduler:
             # define sparsity allocation
             self.S = self._allocate_sparsity()
 
+            # determine if any filters must be ablated to meet filter-wise
+            # sparsity threshold
+            if self.static_ablation:
+                self.static_ablated_filters = (
+                    self.get_inital_num_filters_to_ablate()
+                )
+            else:
+                self.static_ablated_filters = [0 for _ in range(len(self.W))]
+
             # randomly sparsify model according to S
             self.random_sparsify()
 
@@ -105,11 +124,6 @@ class RigLScheduler:
             # it does its scheduling
             self.step = 0
             self.rigl_steps = 0
-
-            # define the actual schedule
-            self.delta_T = delta
-            self.alpha = alpha
-            self.T_end = T_end
             self._update_itop_rs()
 
         # also, register backward hook so sparse elements cannot be recovered
@@ -129,12 +143,55 @@ class RigLScheduler:
             self.backward_hook_objects.append(IndexMaskHook(i, self))
             w.register_hook(self.backward_hook_objects[-1])
             setattr(w, "_has_rigl_backward_hook", True)
+            self._register_meters()
+            self._update_active_neurons()
+            self._validate_params()
 
-        assert self.grad_accumulation_n > 0 and self.grad_accumulation_n < delta
+    def _validate_params(self) -> None:
+        if self.static_ablation and self.dynamic_ablation:
+            raise ValueError(
+                "Only one of `static_ablation` and "
+                "`dynamic ablation` may be True!"
+            )
+        self._validate_percent_params(self.dense_allocation, "dense_allocation")
+        self._validate_percent_params(
+            self.filter_ablation_threshold, "filter_ablation_threshold"
+        )
+        assert (
+            self.grad_accumulation_n > 0
+            and self.grad_accumulation_n < self.delta_T
+        )
         assert (
             self.sparsity_distribution
             in self._implemented_sparsity_distributions
         )
+
+    @torch.no_grad()
+    def get_inital_num_filters_to_ablate(self) -> List[int]:
+        """Populate list of filters to ablate with index of list corresponding
+            to layer.
+
+        Returns:
+            List[int]: Layerwise filters to ablate.
+        """
+        inital_ablated_filters = []
+        for idx, w in enumerate(self.W):
+            # if sparsity is 0%, no neurons to ablate by defn.
+            if (
+                self.S[idx] <= 0
+                or self.filter_ablation_threshold is None
+                or self.filter_ablation_threshold <= 0
+            ):
+                inital_ablated_filters.append(0)
+            else:
+                inital_ablated_filters.append(
+                    get_static_filters_to_ablate(
+                        weight_tensor=w,
+                        sparsity=self.S[idx],
+                        filter_ablation_threshold=self.filter_ablation_threshold,  # noqa E501
+                    )
+                )
+        return inital_ablated_filters
 
     def _allocate_sparsity(self) -> List[float]:
         sparsity_dist = []
@@ -239,6 +296,24 @@ class RigLScheduler:
             sparsity_dist.append(sparsity)
         return sparsity_dist
 
+    def _update_active_neurons(self) -> None:
+        self.active_neurons = []
+        for idx, layer in enumerate(self.backward_masks):
+            if layer is None:  # No Sparisty, all active
+                self.active_neurons.append([i for i in range(len(self.W[idx]))])
+                continue
+            active_neurons_this_layer = []
+            for idx, filter_mask in enumerate(layer):
+                if filter_mask.any():
+                    active_neurons_this_layer.append(idx)
+            self.active_neurons.append(active_neurons_this_layer)
+        self.active_neuron_count = sum(
+            [len(layer_neurons) for layer_neurons in self.active_neurons]
+        )
+
+    def _update_neuron_statistics(self) -> None:
+        pass
+
     def state_dict(self):
         obj = {
             "dense_allocation": self.dense_allocation,
@@ -260,6 +335,7 @@ class RigLScheduler:
             "_linear_layers_mask": self._linear_layers_mask,
             "itop_rs": self.itop_rs,
             "explored_params": self.explored_params,
+            "active_neurons": self.active_neurons,
         }
 
         return obj
@@ -363,7 +439,11 @@ class RigLScheduler:
         s += "ignoring_linear_layers=" + str(self.ignore_linear_layers) + ",\n"
         s += "sparsity_distribution=" + str(self.sparsity_distribution) + ",\n"
         s += "ITOP rate=" + f"{self.itop_rs:.4f}" + ",\n"
-
+        active_neuron_count = [
+            (len(self.active_neurons[idx]), self.W[idx].shape[0])
+            for idx in range(len(self.W))
+        ]
+        s += "Active Neuron Count=" + f"{active_neuron_count}" + ",\n"
         return s + ")"
 
     @torch.no_grad()
@@ -381,11 +461,15 @@ class RigLScheduler:
 
     @torch.no_grad()
     def apply_mask_to_weights(self):
+        self._max_inactive_weights = []
         for w, mask, s in zip(self.W, self.backward_masks, self.S):
             # if sparsity is 0%, skip
             if s <= 0:
+                self._max_inactive_weights.append(0.0)
                 continue
-
+            self._max_inactive_weights.append(
+                torch.abs(w[mask == False]).max().item()  # noqa: E712
+            )
             w *= mask
 
     @torch.no_grad()
@@ -423,6 +507,8 @@ class RigLScheduler:
             self._rigl_step()
             self.rigl_steps += 1
             self._update_itop_rs()
+            # self._update_current_filter_ablation()
+            self._update_active_neurons()
             return False
         return True
 
@@ -434,16 +520,16 @@ class RigLScheduler:
         is_dist = dist.is_initialized()
         world_size = dist.get_world_size() if is_dist else None
 
-        for l, w in enumerate(self.W):
+        for idx, w in enumerate(self.W):
             # if sparsity is 0%, skip
-            if self.S[l] <= 0:
+            if self.S[idx] <= 0:
                 continue
 
-            current_mask = self.backward_masks[l]
+            current_mask = self.backward_masks[idx]
 
             # calculate raw scores
             score_drop = torch.abs(w)
-            score_grow = torch.abs(self.backward_hook_objects[l].dense_grad)
+            score_grow = torch.abs(self.backward_hook_objects[idx].dense_grad)
 
             # if is distributed, synchronize scores
             if is_dist:
@@ -458,7 +544,7 @@ class RigLScheduler:
                 )
 
             # calculate drop/grow quantities
-            n_total = self.N[l]
+            n_total = self.N[idx]
             n_ones = torch.sum(current_mask).item()
             n_prune = int(n_ones * drop_fraction)
             n_keep = n_ones - n_prune
@@ -515,9 +601,9 @@ class RigLScheduler:
             # update the mask
             current_mask.data = mask_combined
 
-            self.reset_momentum()
-            self.apply_mask_to_weights()
-            self.apply_mask_to_gradients()
+        self.reset_momentum()
+        self.apply_mask_to_weights()
+        self.apply_mask_to_gradients()
 
     def _update_itop_rs(self):
         if self.explored_params is None:
@@ -544,6 +630,119 @@ class RigLScheduler:
                 print("found empty ep")
         self.itop_rs = sum([ep.sum() for ep in self.explored_params]) / sum(
             [ep.numel() for ep in self.explored_params]
+        )
+
+    def _validate_percent_params(
+        self, param_value: float, param_name: str
+    ) -> bool:
+        """Validate float parameters that are intended to be in range (0,1).
+
+        Args:
+            param_value (float): Value of parameter expected to be in range
+                (0,1)
+            param_name (str): Name of param, used for logging error to user.
+
+        Raises:
+            ValueError: If param value not in range 0,1
+
+        Returns:
+            bool: Returns True if param value is valid.
+        """
+        if param_value is None:
+            return True
+        if param_value <= 0 or param_value > 1:
+            raise ValueError(
+                f"{param_name} must be on the interval (0, 1]."
+                f"Got: {param_value}"
+            )
+        return True
+
+    def _update_current_filter_ablation(self) -> None:
+        """Update list of ablated filters. TODO: Unused currently in favour of
+            active neurons, consider removal
+
+        Intended to monitor neuron ablation of vanilla rigl. Const-fan in rigl
+        will have the same neuron ablations from initalization depending on
+        value of cfg.rigl.filter_ablation_threshold
+        """
+
+        def get_num_ablated_filters(mask: Optional[torch.Tensor]) -> int:
+            """Return number of filters in mask that are all False.
+
+            Args:
+                mask (Optional[torch.Tensor]): Mask from self.backward_masks.
+
+            Returns:
+                int: Number of filters with all elements == False.
+            """
+            if mask is None:
+                return 0
+            else:
+                return torch.sum(
+                    torch.stack([~filter.any() for filter in mask])
+                )
+
+        if not hasattr(self, "ablated_filters"):
+            self.ablated_filters = []
+
+        self.ablated_filters.append(
+            [get_num_ablated_filters(filter) for filter in self.backward_masks]
+        )
+        return
+
+    def get_global_sparsity_from_masks(self) -> float:
+        """Return overall network sparsity based on backward mask values.
+
+        Returns:
+            float: Number of elements == False divided by total number of
+                elements.
+        """
+        total_els = 0
+        total_non_zero_els = 0
+        for w, m in list(zip(self.W, self.backward_masks)):
+            if m is None:
+                total_non_zero_els += w.numel()
+                total_els += w.numel()
+            else:
+                total_non_zero_els += m.sum()
+                total_els += w.numel()
+        return 1 - (total_non_zero_els / total_els)
+
+    def _register_meters(self) -> None:
+        self.meters = []
+        names, weights = get_names_and_W(self.model)
+        assert weights == self.W
+        for idx, _ in enumerate(self.backward_masks):
+            self.meters.append(
+                LayerMeter(
+                    idx=idx,
+                    weight=weights[idx],
+                    mask=self.backward_masks[idx],
+                    name=names[idx],
+                )
+            )
+
+    def log_meters(self, step: int) -> None:
+        for idx, meter in enumerate(self.meters):
+            if self.backward_hook_objects[idx] is None:
+                dense_grad = self.W[idx].grad
+            else:
+                dense_grad = self.backward_hook_objects[idx].dense_grad
+            meter.log_to_wandb(
+                dense_grads=dense_grad,
+                max_inactive_weights=self._max_inactive_weights,
+                step=step,
+            )
+        total_neurons = sum([len(x) for x in self.W])
+        wandb.log(
+            {
+                "_TOTAL_ACTIVE_NEURONS": self.active_neuron_count,
+                "_TOTAL_PERCENTAGE_ACTIVE_NEURONS": self.active_neuron_count
+                / total_neurons
+                * 100,
+                "_PRUNING_RATE": self.cosine_annealing(),
+            },
+            step=step,
         )
 
 
