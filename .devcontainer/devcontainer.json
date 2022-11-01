@@ -24,8 +24,8 @@
 	// Uncomment to connect as a non-root user if you've added one. See https://aka.ms/vscode-remote/containers/non-root.
 	// "remoteUser": "dev",
 	// We need to mount current directory to a location that we can use to install rigl-torch from in the dockerfile 
-	"workspaceMount": "source=${localWorkspaceFolder}/,target=/home/condensed-sparsity,type=bind",
-	"workspaceFolder": "/home/condensed-sparsity",
+	"workspaceMount": "source=${localWorkspaceFolder}/,target=/home/user/condensed-sparsity,type=bind",
+	"workspaceFolder": "/home/user/condensed-sparsity",
 	"mounts": [
 		"source=/datasets/ILSVRC2012,target=/datasets/ILSVRC2012,type=bind",
 		"source=/scratch/datasets/ILSVRC2012,target=/scratch/datasets/ILSVRC2012,type=bind"

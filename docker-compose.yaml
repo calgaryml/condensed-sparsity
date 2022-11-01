@@ -1,28 +1,116 @@
 # Hacks until we have compose installed:
-# docker build --file ./Dockerfile -t rigl-sweep-agent .
+# docker build --file ./Dockerfile -t itop-rigl --shm-size=16gb .
 # docker create --cpus 12 --memory 30G --env-file .env --gpus '"device=1"' -i -t rigl-sweep-agent:latest
 # docker create --env-file .env --gpus '"device=0"' -i -t rigl-sweep-agent:latest
-# docker run --cpus 12 --memory 30G --env-file .env --gpus '"device=0"' -i -t --name gpu-0 rigl-sweep-agent:latest
+# docker run --cpus 12 --memory 64G --env-file .env --gpus '"device=0"' -i -t --name gpu-0 itop-rigl:latest
 # docker run --cpus 12 --memory 30G --env-file .env --gpus '"device=1"' -i -t -d --name gpu-1 rigl-sweep-agent:latest
 # docker run --cpus 12 --memory 30G --env-file .env --gpus '"device=2"' -i -t --name gpu-2 rigl-sweep-agent:latest
 # docker run --cpus 12 --memory 30G --env-file .env --gpus '"device=3"' -i -t --name gpu-3 rigl-sweep-agent:latest
+# docker run -itd --env-file ./.env --mount source=/home/mike/condensed-sparsity,target=/home/condensed-sparsity,type=bind --mount source=/datasets/ILSVRC2012,target=/datasets/ILSVRC2012,type=bind --mount source=/scratch/datasets/ILSVRC2012,target=/scratch/datasets/ILSVRC2012,type=bind --gpus all --shm-size 16G --name cond-rigl-dev ac605476a22f
+
+docker run -itd --env-file ./.env \
+  --mount source=/home/mike/condensed-sparsity,target=/home/condensed-sparsity,type=bind \
+  --mount source=/datasets/ILSVRC2012,target=/datasets/ILSVRC2012,type=bind \
+  --mount source=/scratch/datasets/ILSVRC2012,target=/scratch/datasets/ILSVRC2012,type=bind \
+  --gpus '"device=0"' \
+  --shm-size 16G \
+  --name gpu-0 \
+  itop-rigl:latest \
+  python train_rigl.py  rigl.dense_allocation=0.1 rigl.const_fan_in=True
+
+
+docker run -itd --env-file ./.env \
+  --mount source=/home/mike/condensed-sparsity,target=/home/condensed-sparsity,type=bind \
+  --mount source=/datasets/ILSVRC2012,target=/datasets/ILSVRC2012,type=bind \
+  --mount source=/scratch/datasets/ILSVRC2012,target=/scratch/datasets/ILSVRC2012,type=bind \
+  --gpus '"device=1"' \
+  --shm-size 16G \
+  --name gpu-1 \
+  itop-rigl:latest \
+  python train_rigl.py  rigl.dense_allocation=0.1 rigl.const_fan_in=False
+
+docker run -itd --env-file ./.env \
+  --mount source=/home/mike/condensed-sparsity,target=/home/condensed-sparsity,type=bind \
+  --mount source=/datasets/ILSVRC2012,target=/datasets/ILSVRC2012,type=bind \
+  --mount source=/scratch/datasets/ILSVRC2012,target=/scratch/datasets/ILSVRC2012,type=bind \
+  --gpus '"device=2"' \
+  --shm-size 16G \
+  --name gpu-2 \
+  itop-rigl:latest \
+  python train_rigl.py  rigl.dense_allocation=0.01 rigl.const_fan_in=True
+
+  docker run -itd --env-file ./.env \
+  --mount source=/home/mike/condensed-sparsity/artifacts,target=/home/condensed-sparsity/artifacts,type=bind \
+  --mount source=/datasets/ILSVRC2012,target=/datasets/ILSVRC2012,type=bind \
+  --mount source=/scratch/datasets/ILSVRC2012,target=/scratch/datasets/ILSVRC2012,type=bind \
+  --gpus '"device=3"' \
+  --shm-size 16G \
+  --name gpu-3 \
+  itop-rigl:latest \
+  python train_rigl.py  rigl.dense_allocation=0.01 rigl.const_fan_in=False
+
+
+  
+docker run -itd --env-file ./.env \
+  --mount source=/home/mike/condensed-sparsity/artifacts,target=/home/condensed-sparsity/artifacts,type=bind \
+  --mount source=/home/mike/condensed-sparsity/configs,target=/home/condensed-sparsity/configs,type=bind \
+  --mount source=/datasets/ILSVRC2012,target=/datasets/ILSVRC2012,type=bind \
+  --mount source=/scratch/datasets/ILSVRC2012,target=/scratch/datasets/ILSVRC2012,type=bind \
+  --gpus '"device=0"' \
+  --shm-size 16G \
+  --name gpu-0 \
+  itop-rigl:latest
+
+docker run -itd --env-file ./.env \
+  --mount source=/home/mike/condensed-sparsity/artifacts,target=/home/user/condensed-sparsity/artifacts,type=bind \
+  --mount source=/home/mike/condensed-sparsity/configs,target=/home/user/condensed-sparsity/configs,type=bind \
+  --mount source=/datasets/ILSVRC2012,target=/datasets/ILSVRC2012,type=bind \
+  --mount source=/scratch/datasets/ILSVRC2012,target=/scratch/datasets/ILSVRC2012,type=bind \
+  --gpus '"device=0"' \
+  --shm-size 16G \
+  --name gpu-0 \
+  itop-rigl:latest
+
+  
+
+
+# services:
+#   sweep_agent:
+#     build: .
+#     env_file:
+#       - .env
+#     deploy:
+#       mode: replicated
+#       replicas: ${REPLICAS}
+#       resources:
+#         reservations:
+#           devices:
+#             - capabilities: [ "gpu" ]
+#               driver: nvidia
+#               count: 1
+#         limits:
+#           cpus: ${CPUS_LIMIT}
+#           memory: ${MEMORY_LIMIT}
 
 services:
-  sweep_agent:
-    build: .
+  itop-agent:
+    build:
+      context: ./
+      shm_size: 16G
+    image: itop-agent
     env_file:
       - .env
     deploy:
       mode: replicated
-      replicas: ${REPLICAS}
+      replicas: 4
       resources:
         reservations:
           devices:
-            - capabilities: ["gpu"]
+            - capabilities: [ "gpu" ]
               driver: nvidia
               count: 1
         limits:
-          cpus: ${CPUS_LIMIT}
-          memory: ${MEMORY_LIMIT}
-
-
+          cpus: 12
+          memory: 64G
+    volumes:
+      - /scratch/datasets/ILSVRC2012:/scratch/datasets/ILSVRC2012

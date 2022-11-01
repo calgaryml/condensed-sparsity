@@ -2,7 +2,7 @@
 # https://docs.docker.com/build/building/multi-stage/
 
 ARG USERNAME=user
-ARG WORKSPACE_DIR=/home/condensed-sparsity
+ARG WORKSPACE_DIR=/home/user/condensed-sparsity
 
 # We use this image as latest tag is still on py37
 FROM pytorch/pytorch:1.11.0-cuda11.3-cudnn8-devel AS pytorch-base
@@ -42,15 +42,15 @@ ARG WORKSPACE_DIR
 RUN apt-get update \
     && apt-get install -y git ssh tmux vim curl htop sudo
 
-RUN echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
-    && chmod 0440 /etc/sudoers.d/$USERNAME
+RUN echo ${USERNAME} ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/${USERNAME} \
+    && chmod 0440 /etc/sudoers.d/${USERNAME}
 
 FROM dev-container-base AS poetry-base
 # Install poetry
 # https://python-poetry.org/docs/configuration/#using-environment-variables
 ARG USERNAME
 ARG WORKSPACE_DIR
-USER $USERNAME
+USER user
 ENV POETRY_VERSION="1.2.0" \
     POETRY_HOME="/home/${USERNAME}/poetry" \
     POETRY_NO_INTERACTION=1 \

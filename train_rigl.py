@@ -14,6 +14,7 @@ import wandb
 from datetime import date
 import pathlib
 from typing import Dict, Any
+from copy import deepcopy
 
 from rigl_torch.models.model_factory import ModelFactory
 from rigl_torch.rigl_scheduler import RigLScheduler
@@ -24,16 +25,18 @@ from rigl_torch.optim import (
     get_lr_scheduler,
 )
 from rigl_torch.utils.checkpoint import Checkpoint
+from rigl_torch.utils.rigl_utils import get_T_end
 
 
 def _get_checkpoint(cfg: omegaconf.DictConfig, rank: int, logger) -> Checkpoint:
-    if cfg.experiment.run_id is None:
+    run_id = cfg.experiment.run_id
+    if run_id is None:
         raise ValueError(
             "Must provide wandb run_id when "
             "cfg.training.resume_from_checkpoint is True"
         )
     checkpoint = Checkpoint.load_last_checkpoint(
-        run_id=cfg.experiment.run_id,
+        run_id=run_id,
         parent_dir=cfg.paths.checkpoints,
         rank=rank,
     )
@@ -58,6 +61,15 @@ def init_wandb(cfg: omegaconf.DictConfig, wandb_init_kwargs: Dict[str, Any]):
 @hydra.main(config_path="configs/", config_name="config", version_base="1.2")
 def initalize_main(cfg: omegaconf.DictConfig) -> None:
     if cfg.compute.distributed:
+        # We initalize train and val loaders here to ensure .tar balls have
+        # been decompressed before parallel workers try and write the same
+        # directories!
+        single_proc_cfg = deepcopy(cfg)
+        single_proc_cfg.compute.distributed = False
+        train_loader, test_loader = get_dataloaders(single_proc_cfg)
+        del train_loader
+        del test_loader
+        del single_proc_cfg
         wandb.setup()
         _validate_distributed_cfg(cfg)
         mp.spawn(
@@ -74,8 +86,12 @@ def _get_logger(rank, cfg: omegaconf.DictConfig) -> logging.Logger:
     logger = logging.getLogger(__file__)
     logger.setLevel(level=logging.INFO)
     current_date = date.today().strftime("%Y-%m-%d")
-    # logformat = "[%(levelname)s] %(asctime)s G- %(name)s -%(rank)s - %(funcName)s (%(lineno)d) : %(message)s"
-    logformat = "[%(levelname)s] %(asctime)s G- %(name)s - %(funcName)s (%(lineno)d) : %(message)s"
+    # logformat = "[%(levelname)s] %(asctime)s G- %(name)s -%(rank)s -
+    # %(funcName)s (%(lineno)d) : %(message)s"
+    logformat = (
+        "[%(levelname)s] %(asctime)s G- %(name)s - %(funcName)s "
+        "(%(lineno)d) : %(message)s"
+    )
     logging.root.handlers = []
     logging.basicConfig(
         level=logging.INFO,
@@ -97,6 +113,8 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
         wandb_init_resume = "must"
         run_id = checkpoint.run_id
         cfg = checkpoint.cfg
+        cfg.experiment.run_id = run_id
+        cfg.experiment.resume_from_checkpoint = True
     else:
         run_id = None
         wandb_init_resume = "never"
@@ -132,6 +150,11 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
 
     cfg = set_seed(cfg)
     use_cuda = not cfg.compute.no_cuda and torch.cuda.is_available()
+    if not use_cuda:
+        logger.warning(
+            "Using CPU! Verify cfg.compute.no_cuda and "
+            "torch.cuda.is_available() are properly set if this is unexpected"
+        )
 
     if cfg.compute.distributed:
         device = torch.device(f"cuda:{rank}")
@@ -150,22 +173,9 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
     optimizer = get_optimizer(cfg, model, state_dict=optimizer_state)
     scheduler = get_lr_scheduler(cfg, optimizer, state_dict=scheduler_state)
 
-    pruner = None  # noqa: E731
+    pruner = None
     if cfg.rigl.dense_allocation is not None:
-        if cfg.training.max_steps is None:
-            if cfg.compute.distributed:
-                # In distributed mode, len(train_loader) will be reduced by
-                # 1/world_size compared to single device
-                T_end = int(
-                    0.75
-                    * cfg.training.epochs
-                    * len(train_loader)  # Dataset length // batch_size
-                    * cfg.compute.world_size
-                )
-            else:
-                T_end = int(0.75 * cfg.training.epochs * len(train_loader))
-        else:
-            T_end = int(0.75 * cfg.training.max_steps)
+        T_end = get_T_end(cfg, train_loader)
         if cfg.rigl.const_fan_in:
             rigl_scheduler = RigLConstFanScheduler
             logger.info("Using constant fan in rigl scheduler...")
@@ -194,7 +204,12 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
 
     writer = SummaryWriter(log_dir="./graphs")
     if rank == 0:
-        wandb.watch(model, criterion=F.nll_loss, log="all", log_freq=100)
+        wandb.watch(
+            model,
+            criterion=F.nll_loss,
+            log="all",
+            log_freq=cfg.training.log_interval,
+        )
     logger.info(f"Model Summary: {model}")
     if not cfg.experiment.resume_from_checkpoint:
         step = 0
@@ -220,7 +235,8 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
         epoch_start = checkpoint.epoch + 1
         step = checkpoint.step
     for epoch in range(epoch_start, cfg.training.epochs + 1):
-        logger.info(pruner)
+        if pruner is not None:
+            logger.info(pruner)
         if cfg.compute.distributed:
             train_loader.sampler.set_epoch(epoch)
         step = train(
@@ -233,6 +249,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             pruner=pruner,
             step=step,
             logger=logger,
+            rank=rank,
         )
         loss, acc = test(
             cfg, model, device, test_loader, epoch, step, rank, logger
@@ -251,6 +268,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             break
         scheduler.step()
 
+    print(rank)
     if cfg.training.save_model and rank == 0:
         save_path = pathlib.Path(cfg.paths.artifacts)
         if not save_path.is_dir():
@@ -275,12 +293,21 @@ def train(
     pruner,
     step,
     logger,
+    rank,
 ):
     model.train()
+    steps_to_accumulate_grad = _get_steps_to_accumulate_grad(
+        cfg.training.simulated_batch_size, cfg.training.batch_size
+    )
     for batch_idx, (data, target) in enumerate(train_loader):
+        apply_grads = (
+            True
+            if steps_to_accumulate_grad == 1
+            or (batch_idx != 0 and batch_idx % steps_to_accumulate_grad == 0)
+            else False
+        )
         step += 1
         data, target = data.to(device), target.to(device)
-        optimizer.zero_grad()
         logits = model(data)
         loss = F.cross_entropy(
             logits,
@@ -289,10 +316,13 @@ def train(
         )
         loss.backward()
 
-        if pruner is not None and pruner():
+        if apply_grads:
             optimizer.step()
+            if pruner is not None:
+                pruner()
+            optimizer.zero_grad()
 
-        if batch_idx % cfg.training.log_interval == 0:
+        if batch_idx % cfg.training.log_interval == 0 and rank == 0:
             world_size = (
                 1
                 if cfg.compute.distributed is False
@@ -307,6 +337,7 @@ def train(
                     loss.item(),
                 )
             )
+            wandb.log({"ITOP Rate": pruner.itop_rs}, step=step)
         if cfg.training.dry_run:
             logger.warning("Dry run, exiting after one training step")
             return step
@@ -319,6 +350,7 @@ def test(cfg, model, device, test_loader, epoch, step, rank, logger):
     model.eval()
     test_loss = 0
     correct = 0
+    top_k_correct = 0
     with torch.no_grad():
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
@@ -333,22 +365,34 @@ def test(cfg, model, device, test_loader, epoch, step, rank, logger):
                 dim=1, keepdim=True
             )  # get the index of the max log-probability
             correct += pred.eq(target.view_as(pred)).sum()
+            if cfg.dataset.name == "imagenet":
+                _, top_5_indices = torch.topk(logits, k=5, dim=1, largest=True)
+                top_5_pred = (
+                    target.reshape(-1, 1).expand_as(top_5_indices)
+                    == top_5_indices
+                ).any(dim=1)
+                top_k_correct += top_5_pred.sum()
     if cfg.compute.distributed:
         dist.all_reduce(test_loss, dist.ReduceOp.AVG, async_op=False)
         dist.all_reduce(correct, dist.ReduceOp.SUM, async_op=False)
+        dist.all_reduce(top_k_correct, dist.ReduceOp.SUM, async_op=False)
     if rank == 0:
         wandb_log(
             epoch,
             test_loss,
             correct / len(test_loader.dataset),
+            top_k_correct / len(test_loader.dataset),
             data,
             logits,
             target,
             pred,
             step,
+            cfg.wandb.log_images,
         )
         logger.info(
-            "\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n".format(
+            (
+                "\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n"
+            ).format(
                 test_loss,
                 correct,
                 len(test_loader.dataset),
@@ -358,19 +402,30 @@ def test(cfg, model, device, test_loader, epoch, step, rank, logger):
     return test_loss, correct / len(test_loader.dataset)
 
 
-def wandb_log(epoch, loss, accuracy, inputs, logits, captions, pred, step):
-    wandb.log(
-        {
-            "epoch": epoch,
-            "loss": loss.item(),
-            "accuracy": accuracy.item(),
-            "inputs": wandb.Image(inputs),
-            "logits": wandb.Histogram(logits.cpu()),
-            "captions": wandb.Html(captions.cpu().numpy().__str__()),
-            "predictions": wandb.Html(pred.cpu().numpy().__str__()),
-        },
-        step=step,
-    )
+def wandb_log(
+    epoch,
+    loss,
+    accuracy,
+    top_k_accuracy,
+    inputs,
+    logits,
+    captions,
+    pred,
+    step,
+    log_images,
+):
+    log_data = {
+        "epoch": epoch,
+        "loss": loss.item(),
+        "accuracy": accuracy.item(),
+        "top_5_accuracy": top_k_accuracy.item(),
+        "logits": wandb.Histogram(logits.cpu()),
+        "captions": wandb.Html(captions.cpu().numpy().__str__()),
+        "predictions": wandb.Html(pred.cpu().numpy().__str__()),
+    }
+    if log_images:
+        log_data.extend({"inputs": wandb.Image(inputs)})
+    wandb.log(log_data, step=step)
 
 
 def set_seed(cfg: omegaconf.DictConfig) -> omegaconf.DictConfig:
@@ -391,12 +446,25 @@ def _validate_distributed_cfg(cfg: omegaconf.DictConfig) -> None:
         )
     if not torch.cuda.is_available():
         raise ValueError("torch.cuda.is_available() returned False!")
-    if cfg.compute.world_size < torch.cuda.device_count():
+    if cfg.compute.world_size > torch.cuda.device_count():
         raise ValueError(
             f"cfg.compute.world_size == {cfg.compute.world_size}"
             f" but I only see {torch.cuda.device_count()} cuda devices!"
         )
     return
+
+
+def _get_steps_to_accumulate_grad(
+    simulated_batch_size: int, batch_size: int
+) -> int:
+    if simulated_batch_size is None:
+        return 1
+    if simulated_batch_size % batch_size != 0:
+        raise ValueError(
+            "Effective batch size must be a multiple of batch size! "
+            f"{simulated_batch_size} % {batch_size} !=0"
+        )
+    return int(simulated_batch_size / batch_size)
 
 
 if __name__ == "__main__":

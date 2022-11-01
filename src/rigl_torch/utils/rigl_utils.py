@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torchvision
+from hydra import DictConfig
 from typing import Tuple, Union
 
 
@@ -126,3 +127,35 @@ def validate_constant_fan_in(fan_in_tensor: torch.Tensor) -> bool:
         bool: True if fan-in are all equal.
     """
     return (fan_in_tensor == fan_in_tensor[0]).all()
+
+
+def get_T_end(
+    cfg: DictConfig, train_loader: torch.utils.data.DataLoader
+) -> int:
+    """Get step number to terminate pruning / regrowth based on cfg settings.
+
+    Args:
+        cfg (DictConfig): Config object loaded from ./configs
+        train_loader (torch.utils.data.DataLoader): Train loader used to train
+            model
+
+    Returns:
+        int: Step number at which to terminate pruning / regrowth.
+    """
+    if cfg.training.max_steps is None:
+        if cfg.compute.distributed:
+            # In distributed mode, len(train_loader) will be reduced by
+            # 1/world_size compared to single device
+            T_end = int(
+                0.75
+                * cfg.training.epochs
+                * len(train_loader)  # Dataset length // batch_size
+                * cfg.compute.world_size
+            )
+        else:
+            T_end = int(0.75 * cfg.training.epochs * len(train_loader))
+    else:
+        T_end = int(0.75 * cfg.training.max_steps)
+    if not cfg.rigl.use_t_end:
+        T_end = int(1 / 0.75 * T_end)  # We use the full number of steps
+    return T_end

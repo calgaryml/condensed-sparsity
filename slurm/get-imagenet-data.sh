@@ -5,7 +5,7 @@
 # SBATCH --job-name=get-imagenet-data
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=16G    
+#SBATCH --mem=8G    
 #SBATCH --time=1-12:00:00
 #SBATCH --mail-user=mklasby@ucalgary.ca
 #SBATCH --mail-type=BEGIN,END,FAIL
