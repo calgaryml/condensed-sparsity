@@ -281,7 +281,6 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             break
         scheduler.step()
 
-    print(rank)
     if cfg.training.save_model and rank == 0:
         save_path = pathlib.Path(cfg.paths.artifacts)
         if not save_path.is_dir():

@@ -2,11 +2,12 @@ import torch
 import torch.nn as nn
 import torchvision
 from omegaconf import DictConfig
+from math import prod
 from typing import Tuple, Union, Optional, List
 import logging
 import math
 
-EXCLUDED_TYPES = (torch.nn.BatchNorm2d,)
+_EXCLUDED_TYPES = (torch.nn.BatchNorm2d,)
 
 
 def get_names_and_W(
@@ -38,7 +39,7 @@ def get_weighted_layers(model, i=0, layers=None, linear_layers_mask=None):
         if isinstance(p, torch.nn.Linear):
             layers.append([p])
             linear_layers_mask.append(1)
-        elif hasattr(p, "weight") and type(p) not in EXCLUDED_TYPES:
+        elif hasattr(p, "weight") and type(p) not in _EXCLUDED_TYPES:
             layers.append([p])
             linear_layers_mask.append(0)
         elif isinstance(p, torchvision.models.resnet.Bottleneck) or isinstance(
@@ -360,3 +361,30 @@ def _get_receptive_field_size(tensor: torch.Tensor) -> int:
         for s in tensor.shape[2:]:
             receptive_field_size *= s
     return receptive_field_size
+
+
+def get_conv_idx_from_flat_idx(
+    flat_idx: int, conv_shape: Tuple[int]
+) -> Tuple[int]:
+    """Convert flat_idx to tuple idx based to match conv_shape.
+
+    Args:
+        flat_idx (int): Index of weight after calling flatten() on tensor
+        conv_shape (Tuple): Shape of 2D convoltional layer (NCHW)
+
+    Returns:
+        Tuple[int]: Tuple index of the same connection in the 4D tensor.
+    """
+    fan_in = prod(conv_shape[1:])
+    filter_idx = flat_idx // fan_in
+    in_channel_idx = (flat_idx - (filter_idx * fan_in)) // prod(conv_shape[2:])
+    kernel_row_idx = (
+        flat_idx - filter_idx * fan_in - in_channel_idx * prod(conv_shape[2:])
+    ) // prod(conv_shape[3:])
+    kernel_col_idx = (
+        flat_idx
+        - filter_idx * fan_in
+        - in_channel_idx * prod(conv_shape[2:])
+        - kernel_row_idx * prod(conv_shape[3:])
+    )
+    return (filter_idx, in_channel_idx, kernel_row_idx, kernel_col_idx)

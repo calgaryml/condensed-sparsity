@@ -229,18 +229,6 @@ class RigLConstFanScheduler(RigLScheduler):
                 )
 
             current_mask = self.backward_masks[idx]
-
-            # calculate drop/grow quantities
-            # try:
-            #     n_fan_in = (
-            #         get_fan_in_tensor(
-            #             current_mask[self.static_ablated_filters[idx] :]  # noqa
-            #         )
-            #         .unique()
-            #         .item()
-            #     )
-            # except ValueError:
-            #     raise ConstantFanInException(get_fan_in_tensor(current_mask))
             n_total = self.N[idx]
             n_ones = torch.sum(current_mask).item()
             n_prune = int(n_ones * drop_fraction)
@@ -297,7 +285,10 @@ class RigLConstFanScheduler(RigLScheduler):
             self.apply_mask_to_weights()
             self.apply_mask_to_gradients()
             self._verify_neuron_ablation()
-            if torch.abs(w).max().item() != _max_score_drop:
+            if (
+                self.min_salient_weights_per_neuron == 1
+                and torch.abs(w).max().item() != _max_score_drop
+            ):
                 self._logger.warning(
                     "Max score drop not equal to max weight after masking! "
                     f"I have a pre-mask max of {_max_score_drop} and a post "
