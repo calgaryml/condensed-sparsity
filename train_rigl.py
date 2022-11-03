@@ -203,6 +203,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             filter_ablation_threshold=cfg.rigl.filter_ablation_threshold,
             static_ablation=cfg.rigl.static_ablation,
             dynamic_ablation=cfg.rigl.dynamic_ablation,
+            min_salient_weights_per_neuron=cfg.rigl.min_salient_weights_per_neuron,  # noqa
         )
     else:
         logger.warning(

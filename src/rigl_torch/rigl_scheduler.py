@@ -71,6 +71,7 @@ class RigLScheduler:
         filter_ablation_threshold: Optional[float] = None,
         static_ablation: bool = True,
         dynamic_ablation: bool = False,
+        min_salient_weights_per_neuron: int = 1,
     ):
         self._logger = logging.getLogger(__file__)
         self.explored_params = None
@@ -85,6 +86,7 @@ class RigLScheduler:
         self.dense_allocation = dense_allocation
         self.model = model
         self.optimizer = optimizer
+        self.min_salient_weights_per_neuron = min_salient_weights_per_neuron
 
         self.W, self._linear_layers_mask = get_W(
             model, return_linear_layers_mask=True
@@ -146,6 +148,7 @@ class RigLScheduler:
             self._register_meters()
             self._update_active_neurons()
             self._validate_params()
+            self._update_current_filter_ablation()
 
     def _validate_params(self) -> None:
         if self.static_ablation and self.dynamic_ablation:
