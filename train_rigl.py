@@ -151,6 +151,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
     cfg = set_seed(cfg)
     use_cuda = not cfg.compute.no_cuda and torch.cuda.is_available()
     if not use_cuda:
+        raise SystemError("GPU has stopped responding...waiting to die!")
         logger.warning(
             "Using CPU! Verify cfg.compute.no_cuda and "
             "torch.cuda.is_available() are properly set if this is unexpected"
