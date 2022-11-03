@@ -4,7 +4,7 @@ defaults:
   - _self_
 
 experiment:
-  comment: dense_alloc-${rigl.dense_allocation}_dynamic_ablation_test
+  comment: dense_alloc-${rigl.dense_allocation}_weight_per_neuron-${rigl.min_salient_weights_per_neuron}
   name: ${model.name}_${dataset.name}_${experiment.comment}
   resume_from_checkpoint: False
   run_id: null
@@ -21,7 +21,7 @@ rigl:
   # be used. must be on the interval (0, 1]
   dense_allocation: 0.01
   # number of steps between rigl pruning / regrow iterations
-  delta: 10  # 4096 * 100 / 512 = 800
+  delta: 100  # 4096 * 100 / 512 = 800
   # number of gradients to accumulate before scoring for rigl -> Based on simulated batch step number!
   grad_accumulation_n: 8  # 4096 / 512 without simulated batch size, 1 otheriwse
   # alpha param for pruning for cosine decay in determining how many connections to prune/regrow
@@ -45,19 +45,19 @@ rigl:
   # If True, update weight initalization to account for sparse const fan in. 
   use_sparse_initialization: False ## TODO!
   # Param for minimum number of salient weights per neuron. If < this value, the neuron will be dynamically ablated. 
-  min_salient_weights_per_neuron: 1
+  min_salient_weights_per_neuron: 2
 
 training:
   # quickly check a single pass",
   dry_run: False
   # batch size for training
-  batch_size: 128
+  batch_size: 128  # 128 for cifar10, multiples of 256 for imagenet w/ scaled lr
   # Batch size to simulate by taking multiple steps per optimizer update (accumulate grads)
   simulated_batch_size: null
   # batch size for testing
   test_batch_size: 1000
   # number of epochs to train
-  epochs: 250  # For imagenet, training will finish at ~ epoch 102.31
+  epochs: 250  # For imagenet, training will finish at ~ epoch 102.31, use 250 for cifar10
   # random seed
   seed: 42
   # Log interval (number of mini-batch steps)

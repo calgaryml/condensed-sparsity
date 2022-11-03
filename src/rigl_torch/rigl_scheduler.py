@@ -71,7 +71,7 @@ class RigLScheduler:
         filter_ablation_threshold: Optional[float] = None,
         static_ablation: bool = True,
         dynamic_ablation: bool = False,
-        min_salient_weights_per_neuron: int = 1,
+        min_salient_weights_per_neuron: int = 0,
     ):
         self._logger = logging.getLogger(__file__)
         self.explored_params = None

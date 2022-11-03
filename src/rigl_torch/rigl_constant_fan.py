@@ -33,7 +33,7 @@ class RigLConstFanScheduler(RigLScheduler):
         filter_ablation_threshold: Optional[float] = None,
         static_ablation: bool = False,
         dynamic_ablation: bool = False,
-        min_salient_weights_per_neuron: int = 1,
+        min_salient_weights_per_neuron: int = 0,
     ):
         """RigL Scheduler with constant fan-in.
 
@@ -201,7 +201,7 @@ class RigLConstFanScheduler(RigLScheduler):
 
             # calculate raw scores
             score_drop = torch.abs(w)
-            _max_score_drop = score_drop.max()
+            _max_score_drop = score_drop.max().item()
 
             # Set ablated filter drop scores to min of score_grow to avoid
             # pruning already inactive weights
@@ -297,7 +297,12 @@ class RigLConstFanScheduler(RigLScheduler):
             self.apply_mask_to_weights()
             self.apply_mask_to_gradients()
             self._verify_neuron_ablation()
-            assert torch.abs(w).max() == _max_score_drop
+            if torch.abs(w).max().item() != _max_score_drop:
+                self._logger.warning(
+                    "Max score drop not equal to max weight after masking! "
+                    f"I have a pre-mask max of {_max_score_drop} and a post "
+                    f"mask max of {torch.abs(w).max().item()}"
+                )
             # print("rigl step passed")
 
     @torch.no_grad()
