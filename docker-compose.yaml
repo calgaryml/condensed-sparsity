@@ -29,4 +29,4 @@ services:
       - type: bind
         source: /home/mike/condensed-sparsity
         target: /home/user/condensed-sparsity
-    command: wandb sweep
+    command: wandb agent condensed-sparsity/condensed-rigl/q6n2w203
