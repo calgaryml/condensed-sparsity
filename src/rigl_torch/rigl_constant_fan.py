@@ -450,13 +450,26 @@ class RigLConstFanScheduler(RigLScheduler):
                     "n_fan_in ({n_fan_in})",
                 )
         # TODO need inverse select
-        # assert (
-        #     get_fan_in_tensor(
-        #         drop_mask[n_neurons_ablated:] + grow_mask[n_neurons_ablated:]
-        #     )
-        #     == n_fan_in
-        # ).all()
+        should_be_active_neurons = [
+            i for i in range(len(grow_mask)) if i not in neurons_to_ablate
+        ]
+        assert (
+            get_fan_in_tensor(
+                drop_mask[should_be_active_neurons]
+                + grow_mask[should_be_active_neurons]
+            )
+            == n_fan_in
+        ).all()
         return grow_mask
+
+    @property
+    def inverse_idx_select(self):
+        active_neurons = []
+        for layer_idx, layer in enumerate(self._dynamically_ablated_neuron_idx):
+            active_neurons.append(
+                [i for i in range(len(self.W[layer_idx])) if i not in layer]
+            )
+        return active_neurons
 
     def _get_new_weights(
         self,
