@@ -9,7 +9,7 @@ services:
       - .env
     deploy:
       mode: replicated
-      replicas: 4
+      replicas: 1
       resources:
         reservations:
           devices:
@@ -20,7 +20,7 @@ services:
           cpus: 12
           memory: 30G
       restart_policy:
-        condition: any
+        condition: on-failure
         max_attempts: 3
     volumes:
       - type: bind
@@ -29,4 +29,3 @@ services:
       - type: bind
         source: /home/mike/condensed-sparsity
         target: /home/user/condensed-sparsity
-    command: wandb agent condensed-sparsity/condensed-rigl/q6n2w203

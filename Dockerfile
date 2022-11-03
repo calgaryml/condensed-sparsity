@@ -78,3 +78,4 @@ RUN python -m venv .venv && \
     poetry install -vvv
 
 RUN echo "source ${VENV_PATH}/bin/activate" >> /home/$USERNAME/.bashrc
+CMD wandb agent condensed-sparsity/condensed-rigl/q6n2w203
