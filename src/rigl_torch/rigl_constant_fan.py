@@ -306,7 +306,7 @@ class RigLConstFanScheduler(RigLScheduler):
         n_prune,
         sparsity,
     ) -> List[int]:
-        if self.dynamic_ablation:
+        if self.dynamic_ablation and self.min_salient_weights_per_neuron != 0:
             neurons_to_ablate: List[int] = []
             saliency_mask = torch.zeros(
                 size=(score_drop.numel(),),
@@ -341,7 +341,7 @@ class RigLConstFanScheduler(RigLScheduler):
                     neuron_idx
                     for neuron_idx in neuron_saliency_counts.keys()
                     if neuron_saliency_counts[neuron_idx]
-                    <= _min_salient_weights_per_neuron
+                    < _min_salient_weights_per_neuron
                 ]
                 fan_in = get_fan_in_after_ablation(
                     weight_tensor=saliency_mask,
@@ -369,10 +369,12 @@ class RigLConstFanScheduler(RigLScheduler):
                         return []
             return neurons_to_ablate
 
-        if self.static_ablation:
+        elif self.static_ablation:
             return (
                 self.static_ablated_filters
             )  # Check type -> Need to convert to list of indices
+        else:
+            return []
 
     @torch.no_grad()
     def _get_drop_mask(
