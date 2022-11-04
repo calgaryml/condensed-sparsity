@@ -37,5 +37,5 @@ services:
         "&&",
         "wandb",
         "agent",
-        "condensed-sparsity/condensed-rigl/q6n2w203"
+        "wandb agent condensed-sparsity/condensed-rigl/2u1iia0v"
       ]

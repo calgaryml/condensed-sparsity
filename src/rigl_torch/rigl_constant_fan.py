@@ -3,6 +3,7 @@
 from typing import Optional, Dict, Any, List
 import torch
 import torch.distributed as dist
+import math
 from rigl_torch.utils.rigl_utils import (
     get_fan_in_tensor,
     get_fan_in_after_ablation,
@@ -229,7 +230,7 @@ class RigLConstFanScheduler(RigLScheduler):
                 )
 
             current_mask = self.backward_masks[idx]
-            n_total = self.N[idx]
+            # n_total = self.N[idx]
             n_ones = torch.sum(current_mask).item()
             n_prune = int(n_ones * drop_fraction)
             n_keep = int(n_ones - n_prune)
@@ -247,7 +248,7 @@ class RigLConstFanScheduler(RigLScheduler):
                 score_grow=score_grow,
                 n_keep=n_keep,
                 n_prune=n_prune,
-                n_total=n_total,
+                sparsity=self.S[idx],
             )
             self._dynamically_ablated_neuron_idx.append(neurons_to_ablate)
             # print(f"neurons to ablate = {neurons_to_ablate}")
@@ -303,7 +304,7 @@ class RigLConstFanScheduler(RigLScheduler):
         score_grow,
         n_keep,
         n_prune,
-        n_total,
+        sparsity,
     ) -> List[int]:
         if self.dynamic_ablation:
             neurons_to_ablate: List[int] = []
@@ -319,9 +320,53 @@ class RigLConstFanScheduler(RigLScheduler):
             saliency_mask[grow_idx[:n_prune]] = True
 
             saliency_mask = saliency_mask.reshape(shape=score_drop.shape)
-            for neuron_idx, neuron in enumerate(saliency_mask):
-                if neuron.sum() < self.min_salient_weights_per_neuron:
-                    neurons_to_ablate.append(neuron_idx)
+            neuron_saliency_counts = {
+                neuron_idx: neuron.sum().item()
+                for neuron_idx, neuron in enumerate(saliency_mask)
+            }
+            neuron_saliency_counts = {
+                k: v
+                for k, v in sorted(
+                    neuron_saliency_counts.items(),
+                    key=lambda x: x[1],
+                    reverse=True,
+                )
+            }
+            _invalid_ablation = True
+            _min_salient_weights_per_neuron = (
+                self.min_salient_weights_per_neuron
+            )
+            while _invalid_ablation:
+                neurons_to_ablate = [
+                    neuron_idx
+                    for neuron_idx in neuron_saliency_counts.keys()
+                    if neuron_saliency_counts[neuron_idx]
+                    <= _min_salient_weights_per_neuron
+                ]
+                fan_in = get_fan_in_after_ablation(
+                    weight_tensor=saliency_mask,
+                    num_neurons_to_ablate=len(neurons_to_ablate),
+                    sparsity=sparsity,
+                )
+                if fan_in <= math.prod(saliency_mask.shape[1:]):
+                    _invalid_ablation = False
+                else:
+                    self._logger.warning(
+                        f"_min_salient_weights_per_neuron of"
+                        f" {_min_salient_weights_per_neuron} was too high, "
+                        f"resulted in fan_in of {fan_in} when max fan in is "
+                        f"{math.prod(saliency_mask.shape[1:])} "
+                        "decrementing _min_salient_weights for this iteration "
+                        "and this layer.\n"
+                        f"sorted neuron saliency: {neuron_saliency_counts}"
+                    )
+                    _min_salient_weights_per_neuron -= 1
+                    if _min_salient_weights_per_neuron == 0:
+                        self._logger.error(
+                            "No salient weights found at _min_salient_weights "
+                            "== 1"
+                        )
+                        return []
             return neurons_to_ablate
 
         if self.static_ablation:
@@ -374,14 +419,12 @@ class RigLConstFanScheduler(RigLScheduler):
         # In some cases, one neuron may have more than n_fan_in salient weights
         # So we sort each filter and ensure that weights not in topk are maksed
         # to False
-        # START HERE
         for idx, neuron_mask in enumerate(drop_mask):
-            _, sorted_idx = neuron_mask.flatten().sort(descending=True)
             neuron_mask_shape = neuron_mask.shape
             neuron_mask = neuron_mask.flatten()
+            _, sorted_idx = neuron_mask.sort(descending=True)
             neuron_mask[sorted_idx[n_fan_in:]] = False
             drop_mask[idx] = neuron_mask.reshape(neuron_mask_shape)
-
         return drop_mask.to(device=score_drop.device)
 
     @torch.no_grad()
@@ -396,7 +439,8 @@ class RigLConstFanScheduler(RigLScheduler):
             active with constant fan-in.
 
         Args:
-            score_grow (torch.Tensor): Absolute value of dense gradients.
+            score_grow (torch.Tensor): Absolute value of dense gradients for one
+                layer.
             drop_mask (torch.Tensor): Boolean mask from _get_drop_mask(). Where
                 True, connections are active.
             n_fan_in (int): Number of connections to grow.
@@ -420,7 +464,7 @@ class RigLConstFanScheduler(RigLScheduler):
                 grow_mask[idx] = grow_mask_filter
             elif drop_mask_filter.sum() < n_fan_in:
                 # set scores of the enabled connections(ones) to min(s) - 1,
-                # so that they have the lowest scores
+                # so that they have the lowest scores in that filter / neuron
                 score_grow_lifted = torch.where(
                     drop_mask_filter == True,  # noqa: E712
                     torch.ones_like(drop_mask_filter)
@@ -429,10 +473,21 @@ class RigLConstFanScheduler(RigLScheduler):
                 )
                 # Set currently active connections to min score to avoid
                 # reselecting them
-                idx_to_grow = torch.topk(
-                    score_grow_lifted.flatten(),
-                    k=n_fan_in - drop_mask_filter.sum(),
-                ).indices
+                try:
+                    idx_to_grow = torch.topk(
+                        score_grow_lifted.flatten(),
+                        k=n_fan_in - drop_mask_filter.sum(),
+                    ).indices
+                except RuntimeError:
+                    self._logger.error(
+                        "topk issue in _get_grow_mask."
+                        "Relvent info: \n"
+                        f"Score grow numel: {score_grow_lifted.numel()}\n"
+                        f"n_fan_in: {n_fan_in}\n"
+                        f"drop_mask_filter.sum(): {drop_mask_filter.sum()}\n"
+                        f"target k: {n_fan_in - drop_mask_filter.sum()}\n"
+                    )
+                    idx_to_grow = []
                 # Grow enough connections to get to n_fan_in
                 grow_mask_filter = grow_mask_filter.flatten()
                 grow_mask_filter[idx_to_grow] = True
@@ -461,6 +516,7 @@ class RigLConstFanScheduler(RigLScheduler):
         if not (fan_in_tensor == n_fan_in).all():
             self._logger.warning(
                 f"Mask update const-fan in violated: {fan_in_tensor}"
+                f"Target fan_in: {n_fan_in}"
             )
         return grow_mask
 

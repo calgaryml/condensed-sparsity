@@ -45,7 +45,7 @@ rigl:
   # If True, update weight initalization to account for sparse const fan in. 
   use_sparse_initialization: False ## TODO!
   # Param for minimum number of salient weights per neuron. If < this value, the neuron will be dynamically ablated. 
-  min_salient_weights_per_neuron: 5
+  min_salient_weights_per_neuron: 6
 
 training:
   # quickly check a single pass",
