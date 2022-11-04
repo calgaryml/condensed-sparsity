@@ -9,7 +9,7 @@ services:
       - .env
     deploy:
       mode: replicated
-      replicas: 1
+      replicas: 2
       resources:
         reservations:
           devices:
@@ -29,3 +29,13 @@ services:
       - type: bind
         source: /home/mike/condensed-sparsity
         target: /home/user/condensed-sparsity
+    entrypoint: [ "/bin/bash" ]
+    command:
+      [
+        "source",
+        "/home/user/condensed-sparsity/.venv/bin/activate",
+        "&&",
+        "wandb",
+        "agent",
+        "condensed-sparsity/condensed-rigl/q6n2w203"
+      ]

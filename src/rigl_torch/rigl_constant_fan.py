@@ -453,13 +453,15 @@ class RigLConstFanScheduler(RigLScheduler):
         should_be_active_neurons = [
             i for i in range(len(grow_mask)) if i not in neurons_to_ablate
         ]
-        assert (
-            get_fan_in_tensor(
-                drop_mask[should_be_active_neurons]
-                + grow_mask[should_be_active_neurons]
+
+        fan_in_tensor = get_fan_in_tensor(
+            drop_mask[should_be_active_neurons]
+            + grow_mask[should_be_active_neurons]
+        )
+        if not (fan_in_tensor == n_fan_in).all():
+            self._logger.warning(
+                f"Mask update const-fan in violated: {fan_in_tensor}"
             )
-            == n_fan_in
-        ).all()
         return grow_mask
 
     @property

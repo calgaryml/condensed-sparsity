@@ -1,8 +1,8 @@
 # Hacks until we have compose installed:
-# docker build --file ./Dockerfile -t itop-rigl --shm-size=16gb .
+# docker build --file ./Dockerfile -t rigl-agent --shm-size=16gb .
 # docker create --cpus 12 --memory 30G --env-file .env --gpus '"device=1"' -i -t rigl-sweep-agent:latest
 # docker create --env-file .env --gpus '"device=0"' -i -t rigl-sweep-agent:latest
-# docker run --cpus 12 --memory 64G --env-file .env --gpus '"device=0"' -i -t --name gpu-0 itop-rigl:latest
+# docker run --cpus 12 --memory 64G --env-file .env --gpus '"device=0"' -i -t --name gpu-0 rigl-agent:latest
 # docker run --cpus 12 --memory 30G --env-file .env --gpus '"device=1"' -i -t -d --name gpu-1 rigl-sweep-agent:latest
 # docker run --cpus 12 --memory 30G --env-file .env --gpus '"device=2"' -i -t --name gpu-2 rigl-sweep-agent:latest
 # docker run --cpus 12 --memory 30G --env-file .env --gpus '"device=3"' -i -t --name gpu-3 rigl-sweep-agent:latest
@@ -20,8 +20,8 @@ docker run -itd --env-file ./.env \
   --name gpu-0 \
   --cpus 12 \
   --memory 30G \
-  itop-rigl:latest \
-  wandb agent condensed-sparsity/condensed-rigl/l62v40xf
+  rigl-agent:latest \
+  wandb agent condensed-sparsity/condensed-rigl/q6n2w203
 
 
 docker run -itd --env-file ./.env \
@@ -33,8 +33,8 @@ docker run -itd --env-file ./.env \
   --name gpu-1 \
   --cpus 12 \
   --memory 30G \
-  itop-rigl:latest \
-  wandb agent condensed-sparsity/condensed-rigl/l62v40xf
+  rigl-agent:latest \
+  wandb agent condensed-sparsity/condensed-rigl/q6n2w203
 
 docker run -itd --env-file ./.env \
   --mount source=/home/mike/condensed-sparsity,target=/home/condensed-sparsity,type=bind \
@@ -45,8 +45,8 @@ docker run -itd --env-file ./.env \
   --name gpu-2 \
   --cpus 12 \
   --memory 30G \
-  itop-rigl:latest \
-  wandb agent condensed-sparsity/condensed-rigl/l62v40xf
+  rigl-agent:latest \
+  wandb agent condensed-sparsity/condensed-rigl/q6n2w203
 
   docker run -itd --env-file ./.env \
   --mount source=/home/mike/condensed-sparsity/artifacts,target=/home/condensed-sparsity/artifacts,type=bind \
@@ -57,8 +57,8 @@ docker run -itd --env-file ./.env \
   --name gpu-3 \
   --cpus 12 \
   --memory 30G \
-  itop-rigl:latest \
-  wandb agent condensed-sparsity/condensed-rigl/l62v40xf
+  rigl-agent:latest \
+  wandb agent condensed-sparsity/condensed-rigl/q6n2w203
 
 
   
@@ -70,7 +70,7 @@ docker run -itd --env-file ./.env \
   --gpus '"device=0"' \
   --shm-size 16G \
   --name gpu-0 \
-  itop-rigl:latest
+  rigl-agent:latest
 
 docker run -itd --env-file ./.env \
   --mount source=/home/mike/condensed-sparsity/artifacts,target=/home/user/condensed-sparsity/artifacts,type=bind \
@@ -80,6 +80,6 @@ docker run -itd --env-file ./.env \
   --gpus '"device=0"' \
   --shm-size 16G \
   --name gpu-0 \
-  itop-rigl:latest
+  rigl-agent:latest
 
   
