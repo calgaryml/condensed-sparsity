@@ -4,7 +4,7 @@ defaults:
   - _self_
 
 experiment:
-  comment: dense_alloc-${rigl.dense_allocation}_weight_per_neuron-${rigl.min_salient_weights_per_neuron}
+  comment: dense_alloc-${rigl.dense_allocation}_weight_per_neuron-${rigl.min_salient_weights_per_neuron}_gamma-${training.gamma}
   name: ${model.name}_${dataset.name}_${experiment.comment}
   resume_from_checkpoint: False
   run_id: null
@@ -23,7 +23,7 @@ rigl:
   # number of steps between rigl pruning / regrow iterations
   delta: 100  # 4096 * 100 / 512 = 800
   # number of gradients to accumulate before scoring for rigl -> Based on simulated batch step number!
-  grad_accumulation_n: 8  # 4096 / 512 without simulated batch size, 1 otheriwse
+  grad_accumulation_n: 1  # 4096 / 512 without simulated batch size, 1 otheriwse
   # alpha param for pruning for cosine decay in determining how many connections to prune/regrow
   alpha: 0.3  # 0.3 for vanilla rigl, 0.5 for ITOP -> Inital fraction of weights to update every pruner step
   # if 1, use random sparsity topo and remain static
@@ -86,7 +86,7 @@ training:
   # Number of epochs to warm up for linear warm ups
   warm_up_steps: 0
   # Learning rate step gamma
-  gamma: 0.5  # 0.1 for imagenet, 0.5 for cifar
+  gamma: 0.2  # 0.1 for imagenet, 0.2 for cifar
   # Step size to use in learning rate scheduler if StepLR is used. List[int] || int
   step_size: 77  # Imagenet -> [30,70,90] TODO: Convert to cifar 10 -> every 30,000 mini-batch steps ~= 77 epochs
 

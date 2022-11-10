@@ -358,7 +358,8 @@ class RigLConstFanScheduler(RigLScheduler):
                         f"{math.prod(saliency_mask.shape[1:])} "
                         "decrementing _min_salient_weights for this iteration "
                         "and this layer.\n"
-                        f"sorted neuron saliency: {neuron_saliency_counts}"
+                        f"sorted neuron saliency: {neuron_saliency_counts} \n"
+                        f"num neurons to ablate: {len(neurons_to_ablate)} \n"
                     )
                     _min_salient_weights_per_neuron -= 1
                     if _min_salient_weights_per_neuron == 0:

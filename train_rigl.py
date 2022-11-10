@@ -60,6 +60,9 @@ def init_wandb(cfg: omegaconf.DictConfig, wandb_init_kwargs: Dict[str, Any]):
 
 @hydra.main(config_path="configs/", config_name="config", version_base="1.2")
 def initalize_main(cfg: omegaconf.DictConfig) -> None:
+    use_cuda = not cfg.compute.no_cuda and torch.cuda.is_available()
+    if not use_cuda:
+        raise SystemError("GPU has stopped responding...waiting to die!")
     if cfg.compute.distributed:
         # We initalize train and val loaders here to ensure .tar balls have
         # been decompressed before parallel workers try and write the same
