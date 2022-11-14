@@ -17,6 +17,60 @@ from rigl_torch.exceptions import (
 
 
 class RigLConstFanScheduler(RigLScheduler):
+    """RigL Scheduler with constant fan-in.
+
+    Constant fan-in enforced at initalization and during each grow / prune
+    step.
+
+    Parameters:
+        model (torch.nn.Module): Model to sparsify / train.
+        optimizer (torch.optim.Optimizer): Optimizer used to update model
+            parameters during training.
+        dense_allocation (float, optional): The targetted remaining dense
+            parameters (ie., (1-sparsity) ). Defaults to 1.
+        T_end (int, optional): The global mini-batch step to stop regrowing /
+            pruning connections. In original paper, 75% of total steps is used.
+            Defaults to None.
+        sparsity_distribution (str, optional): The layerwise sparsity
+            distribution to use. Implemented options include "uniform" and
+                "erk". Defaults to "uniform".
+        ignore_linear_layers (bool, optional): If True, linear layers are not
+            sparsified and instead are left dense. Defaults to False.
+        delta (int, optional): Number of mini-batch steps between prune /
+            regrowth updates. Defaults to 100.
+        alpha (float, optional): Inital portion of connections to prune each
+            prune step. Defaults to 0.3.
+        static_topo (bool, optional): If True, no dynamic pruning / regrowth is
+            performed during training. Essentially results in a static sparse
+            network during training.. Defaults to False.
+        grad_accumulation_n (int, optional): Number of mini-batch steps to
+            accumulate gradient before a prune / regrowth step. Used to simulate
+            larger batch sizes than can fit into available VRAM. Defaults to 1.
+        state_dict (Dict[str, Any], optional): Dictionary describing state of
+            scheduler from prior training checkpoint. Defaults to None.
+        erk_power_scale (float, optional): Erdos-Renyi Kernel power scale
+            parameter. Defaults to 1.0.
+        filter_ablation_threshold (Optional[float], optional): Percent of
+            required connections active to consider a neuron as active for
+            static ablation. Defaults to None. If None, no threshold exists and
+            static ablation will not be performed.
+        static_ablation (bool, optional): If True, ablates neurons at
+            initalization to reach targetted filter_ablation_threshold. Defaults
+            to False.
+        dynamic_ablation (bool, optional): If True, dynamically ablates neurons
+            during training according to min_salient_weights_per_neuron.
+            Defaults to False.
+        min_salient_weights_per_neuron (int, optional): If dynamic ablation is
+            True, this parameter defines the minimum number of neurons that must
+            be salient to remain active. Defaults to 0. Saliency in this case is
+            the union of regrowth and pruning masks (ie., weight is consider
+            salient if either criterion is satsified)
+
+    Raises:
+        Exception: If attempting to register scheduler to a model that already
+            has IndexMaskHooks registered.
+    """
+
     def __init__(
         self,
         model: torch.nn.Module,
@@ -36,34 +90,7 @@ class RigLConstFanScheduler(RigLScheduler):
         dynamic_ablation: bool = False,
         min_salient_weights_per_neuron: int = 0,
     ):
-        """RigL Scheduler with constant fan-in.
 
-        Constant fan-in enforced at initalization and during each grow / prune
-        step.
-
-        Args:
-            model (torch.nn.Module): Model to sparsify.
-            optimizer (torch.optim.Optimizer): Optimizer to wrap with rigl
-                scheduler
-            dense_allocation (int, optional): Percentage of dense parameters
-                allowed. if None, pruning will not be used. must be on the
-                interval (0, 1]". Defaults to 1.
-            T_end (Optional[int], optional): Number of epochs to simulate (only
-                used for tuning). Defaults to None.
-            sparsity_distribution (str, optional): Description of sparsity
-                distribution. Defaults to "uniform".
-            ignore_linear_layers (bool, optional): If True, linear layers are
-                not sparsified. Defaults to False.
-            delta (int, optional): Delta param for pruning. Defaults to 100.
-            alpha (float, optional): Alpha param for pruning. Defaults to 0.3.
-            static_topo (bool, optional): If True, use random sparsity topo and
-                remain static. Defaults to False.
-            grad_accumulation_n (int, optional): Number of gradients to
-                accumulate before scoring for rigl. Defaults to 1.
-            state_dict (Dict[str, Any], optional): State dict used to initalize
-                from rigl scheduler already initalized / trained. Defaults to
-                None.
-        """
         super().__init__(
             model,
             optimizer,
@@ -301,11 +328,25 @@ class RigLConstFanScheduler(RigLScheduler):
     def _get_neurons_to_ablate(
         self,
         score_drop: torch.Tensor,
-        score_grow,
-        n_keep,
-        n_prune,
-        sparsity,
+        score_grow: torch.Tensor,
+        n_keep: int,
+        n_prune: int,
+        sparsity: float,
     ) -> List[int]:
+        """Return List of neuron indices to ablate.
+
+        Args:
+            score_drop (torch.Tensor): Score for weight based magnitude pruning
+                provided by torch.abs(this_layer_weights)
+            score_grow (torch.Tensor): Score for gradient based magnitude
+                regrowth provided by torch.abs(gradient)
+            n_keep (int): Number of connections to keep during this step.
+            n_prune (int): Number of connections to prune this step.
+            sparsity (float): Sparsity target for this layer.
+
+        Returns:
+            List[int]: List of neuron indices that remain active.
+        """
         if self.dynamic_ablation and self.min_salient_weights_per_neuron != 0:
             neurons_to_ablate: List[int] = []
             saliency_mask = torch.zeros(
@@ -522,15 +563,6 @@ class RigLConstFanScheduler(RigLScheduler):
                 f"Target fan_in: {n_fan_in}"
             )
         return grow_mask
-
-    @property
-    def inverse_idx_select(self):
-        active_neurons = []
-        for layer_idx, layer in enumerate(self._dynamically_ablated_neuron_idx):
-            active_neurons.append(
-                [i for i in range(len(self.W[layer_idx])) if i not in layer]
-            )
-        return active_neurons
 
     def _get_new_weights(
         self,

@@ -132,10 +132,10 @@ class RigLScheduler:
             during training according to min_salient_weights_per_neuron.
             Defaults to False.
         min_salient_weights_per_neuron (int, optional): If dynamic ablation is
-        True, this parameter defines the minimum number of neurons that must be
-        salient to remain active. Defaults to 0. Saliency in this case is the
-        union of regrowth and pruning masks (ie., weight is consider salient if
-        either criterion is satsified)
+            True, this parameter defines the minimum number of neurons that must
+            be salient to remain active. Defaults to 0. Saliency in this case is
+            the union of regrowth and pruning masks (ie., weight is consider
+            salient if either criterion is satsified)
 
     Raises:
         Exception: If attempting to register scheduler to a model that already
@@ -451,7 +451,7 @@ class RigLScheduler:
             "erk_power_scale": self.erk_power_scale,
             "static_ablation": self.static_ablation,
             "dynamic_ablation": self.dynamic_ablation,
-            "min_salient_weights_per_neuron": self.min_salient_weights_per_neuron,
+            "min_salient_weights_per_neuron": self.min_salient_weights_per_neuron,  # noqa
             "step": self.step,
             "rigl_steps": self.rigl_steps,
             "backward_masks": self.backward_masks,
