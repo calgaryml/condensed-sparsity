@@ -46,6 +46,8 @@ rigl:
   use_sparse_initialization: False ## TODO!
   # Param for minimum number of salient weights per neuron. If < this value, the neuron will be dynamically ablated. 
   min_salient_weights_per_neuron: 0
+  # Instructs scheduler to ignore linear layers and leave dense if True.
+  ignore_linear_layers: False
 
 training:
   # quickly check a single pass",

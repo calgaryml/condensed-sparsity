@@ -199,7 +199,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             delta=cfg.rigl.delta,
             static_topo=cfg.rigl.static_topo,
             T_end=T_end,
-            ignore_linear_layers=False,
+            ignore_linear_layers=cfg.rigl.ignore_linear_layers,
             grad_accumulation_n=cfg.rigl.grad_accumulation_n,
             sparsity_distribution=cfg.rigl.sparsity_distribution,
             erk_power_scale=cfg.rigl.erk_power_scale,
@@ -362,7 +362,7 @@ def train(
                     "ITOP Rate": pruner.itop_rs,
                     "Training Loss": loss.item(),
                 },
-                step=step
+                step=step,
             )
         if cfg.training.dry_run:
             logger.warning("Dry run, exiting after one training step")

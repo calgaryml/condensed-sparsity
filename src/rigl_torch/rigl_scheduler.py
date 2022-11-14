@@ -1,9 +1,10 @@
 """ implementation of https://arxiv.org/abs/1911.11134 """
 
+from __future__ import annotations
 import numpy as np
 import torch
 import torch.distributed as dist
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import logging
 import wandb
 
@@ -16,8 +17,23 @@ from rigl_torch.meters.layer_meter import LayerMeter
 
 
 class IndexMaskHook:
-    def __init__(self, layer, scheduler):
-        self.layer = layer
+    """Hooks used in backwards pass to accumulate dense gradients.
+
+    This hook is called everytime backpropgation is called on the layer which
+    the hook is registered with.
+
+    Attributes:
+        layer_idx (int): Layer index that this hook is registered to. Should
+            match scheduler.W / scheduler.backward_masks
+        scheduler (RigLScheduler): Scheduler which instantiated and has a
+            reference to this object.
+    """
+
+    def __init__(
+        self, layer_idx: int, scheduler: RigLScheduler
+    ) -> IndexMaskHook:
+        """Initalizes an index mask hook object"""
+        self.layer_idx = layer_idx
         self.scheduler = scheduler
         self.dense_grad = None
 
@@ -25,8 +41,18 @@ class IndexMaskHook:
         return "IndexMaskHook"
 
     @torch.no_grad()
-    def __call__(self, grad):
-        mask = self.scheduler.backward_masks[self.layer]
+    def __call__(self, grad: torch.Tensor) -> torch.Tensor:
+        """Adds grad to self.dense_grad accumulation, if hook shoud accumulate
+            grad and applies mask to gradient to avoid changing inactive weights
+
+        Args:
+            grad (torch.Tensor): Dense grads from the current back prop step for
+                this layer. Will be added to self.dense_grad is applicable.
+
+        Returns:
+            torch.Tensor: grad mutliplied element-wise with sparsity mask.
+        """
+        mask = self.scheduler.backward_masks[self.layer_idx]
 
         # only calculate dense_grads when necessary
         if self.scheduler.check_if_backward_hook_should_accumulate_grad():
@@ -40,7 +66,18 @@ class IndexMaskHook:
         return grad * mask
 
 
-def _create_step_wrapper(scheduler, optimizer):
+def _create_step_wrapper(
+    scheduler: RigLScheduler, optimizer: torch.optim.Optimizer
+) -> None:
+    """Wrap optimizer.step() with calls to scheduler to reset momentm and apply
+        mask to weights.
+
+    Args:
+        scheduler (RigLScheduler): Scheduler used to call additional functions
+            wrapping optimizer step.
+        optimizer (torch.optim.Optimizer): Optimizer to wrap with additional
+            functions
+    """
     _unwrapped_step = optimizer.step
 
     def _wrapped_step():
@@ -52,27 +89,81 @@ def _create_step_wrapper(scheduler, optimizer):
 
 
 class RigLScheduler:
+    """Implements rigl pruning / regrowth strategies from original paper.
+
+    Paper reference: https://arxiv.org/abs/1911.11134
+
+    Parameters:
+        model (torch.nn.Module): Model to sparsify / train.
+        optimizer (torch.optim.Optimizer): Optimizer used to update model
+            parameters during training.
+        dense_allocation (float, optional): The targetted remaining dense
+            parameters (ie., (1-sparsity) ). Defaults to 1.
+        T_end (int, optional): The global mini-batch step to stop regrowing /
+            pruning connections. In original paper, 75% of total steps is used.
+            Defaults to None.
+        sparsity_distribution (str, optional): The layerwise sparsity
+            distribution to use. Implemented options include "uniform" and
+                "erk". Defaults to "uniform".
+        ignore_linear_layers (bool, optional): If True, linear layers are not
+            sparsified and instead are left dense. Defaults to False.
+        delta (int, optional): Number of mini-batch steps between prune /
+            regrowth updates. Defaults to 100.
+        alpha (float, optional): Inital portion of connections to prune each
+            prune step. Defaults to 0.3.
+        static_topo (bool, optional): If True, no dynamic pruning / regrowth is
+            performed during training. Essentially results in a static sparse
+            network during training.. Defaults to False.
+        grad_accumulation_n (int, optional): Number of mini-batch steps to
+            accumulate gradient before a prune / regrowth step. Used to simulate
+            larger batch sizes than can fit into available VRAM. Defaults to 1.
+        state_dict (Dict[str, Any], optional): Dictionary describing state of
+            scheduler from prior training checkpoint. Defaults to None.
+        erk_power_scale (float, optional): Erdos-Renyi Kernel power scale
+            parameter. Defaults to 1.0.
+        filter_ablation_threshold (Optional[float], optional): Percent of
+            required connections active to consider a neuron as active for
+            static ablation. Defaults to None. If None, no threshold exists and
+            static ablation will not be performed.
+        static_ablation (bool, optional): If True, ablates neurons at
+            initalization to reach targetted filter_ablation_threshold. Defaults
+            to False.
+        dynamic_ablation (bool, optional): If True, dynamically ablates neurons
+            during training according to min_salient_weights_per_neuron.
+            Defaults to False.
+        min_salient_weights_per_neuron (int, optional): If dynamic ablation is
+        True, this parameter defines the minimum number of neurons that must be
+        salient to remain active. Defaults to 0. Saliency in this case is the
+        union of regrowth and pruning masks (ie., weight is consider salient if
+        either criterion is satsified)
+
+    Raises:
+        Exception: If attempting to register scheduler to a model that already
+            has IndexMaskHooks registered.
+    """
+
     _implemented_sparsity_distributions: List[str] = ["uniform", "erk"]
 
     def __init__(
         self,
-        model,
-        optimizer,
-        dense_allocation=1,
-        T_end=None,
-        sparsity_distribution="uniform",
-        ignore_linear_layers=True,
-        delta=100,
-        alpha=0.3,
-        static_topo=False,
-        grad_accumulation_n=1,
-        state_dict=None,
-        erk_power_scale=1.0,
+        model: torch.nn.Module,
+        optimizer: torch.optim.Optimizer,
+        dense_allocation: float = 1,
+        T_end: int = None,
+        sparsity_distribution: str = "uniform",
+        ignore_linear_layers: bool = False,
+        delta: int = 100,
+        alpha: float = 0.3,
+        static_topo: bool = False,
+        grad_accumulation_n: int = 1,
+        state_dict: Dict[str, Any] = None,
+        erk_power_scale: float = 1.0,
         filter_ablation_threshold: Optional[float] = None,
-        static_ablation: bool = True,
+        static_ablation: bool = False,
         dynamic_ablation: bool = False,
         min_salient_weights_per_neuron: int = 0,
     ):
+        """Initalizes scheduler object."""
         self._logger = logging.getLogger(__file__)
         self.explored_params = None
         self.static_ablation = static_ablation
@@ -151,6 +242,11 @@ class RigLScheduler:
             self._update_current_filter_ablation()
 
     def _validate_params(self) -> None:
+        """Validates that parameters provided to constructor are valid.
+
+        Raises:
+            ValueError: If any parameter is invalid.
+        """
         if self.static_ablation and self.dynamic_ablation:
             raise ValueError(
                 "Only one of `static_ablation` and "
@@ -197,6 +293,16 @@ class RigLScheduler:
         return inital_ablated_filters
 
     def _allocate_sparsity(self) -> List[float]:
+        """Allocates inital sparsity layerwise according to sparsity distrubtion
+
+        Raises:
+            ValueError: If self.sparsity_distribution does not have an
+                implemented function to find layerwise sparsities.
+
+        Returns:
+            List[float]: List of floats representing sparsity on a per layer
+                basis for convolutional or linear layers.
+        """
         sparsity_dist = []
         sparsity_allocators = {
             "uniform": self._uniform_sparsity_dist,
@@ -214,6 +320,11 @@ class RigLScheduler:
         return sparsity_dist
 
     def _uniform_sparsity_dist(self) -> List[float]:
+        """Allocates sparsity uniformly across all layers in network.
+
+        Returns:
+            List[float]: List of floats representing sparsity per layer.
+        """
         sparsity_dist = []
         for i, (W, is_linear) in enumerate(
             zip(self.W, self._linear_layers_mask)
@@ -300,6 +411,12 @@ class RigLScheduler:
         return sparsity_dist
 
     def _update_active_neurons(self) -> None:
+        """Updates self.active_neuron_count based on current masks.
+
+        self.active_neuron_count is a List of Lists that represent the indices
+        of active neurons remaining in each layer. Active neurons are defined as
+        those neruons which have at least 1 active weight.
+        """
         self.active_neurons = []
         for idx, layer in enumerate(self.backward_masks):
             if layer is None:  # No Sparisty, all active
@@ -314,24 +431,27 @@ class RigLScheduler:
             [len(layer_neurons) for layer_neurons in self.active_neurons]
         )
 
-    def _update_neuron_statistics(self) -> None:
-        pass
+    def state_dict(self) -> Dict[str, Any]:
+        """State dict of scheduler object used to load checkpoints.
 
-    def state_dict(self):
+        Returns:
+            Dict[str, Any]: Dictionary that describes current state.
+        """
         obj = {
             "dense_allocation": self.dense_allocation,
             "S": self.S,
             "N": self.N,
-            "hyperparams": {
-                "delta_T": self.delta_T,
-                "alpha": self.alpha,
-                "T_end": self.T_end,
-                "ignore_linear_layers": self.ignore_linear_layers,
-                "static_topo": self.static_topo,
-                "sparsity_distribution": self.sparsity_distribution,
-                "grad_accumulation_n": self.grad_accumulation_n,
-                "erk_power_scale": self.erk_power_scale,
-            },
+            "delta_T": self.delta_T,
+            "alpha": self.alpha,
+            "T_end": self.T_end,
+            "ignore_linear_layers": self.ignore_linear_layers,
+            "static_topo": self.static_topo,
+            "sparsity_distribution": self.sparsity_distribution,
+            "grad_accumulation_n": self.grad_accumulation_n,
+            "erk_power_scale": self.erk_power_scale,
+            "static_ablation": self.static_ablation,
+            "dynamic_ablation": self.dynamic_ablation,
+            "min_salient_weights_per_neuron": self.min_salient_weights_per_neuron,
             "step": self.step,
             "rigl_steps": self.rigl_steps,
             "backward_masks": self.backward_masks,
@@ -343,7 +463,13 @@ class RigLScheduler:
 
         return obj
 
-    def load_state_dict(self, state_dict):
+    def load_state_dict(self, state_dict: Dict[str, Any]) -> None:
+        """Assigns values from state_dict to attributes with name matching state
+            dict keys.
+
+        Args:
+            state_dict (Dict[str, Any])): State dict object.
+        """
         for k, v in state_dict.items():
             if type(v) == dict:
                 self.load_state_dict(v)
@@ -351,6 +477,7 @@ class RigLScheduler:
 
     @torch.no_grad()
     def random_sparsify(self):
+        """Randomly sparsifies layers at initalization."""
         is_dist = dist.is_initialized()
         self.backward_masks = []
         for l, w in enumerate(self.W):
@@ -376,7 +503,12 @@ class RigLScheduler:
             w *= mask
             self.backward_masks.append(mask)
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """String representation of self.
+
+        Returns:
+            str: String describing state of self.
+        """
         s = "RigLScheduler(\n"
         s += "layers=%i,\n" % len(self.N)
 
@@ -450,7 +582,10 @@ class RigLScheduler:
         return s + ")"
 
     @torch.no_grad()
-    def reset_momentum(self):
+    def reset_momentum(self) -> None:
+        """Resets moementum buffers in optimizer to zero where weights are
+        inactive according to mask.
+        """
         for w, mask, s in zip(self.W, self.backward_masks, self.S):
             # if sparsity is 0%, skip
             if s <= 0:
@@ -463,7 +598,8 @@ class RigLScheduler:
                 buf *= mask
 
     @torch.no_grad()
-    def apply_mask_to_weights(self):
+    def apply_mask_to_weights(self) -> None:
+        """Masks inactive weights and set them to 0"""
         self._max_inactive_weights = []
         for w, mask, s in zip(self.W, self.backward_masks, self.S):
             # if sparsity is 0%, skip
@@ -476,7 +612,11 @@ class RigLScheduler:
             w *= mask
 
     @torch.no_grad()
-    def apply_mask_to_gradients(self):
+    def apply_mask_to_gradients(self) -> None:
+        """Masks inactive gradients by setting them to 0.
+
+        Used to reset grads in inactive weights after a rigl_step.
+        """
         for w, mask, s in zip(self.W, self.backward_masks, self.S):
             # if sparsity is 0%, skip
             if s <= 0:
@@ -484,11 +624,15 @@ class RigLScheduler:
 
             w.grad *= mask
 
-    def check_if_backward_hook_should_accumulate_grad(self):
-        """
+    def check_if_backward_hook_should_accumulate_grad(self) -> bool:
+        """Checks if backwards hooks should accumulate gradient.
+
         Used by the backward hooks. Basically just checks how far away the next
         rigl step is, if it's within `self.grad_accumulation_n` steps, return
         True.
+
+        Returns:
+            bool: True if hook should accumulate grad, False otherwise.
         """
 
         if self.step >= self.T_end:
@@ -497,10 +641,21 @@ class RigLScheduler:
         steps_til_next_rigl_step = self.delta_T - (self.step % self.delta_T)
         return steps_til_next_rigl_step <= self.grad_accumulation_n
 
-    def cosine_annealing(self):
+    def cosine_annealing(self) -> float:
+        """Returns current pruning rate based on cosine annealing schedule.
+
+        Returns:
+            float: Portion of connections to prune this step.
+        """
         return self.alpha / 2 * (1 + np.cos((self.step * np.pi) / self.T_end))
 
-    def __call__(self):
+    def __call__(self) -> bool:
+        """Performs prune / regrow step if applicable.
+
+        Returns:
+            bool: True if prune / regrow step is not applicable, False if a rigl
+                update step has occured.
+        """
         self.step += 1
         if self.static_topo:
             return True
@@ -516,7 +671,9 @@ class RigLScheduler:
         return True
 
     @torch.no_grad()
-    def _rigl_step(self):
+    def _rigl_step(self) -> None:
+        """Perform prune / regrowth step."""
+
         drop_fraction = self.cosine_annealing()
 
         # if distributed these values will be populated
@@ -584,11 +741,7 @@ class RigLScheduler:
             mask2_reshaped = torch.reshape(mask2, current_mask.shape)
             grow_tensor = torch.zeros_like(w)
 
-            REINIT_WHEN_SAME = False
-            if REINIT_WHEN_SAME:
-                raise NotImplementedError()
-            else:
-                new_connections = (mask2_reshaped == 1) & (current_mask == 0)
+            new_connections = (mask2_reshaped == 1) & (current_mask == 0)
 
             # update new weights to be initialized as zeros and update the
             # weight tensors
@@ -609,6 +762,9 @@ class RigLScheduler:
         self.apply_mask_to_gradients()
 
     def _update_itop_rs(self):
+        """Updates self.explored_params and self.itop_rs to determine the
+        In-time-over-paramertization rate.
+        """
         if self.explored_params is None:
             self.explored_params = []
             for weight_tensor in self.W:
@@ -712,6 +868,11 @@ class RigLScheduler:
         return 1 - (total_non_zero_els / total_els)
 
     def _register_meters(self) -> None:
+        """Registers LayerMeters on each layer of the network.
+
+        The LayerMeters are used to track active neurons, max inactive weights,
+        max inactive grads, etc.
+        """
         self.meters = []
         names, weights = get_names_and_W(self.model)
         assert weights == self.W
@@ -726,6 +887,11 @@ class RigLScheduler:
             )
 
     def log_meters(self, step: int) -> None:
+        """Log statistics to wandb for each layer using self.meters.
+
+        Args:
+            step (int): Current global training mini-batch step count.
+        """
         for idx, meter in enumerate(self.meters):
             if self.backward_hook_objects[idx] is None:
                 dense_grad = self.W[idx].grad
