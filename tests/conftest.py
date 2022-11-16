@@ -14,6 +14,12 @@ def pytest_addoption(parser):
         default=False,
         help="run slow tests",
     )
+    parser.addoption(
+        "--run-dist",
+        action="store_true",
+        default=False,
+        help="run distributed tests, requires 2 devices minimum!",
+    )
 
 
 def pytest_configure(config):
@@ -22,6 +28,13 @@ def pytest_configure(config):
     )
     config.addinivalue_line(
         "markers", "slow: mark test as too slow for github actions"
+    )
+    config.addinivalue_line(
+        "markers",
+        (
+            "dist: mark test as a distributed test requiring at least 2"
+            "devices"
+        ),
     )
 
 
@@ -38,3 +51,8 @@ def pytest_collection_modifyitems(config, items):
         for item in items:
             if "slow" in item.keywords:
                 item.add_marker(skip_slow)
+    if not config.getoption("--run-dist"):
+        skip_dist = pytest.mark.skip(reason="need --run-dist option to run")
+        for item in items:
+            if "dist" in item.keywords:
+                item.add_marker(skip_dist)
