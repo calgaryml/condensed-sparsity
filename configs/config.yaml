@@ -21,9 +21,9 @@ rigl:
   # be used. must be on the interval (0, 1]
   dense_allocation: 0.01
   # number of steps between rigl pruning / regrow iterations
-  delta: 100  # 4096 * 100 / 512 = 800
-  # number of gradients to accumulate before scoring for rigl -> Based on simulated batch step number!
-  grad_accumulation_n: 1  # 4096 / 512 without simulated batch size, 1 otheriwse
+  delta: 800  # 4096 * 100 / 512 = 800 || 100 for cifar
+  # number of gradients to accumulate before scoring for rigl
+  grad_accumulation_n: 8  # 4096 / 512 without simulated batch size, 1 otheriwse
   # alpha param for pruning for cosine decay in determining how many connections to prune/regrow
   alpha: 0.3  # 0.3 for vanilla rigl, 0.5 for ITOP -> Inital fraction of weights to update every pruner step
   # if 1, use random sparsity topo and remain static
@@ -45,7 +45,7 @@ rigl:
   # If True, update weight initalization to account for sparse const fan in. 
   use_sparse_initialization: False ## TODO!
   # Param for minimum number of salient weights per neuron. If < this value, the neuron will be dynamically ablated. 
-  min_salient_weights_per_neuron: 0
+  min_salient_weights_per_neuron: 10
   # Instructs scheduler to ignore linear layers and leave dense if True.
   ignore_linear_layers: False
 
@@ -53,13 +53,13 @@ training:
   # quickly check a single pass",
   dry_run: False
   # batch size for training
-  batch_size: 128  # 128 for cifar10, multiples of 256 for imagenet w/ scaled lr
+  batch_size: 512  # 128 for cifar10, multiples of 256 for imagenet w/ scaled lr
   # Batch size to simulate by taking multiple steps per optimizer update (accumulate grads)
   simulated_batch_size: null
   # batch size for testing
   test_batch_size: 1000
   # number of epochs to train
-  epochs: 250  # For imagenet, training will finish at ~ epoch 102.31, use 250 for cifar10
+  epochs: 103  # For imagenet, training will finish at ~ epoch 102.31, use 250 for cifar10
   # random seed
   seed: 42
   # Log interval (number of mini-batch steps)
@@ -67,30 +67,30 @@ training:
   # For Saving the current Model
   save_model: True
   # max number of steps (will override epochs) -> Based on mini-batch steps (NOT SIMULATED BATCHES!)
-  max_steps: null  # 4096 * 32000 / 512 = 256000 from rigl paper
+  max_steps: 256000  # 4096 * 32000 / 512 = 256000 from rigl paper
 
   ## Optimization
   optimizer: sgd # "sgd", "adamw"
   # L2 Regularization for optimizer
-  weight_decay: 0.0005  # 5.0e-4 -> cifar10   0.0001 -> imagenet
+  weight_decay: 0.0001  # 5.0e-4 -> cifar10   0.0001 -> imagenet
   # Momentum coefficient for SGD optimizer
   momentum: 0.9  # 0.9 -> rigl value
   # Label smoothing for cross entropy
-  label_smoothing: 0.0  # 0.1 for imagenet, 0.0 or null for cifar
+  label_smoothing: 0.1  # 0.1 for imagenet, 0.0 or null for cifar
 
 
   ## Scheduler
-  scheduler: step_lr # cosine_annealing_with_warm_up, step_lr_with_warm_up
+  scheduler: step_lr_with_warm_up # step_lr # cosine_annealing_with_warm_up, step_lr_with_warm_up
   # Learning rate after warmup
   lr: 0.1  # 0.1 * batch size / 256 per original paper -> Use 1.6 for 4096 simulated batch size. 0.1 for ITOP
   # Learning rate for first epoch of warm up, only applies to schedulers with linear warm up
   init_lr: 1.0e-6
   # Number of epochs to warm up for linear warm ups
-  warm_up_steps: 0
+  warm_up_steps: 5 # 5 for imagenet | 0 for cifar10
   # Learning rate step gamma
-  gamma: 0.2  # 0.1 for imagenet, 0.2 for cifar
+  gamma: 0.1  # 0.1 for imagenet, 0.2 for cifar
   # Step size to use in learning rate scheduler if StepLR is used. List[int] || int
-  step_size: 77  # Imagenet -> [30,70,90] TODO: Convert to cifar 10 -> every 30,000 mini-batch steps ~= 77 epochs
+  step_size: [30,70,90]  # Imagenet -> [30,70,90] TODO: Convert to cifar 10 -> every 30,000 mini-batch steps ~= 77 epochs
 
 
 compute:
@@ -100,9 +100,9 @@ compute:
     num_workers: ${ oc.decode:${oc.env:NUM_WORKERS} }  # decode casts to int
     pin_memory: True
   # If True, use data-parallelization model for distributed training
-  distributed: False
+  distributed: True
   # Number of CUDA devices to use for distributed training
-  world_size: 2
+  world_size: 4
   # Backend to use for distributed training, options: ["nccl", "gloo"]
   dist_backend: "nccl"
 
