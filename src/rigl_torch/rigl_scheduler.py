@@ -189,6 +189,8 @@ class RigLScheduler:
 
         if state_dict is not None:
             self.load_state_dict(state_dict)
+            if not hasattr(self, "static_ablated_filters"):
+                self.static_ablated_filters = [0 for _ in range(len(self.W))]
             self.apply_mask_to_weights()
 
         else:
@@ -459,6 +461,7 @@ class RigLScheduler:
             "itop_rs": self.itop_rs,
             "explored_params": self.explored_params,
             "active_neurons": self.active_neurons,
+            "static_ablated_filters": self.static_ablated_filters,
         }
 
         return obj

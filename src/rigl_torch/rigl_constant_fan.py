@@ -225,6 +225,7 @@ class RigLConstFanScheduler(RigLScheduler):
         for idx, w in enumerate(self.W):
             # if sparsity is 0%, skip
             if self.S[idx] <= 0:
+                self._dynamically_ablated_neuron_idx.append([])
                 continue
 
             # calculate raw scores
@@ -322,7 +323,6 @@ class RigLConstFanScheduler(RigLScheduler):
                     f"I have a pre-mask max of {_max_score_drop} and a post "
                     f"mask max of {torch.abs(w).max().item()}"
                 )
-            # print("rigl step passed")
 
     @torch.no_grad()
     def _get_neurons_to_ablate(

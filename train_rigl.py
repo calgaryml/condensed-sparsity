@@ -336,7 +336,7 @@ def train(
             optimizer.step()
             if pruner is not None:
                 # pruner.__call__ returns False if rigl step taken
-                if not pruner() and cfg.wandb.log_filter_stats:
+                if not pruner() and cfg.wandb.log_filter_stats and rank == 0:
                     # If we update the pruner
                     # log filter-wise statistics to wandb
                     pruner.log_meters(step=step)

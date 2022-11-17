@@ -1,13 +1,13 @@
 defaults:
-  - dataset: cifar10
-  - model: wide_resnet22
+  - dataset: imagenet
+  - model: resnet50
   - _self_
 
 experiment:
-  comment: dense_alloc-${rigl.dense_allocation}_weight_per_neuron-${rigl.min_salient_weights_per_neuron}_gamma-${training.gamma}
+  comment: dense_alloc-${rigl.dense_allocation}_const_fan_in-${rigl.const_fan_in}_weight_per_neuron-${rigl.min_salient_weights_per_neuron}
   name: ${model.name}_${dataset.name}_${experiment.comment}
-  resume_from_checkpoint: False
-  run_id: null
+  resume_from_checkpoint: True
+  run_id: 11lruj81
 
 paths:
   base: ${oc.env:BASE_PATH}
@@ -19,7 +19,7 @@ paths:
 rigl: 
   # percentage of dense parameters allowed. if null, pruning will not 
   # be used. must be on the interval (0, 1]
-  dense_allocation: 0.01
+  dense_allocation: 0.1
   # number of steps between rigl pruning / regrow iterations
   delta: 800  # 4096 * 100 / 512 = 800 || 100 for cifar
   # number of gradients to accumulate before scoring for rigl
@@ -82,7 +82,7 @@ training:
   ## Scheduler
   scheduler: step_lr_with_warm_up # step_lr # cosine_annealing_with_warm_up, step_lr_with_warm_up
   # Learning rate after warmup
-  lr: 0.1  # 0.1 * batch size / 256 per original paper -> Use 1.6 for 4096 simulated batch size. 0.1 for ITOP
+  lr: 0.2  # 0.1 * batch size / 256 per original paper -> Use 1.6 for 4096 simulated batch size. 0.1 for ITOP
   # Learning rate for first epoch of warm up, only applies to schedulers with linear warm up
   init_lr: 1.0e-6
   # Number of epochs to warm up for linear warm ups
