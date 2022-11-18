@@ -194,6 +194,8 @@ class RigLScheduler:
             self.apply_mask_to_weights()
 
         else:
+            self._max_inactive_weights = None
+            self._max_inactive_weights = None
             self.sparsity_distribution = sparsity_distribution
             self.static_topo = static_topo
             self.grad_accumulation_n = grad_accumulation_n
@@ -895,16 +897,19 @@ class RigLScheduler:
         Args:
             step (int): Current global training mini-batch step count.
         """
-        for idx, meter in enumerate(self.meters):
-            if self.backward_hook_objects[idx] is None:
-                dense_grad = self.W[idx].grad
-            else:
-                dense_grad = self.backward_hook_objects[idx].dense_grad
-            meter.log_to_wandb(
-                dense_grads=dense_grad,
-                max_inactive_weights=self._max_inactive_weights,
-                step=step,
-            )
+        if (
+            self._max_inactive_weights is not None
+        ):  # Only log this if we have taken an rigl step
+            for idx, meter in enumerate(self.meters):
+                if self.backward_hook_objects[idx] is None:
+                    dense_grad = self.W[idx].grad
+                else:
+                    dense_grad = self.backward_hook_objects[idx].dense_grad
+                meter.log_to_wandb(
+                    dense_grads=dense_grad,
+                    max_inactive_weights=self._max_inactive_weights,
+                    step=step,
+                )
         total_neurons = sum([len(x) for x in self.W])
         wandb.log(
             {

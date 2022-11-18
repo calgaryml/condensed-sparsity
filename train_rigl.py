@@ -251,6 +251,10 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
         # Start at the next epoch after the last that successfully was saved
         epoch_start = checkpoint.epoch + 1
         step = checkpoint.step
+    if (
+        rank == 0 and pruner is not None
+    ):  # Log inital filter stats before pruning
+        pruner.log_meters(step=step)
     for epoch in range(epoch_start, cfg.training.epochs + 1):
         if pruner is not None:
             logger.info(pruner)

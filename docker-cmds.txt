@@ -66,3 +66,11 @@ docker run -itd --env-file ./.env \
   wandb agent condensed-sparsity/condensed-rigl/56u2im6s
 
   
+python ./train_rigl.py \
+  rigl.dense_allocation=0.01 \
+  rigl.delta=1600 \
+  training.batch_size=256 \
+  training.max_steps=512000 \
+  training.lr=0.1 \
+  compute.world_size=2 \
+  rigl.grad_accumulation_n=16

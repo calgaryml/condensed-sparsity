@@ -222,6 +222,7 @@ class RigLConstFanScheduler(RigLScheduler):
         world_size = dist.get_world_size() if is_dist else None
 
         self._dynamically_ablated_neuron_idx = []
+        last_layer_idx = len(self.W) - 1
         for idx, w in enumerate(self.W):
             # if sparsity is 0%, skip
             if self.S[idx] <= 0:
@@ -271,13 +272,16 @@ class RigLConstFanScheduler(RigLScheduler):
                 n_prune = n_ones - n_keep
 
             # Get neurons to ablate
-            neurons_to_ablate = self._get_neurons_to_ablate(
-                score_drop=score_drop,
-                score_grow=score_grow,
-                n_keep=n_keep,
-                n_prune=n_prune,
-                sparsity=self.S[idx],
-            )
+            if idx == last_layer_idx:  # Do not ablate last layer!
+                neurons_to_ablate = []
+            else:
+                neurons_to_ablate = self._get_neurons_to_ablate(
+                    score_drop=score_drop,
+                    score_grow=score_grow,
+                    n_keep=n_keep,
+                    n_prune=n_prune,
+                    sparsity=self.S[idx],
+                )
             self._dynamically_ablated_neuron_idx.append(neurons_to_ablate)
             # print(f"neurons to ablate = {neurons_to_ablate}")
             # print(f"len neurons to ablate = {len(neurons_to_ablate)}")
