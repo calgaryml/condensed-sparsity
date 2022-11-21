@@ -256,7 +256,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
     ):  # Log inital filter stats before pruning
         pruner.log_meters(step=step)
     for epoch in range(epoch_start, cfg.training.epochs + 1):
-        if pruner is not None:
+        if pruner is not None and rank == 0:
             logger.info(pruner)
         if cfg.compute.distributed:
             train_loader.sampler.set_epoch(epoch)

@@ -73,4 +73,5 @@ python ./train_rigl.py \
   training.max_steps=512000 \
   training.lr=0.1 \
   compute.world_size=2 \
-  rigl.grad_accumulation_n=16
+  rigl.grad_accumulation_n=16 \
+  rigl.min_salient_weights_per_neuron=10
