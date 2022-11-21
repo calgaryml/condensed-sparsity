@@ -1,6 +1,6 @@
 """ implementation of https://arxiv.org/abs/1911.11134
 """
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Union
 import torch
 import torch.distributed as dist
 import math
@@ -88,7 +88,7 @@ class RigLConstFanScheduler(RigLScheduler):
         filter_ablation_threshold: Optional[float] = None,
         static_ablation: bool = False,
         dynamic_ablation: bool = False,
-        min_salient_weights_per_neuron: int = 0,
+        min_salient_weights_per_neuron: Union[int, float] = 0,
     ):
 
         super().__init__(
@@ -378,9 +378,18 @@ class RigLConstFanScheduler(RigLScheduler):
                 )
             }
             _invalid_ablation = True
-            _min_salient_weights_per_neuron = (
-                self.min_salient_weights_per_neuron
-            )
+            if self.min_salient_weights_per_neuron >= 1:
+                _min_salient_weights_per_neuron = (
+                    self.min_salient_weights_per_neuron
+                )
+            else:
+                dense_fan_in = math.prod(saliency_mask.shape[1:])
+                _min_salient_weights_per_neuron = max(
+                    [
+                        1,
+                        int(self.min_salient_weights_per_neuron * dense_fan_in),
+                    ]
+                )
             while _invalid_ablation:
                 neurons_to_ablate = [
                     neuron_idx

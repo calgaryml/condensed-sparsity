@@ -75,3 +75,55 @@ python ./train_rigl.py \
   compute.world_size=2 \
   rigl.grad_accumulation_n=16 \
   rigl.min_salient_weights_per_neuron=10
+
+python ./train_rigl.py \
+  dataset=cifar10 \
+  model=resnet18 \
+  rigl.dense_allocation=0.01 \
+  rigl.delta=100 \
+  rigl.grad_accumulation_n=1 \
+  rigl.min_salient_weights_per_neuron=0.05 \
+  training.batch_size=128 \
+  training.max_steps=null \
+  training.weight_decay=5.0e-4 \
+  training.label_smoothing=0 \
+  training.lr=0.1 \
+  training.epochs=250 \
+  training.warm_up_steps=0 \
+  training.scheduler=step_lr \
+  training.step_size=77 \
+  training.gamma=0.2 \
+  compute.distributed=False
+
+
+
+docker run -itd --env-file ./.env \
+  --mount source=/home/mike/condensed-sparsity/artifacts,target=/home/user/condensed-sparsity/artifacts,type=bind \
+  --mount source=/home/mike/condensed-sparsity/configs,target=/home/user/condensed-sparsity/configs,type=bind \
+  --mount source=/home/mike/condensed-sparsity/wandb,target=/home/user/condensed-sparsity/wandb,type=bind \
+  --mount source=/datasets/ILSVRC2012,target=/datasets/ILSVRC2012,type=bind \
+  --mount source=/scratch/datasets/ILSVRC2012,target=/scratch/datasets/ILSVRC2012,type=bind \
+  --gpus '"device=0"' \
+  --shm-size 16G \
+  --name gpu-0 \
+  --cpus 12 \
+  --memory 30G \
+  rigl-agent:latest \
+  python ./train_rigl.py \
+  dataset=cifar10 \
+  model=resnet18 \
+  rigl.dense_allocation=0.01 \
+  rigl.delta=100 \
+  rigl.grad_accumulation_n=1 \
+  rigl.min_salient_weights_per_neuron=0.05 \
+  training.batch_size=128 \
+  training.max_steps=null \
+  training.weight_decay=5.0e-4 \
+  training.label_smoothing=0 \
+  training.lr=0.1 \
+  training.epochs=250 \
+  training.warm_up_steps=0 \
+  training.scheduler=step_lr \
+  training.step_size=77 \
+  training.gamma=0.2 \
+  compute.distributed=False

@@ -154,7 +154,7 @@ def get_T_end(
     Returns:
         int: Step number at which to terminate pruning / regrowth.
     """
-    if cfg.training.max_steps is None:
+    if cfg.training.max_steps is None or cfg.training.max_steps == 0:
         if cfg.compute.distributed:
             # In distributed mode, len(train_loader) will be reduced by
             # 1/world_size compared to single device

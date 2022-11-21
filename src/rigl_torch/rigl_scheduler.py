@@ -4,7 +4,7 @@ from __future__ import annotations
 import numpy as np
 import torch
 import torch.distributed as dist
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 import logging
 import wandb
 
@@ -131,12 +131,13 @@ class RigLScheduler:
         dynamic_ablation (bool, optional): If True, dynamically ablates neurons
             during training according to min_salient_weights_per_neuron.
             Defaults to False.
-        min_salient_weights_per_neuron (int, optional): If dynamic ablation is
+        min_salient_weights_per_neuron (Union[int, float], optional): If dynamic ablation is
             True, this parameter defines the minimum number of neurons that must
-            be salient to remain active. Defaults to 0. Saliency in this case is
-            the union of regrowth and pruning masks (ie., weight is consider
-            salient if either criterion is satsified)
-
+            be salient to remain active if an int >=1 is passed. If a float < 1
+            is passed, is interpretted as minimum percentage of salient
+            connections. Saliency in this case is the union of regrowth and
+            pruning masks (ie., weight is consider salient if either criterion
+            is satsified). Defaults to 0.
     Raises:
         Exception: If attempting to register scheduler to a model that already
             has IndexMaskHooks registered.
@@ -161,7 +162,7 @@ class RigLScheduler:
         filter_ablation_threshold: Optional[float] = None,
         static_ablation: bool = False,
         dynamic_ablation: bool = False,
-        min_salient_weights_per_neuron: int = 0,
+        min_salient_weights_per_neuron: Union[int, float] = 0,
     ):
         """Initalizes scheduler object."""
         self._logger = logging.getLogger(__file__)
