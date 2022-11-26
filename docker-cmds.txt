@@ -21,7 +21,7 @@ docker run -itd --env-file ./.env \
   --cpus 12 \
   --memory 30G \
   rigl-agent:latest \
-  wandb agent condensed-sparsity/condensed-rigl/56u2im6s
+  wandb agent condensed-sparsity/condensed-rigl/99jijf4u
 
 docker run -itd --env-file ./.env \
   --mount source=/home/mike/condensed-sparsity/artifacts,target=/home/user/condensed-sparsity/artifacts,type=bind \
@@ -35,7 +35,7 @@ docker run -itd --env-file ./.env \
   --cpus 12 \
   --memory 30G \
   rigl-agent:latest \
-  wandb agent condensed-sparsity/condensed-rigl/56u2im6s
+  wandb agent condensed-sparsity/condensed-rigl/99jijf4u
 
 docker run -itd --env-file ./.env \
   --mount source=/home/mike/condensed-sparsity/artifacts,target=/home/user/condensed-sparsity/artifacts,type=bind \
@@ -49,7 +49,7 @@ docker run -itd --env-file ./.env \
   --cpus 12 \
   --memory 30G \
   rigl-agent:latest \
-  wandb agent condensed-sparsity/condensed-rigl/56u2im6s
+  wandb agent condensed-sparsity/condensed-rigl/99jijf4u
 
 docker run -itd --env-file ./.env \
   --mount source=/home/mike/condensed-sparsity/artifacts,target=/home/user/condensed-sparsity/artifacts,type=bind \
@@ -63,7 +63,7 @@ docker run -itd --env-file ./.env \
   --cpus 12 \
   --memory 30G \
   rigl-agent:latest \
-  wandb agent condensed-sparsity/condensed-rigl/56u2im6s
+  wandb agent condensed-sparsity/condensed-rigl/99jijf4u
 
   
 python ./train_rigl.py \
@@ -103,9 +103,9 @@ docker run -itd --env-file ./.env \
   --mount source=/home/mike/condensed-sparsity/wandb,target=/home/user/condensed-sparsity/wandb,type=bind \
   --mount source=/datasets/ILSVRC2012,target=/datasets/ILSVRC2012,type=bind \
   --mount source=/scratch/datasets/ILSVRC2012,target=/scratch/datasets/ILSVRC2012,type=bind \
-  --gpus '"device=0"' \
+  --gpus '"device=1"' \
   --shm-size 16G \
-  --name gpu-0 \
+  --name gpu-1 \
   --cpus 12 \
   --memory 30G \
   rigl-agent:latest \
@@ -115,7 +115,7 @@ docker run -itd --env-file ./.env \
   rigl.dense_allocation=0.01 \
   rigl.delta=100 \
   rigl.grad_accumulation_n=1 \
-  rigl.min_salient_weights_per_neuron=0.05 \
+  rigl.min_salient_weights_per_neuron=0.005 \
   training.batch_size=128 \
   training.max_steps=null \
   training.weight_decay=5.0e-4 \
