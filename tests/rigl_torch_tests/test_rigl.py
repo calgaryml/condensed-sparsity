@@ -4,9 +4,11 @@ from copy import deepcopy
 import torch
 import torch.multiprocessing as mp
 import torch.distributed as dist
+from torch import optim
 
 from rigl_torch.rigl_scheduler import RigLScheduler
 from rigl_torch.utils.rigl_utils import get_W
+from utils.mocks import MNISTNet, mock_image_dataloader
 import pytest
 
 
@@ -20,12 +22,63 @@ device = (
 arch = "resnet50"
 image_dimensionality = (3, 224, 224)
 num_classes = 1000
-# max_iters = 15
-max_iters = 1
+max_iters = 15
 T_end = int(max_iters * 0.75)
 delta = 3
 dense_allocation = 0.1
 criterion = torch.nn.functional.cross_entropy
+
+
+@pytest.fixture(scope="function")
+def net():
+    _net = MNISTNet()
+    yield _net
+    del _net
+
+
+@pytest.fixture(scope="module", params=[1, 64], ids=["batch_1", "batch_64"])
+def data_loaders(request):
+    image_dimensionality = (1, 28, 28)
+    num_classes = 10
+    dataloader = mock_image_dataloader(
+        image_dimensionality, num_classes, request.param
+    )
+    yield dataloader, dataloader
+    del dataloader
+
+
+@pytest.fixture(scope="function", params=["cuda", "cpu"], ids=["cuda", "cpu"])
+def pruner(request, net, data_loaders):
+    if request.param == "cuda" and not torch.cuda.is_available():
+        pytest.skip("cuda not available!")
+    train_loader, _ = data_loaders
+    torch.manual_seed(42)
+    device = torch.device(request.param)
+    lr = 0.001
+    alpha = 0.3
+    static_topo = 0
+    dense_allocation = 0.1
+    grad_accumulation_n = 1
+    delta = 100
+    epochs = 3
+    T_end = int(
+        0.75 * epochs * len(train_loader)
+    )  # Stop rigl after this many steps
+    model = net.to(device)
+    optimizer = optim.Adadelta(model.parameters(), lr=lr)
+    _pruner = RigLScheduler(
+        model,
+        optimizer,
+        dense_allocation=dense_allocation,
+        alpha=alpha,
+        delta=delta,
+        static_topo=static_topo,
+        T_end=T_end,
+        ignore_linear_layers=False,
+        grad_accumulation_n=grad_accumulation_n,
+    )
+    yield _pruner
+    del _pruner
 
 
 def test_lengths_of_W():
@@ -248,6 +301,9 @@ class TestRigLScheduler:
 
     def test_sparse_gradients_remain_zeros_RIGL_TOPO(self):
         assert_sparse_gradients_remain_zeros(False)
+
+    def test_rigl_step(self):
+        assert 1 == 1
 
 
 # distributed testing setup

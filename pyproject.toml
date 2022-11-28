@@ -132,7 +132,8 @@ pythonpath = [
 addopts = "--cov src --cov-report html --cov-branch --import-mode importlib"
 markers = [
     "integration",
-    "slow"
+    "slow",
+    "dist",
 ]
 norecursedirs = "tests/utils"
 testpaths = "tests"

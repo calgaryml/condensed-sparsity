@@ -1,119 +1,15 @@
-# Hacks until we have compose installed:
-# docker build --file ./Dockerfile -t itop-rigl --shm-size=16gb .
-# docker create --cpus 12 --memory 30G --env-file .env --gpus '"device=1"' -i -t rigl-sweep-agent:latest
-# docker create --env-file .env --gpus '"device=0"' -i -t rigl-sweep-agent:latest
-# docker run --cpus 12 --memory 64G --env-file .env --gpus '"device=0"' -i -t --name gpu-0 itop-rigl:latest
-# docker run --cpus 12 --memory 30G --env-file .env --gpus '"device=1"' -i -t -d --name gpu-1 rigl-sweep-agent:latest
-# docker run --cpus 12 --memory 30G --env-file .env --gpus '"device=2"' -i -t --name gpu-2 rigl-sweep-agent:latest
-# docker run --cpus 12 --memory 30G --env-file .env --gpus '"device=3"' -i -t --name gpu-3 rigl-sweep-agent:latest
-# docker run -itd --env-file ./.env --mount source=/home/mike/condensed-sparsity,target=/home/condensed-sparsity,type=bind --mount source=/datasets/ILSVRC2012,target=/datasets/ILSVRC2012,type=bind --mount source=/scratch/datasets/ILSVRC2012,target=/scratch/datasets/ILSVRC2012,type=bind --gpus all --shm-size 16G --name cond-rigl-dev ac605476a22f
-
-wandb agent condensed-sparsity/condensed-rigl/jkhfnesu
-
-
-docker run -itd --env-file ./.env \
-  --mount source=/home/mike/condensed-sparsity,target=/home/condensed-sparsity,type=bind \
-  --mount source=/datasets/ILSVRC2012,target=/datasets/ILSVRC2012,type=bind \
-  --mount source=/scratch/datasets/ILSVRC2012,target=/scratch/datasets/ILSVRC2012,type=bind \
-  --gpus '"device=0"' \
-  --shm-size 16G \
-  --name gpu-0 \
-  --cpus 24 \
-  --memory 30G \
-  itop-rigl:latest \
-  wandb agent condensed-sparsity/condensed-rigl/jkhfnesu
-
-
-docker run -itd --env-file ./.env \
-  --mount source=/home/mike/condensed-sparsity,target=/home/condensed-sparsity,type=bind \
-  --mount source=/datasets/ILSVRC2012,target=/datasets/ILSVRC2012,type=bind \
-  --mount source=/scratch/datasets/ILSVRC2012,target=/scratch/datasets/ILSVRC2012,type=bind \
-  --gpus '"device=1"' \
-  --shm-size 16G \
-  --name gpu-1 \
-  --cpus 12 \
-  --memory 30G \
-  itop-rigl:latest \
-  wandb agent condensed-sparsity/condensed-rigl/jkhfnesu
-
-docker run -itd --env-file ./.env \
-  --mount source=/home/mike/condensed-sparsity,target=/home/condensed-sparsity,type=bind \
-  --mount source=/datasets/ILSVRC2012,target=/datasets/ILSVRC2012,type=bind \
-  --mount source=/scratch/datasets/ILSVRC2012,target=/scratch/datasets/ILSVRC2012,type=bind \
-  --gpus '"device=2"' \
-  --shm-size 16G \
-  --name gpu-2 \
-  --cpus 12 \
-  --memory 30G \
-  itop-rigl:latest \
-  wandb agent condensed-sparsity/condensed-rigl/jkhfnesu
-
-  docker run -itd --env-file ./.env \
-  --mount source=/home/mike/condensed-sparsity/artifacts,target=/home/condensed-sparsity/artifacts,type=bind \
-  --mount source=/datasets/ILSVRC2012,target=/datasets/ILSVRC2012,type=bind \
-  --mount source=/scratch/datasets/ILSVRC2012,target=/scratch/datasets/ILSVRC2012,type=bind \
-  --gpus '"device=3"' \
-  --shm-size 16G \
-  --name gpu-3 \
-  --cpus 12 \
-  --memory 30G \
-  itop-rigl:latest \
-  wandb agent condensed-sparsity/condensed-rigl/jkhfnesu
-
-
-  
-docker run -itd --env-file ./.env \
-  --mount source=/home/mike/condensed-sparsity/artifacts,target=/home/condensed-sparsity/artifacts,type=bind \
-  --mount source=/home/mike/condensed-sparsity/configs,target=/home/condensed-sparsity/configs,type=bind \
-  --mount source=/datasets/ILSVRC2012,target=/datasets/ILSVRC2012,type=bind \
-  --mount source=/scratch/datasets/ILSVRC2012,target=/scratch/datasets/ILSVRC2012,type=bind \
-  --gpus '"device=0"' \
-  --shm-size 16G \
-  --name gpu-0 \
-  itop-rigl:latest
-
-docker run -itd --env-file ./.env \
-  --mount source=/home/mike/condensed-sparsity/artifacts,target=/home/user/condensed-sparsity/artifacts,type=bind \
-  --mount source=/home/mike/condensed-sparsity/configs,target=/home/user/condensed-sparsity/configs,type=bind \
-  --mount source=/datasets/ILSVRC2012,target=/datasets/ILSVRC2012,type=bind \
-  --mount source=/scratch/datasets/ILSVRC2012,target=/scratch/datasets/ILSVRC2012,type=bind \
-  --gpus '"device=0"' \
-  --shm-size 16G \
-  --name gpu-0 \
-  itop-rigl:latest
-
-  
-
-
-# services:
-#   sweep_agent:
-#     build: .
-#     env_file:
-#       - .env
-#     deploy:
-#       mode: replicated
-#       replicas: ${REPLICAS}
-#       resources:
-#         reservations:
-#           devices:
-#             - capabilities: [ "gpu" ]
-#               driver: nvidia
-#               count: 1
-#         limits:
-#           cpus: ${CPUS_LIMIT}
-#           memory: ${MEMORY_LIMIT}
-
 services:
-  itop-agent:
+  sweep-agent:
     build:
       context: ./
+      dockerfile: ./Dockerfile
       shm_size: 16G
-    image: itop-agent
+    image: rigl-agent
     env_file:
       - .env
     deploy:
       mode: replicated
-      replicas: 4
+      replicas: 2
       resources:
         reservations:
           devices:
@@ -122,6 +18,24 @@ services:
               count: 1
         limits:
           cpus: 12
-          memory: 64G
+          memory: 30G
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
     volumes:
-      - /scratch/datasets/ILSVRC2012:/scratch/datasets/ILSVRC2012
+      - type: bind
+        source: /scratch/datasets/ILSVRC2012
+        target: /scratch/datasets/ILSVRC2012
+      - type: bind
+        source: /home/mike/condensed-sparsity
+        target: /home/user/condensed-sparsity
+    entrypoint: [ "/bin/bash" ]
+    command:
+      [
+        "source",
+        "/home/user/condensed-sparsity/.venv/bin/activate",
+        "&&",
+        "wandb",
+        "agent",
+        "wandb agent condensed-sparsity/condensed-rigl/2u1iia0v"
+      ]

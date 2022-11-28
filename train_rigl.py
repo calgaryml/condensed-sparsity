@@ -60,6 +60,9 @@ def init_wandb(cfg: omegaconf.DictConfig, wandb_init_kwargs: Dict[str, Any]):
 
 @hydra.main(config_path="configs/", config_name="config", version_base="1.2")
 def initalize_main(cfg: omegaconf.DictConfig) -> None:
+    use_cuda = not cfg.compute.no_cuda and torch.cuda.is_available()
+    if not use_cuda:
+        raise SystemError("GPU has stopped responding...waiting to die!")
     if cfg.compute.distributed:
         # We initalize train and val loaders here to ensure .tar balls have
         # been decompressed before parallel workers try and write the same
@@ -151,6 +154,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
     cfg = set_seed(cfg)
     use_cuda = not cfg.compute.no_cuda and torch.cuda.is_available()
     if not use_cuda:
+        raise SystemError("GPU has stopped responding...waiting to die!")
         logger.warning(
             "Using CPU! Verify cfg.compute.no_cuda and "
             "torch.cuda.is_available() are properly set if this is unexpected"
@@ -195,7 +199,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             delta=cfg.rigl.delta,
             static_topo=cfg.rigl.static_topo,
             T_end=T_end,
-            ignore_linear_layers=False,
+            ignore_linear_layers=cfg.rigl.ignore_linear_layers,
             grad_accumulation_n=cfg.rigl.grad_accumulation_n,
             sparsity_distribution=cfg.rigl.sparsity_distribution,
             erk_power_scale=cfg.rigl.erk_power_scale,
@@ -203,6 +207,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             filter_ablation_threshold=cfg.rigl.filter_ablation_threshold,
             static_ablation=cfg.rigl.static_ablation,
             dynamic_ablation=cfg.rigl.dynamic_ablation,
+            min_salient_weights_per_neuron=cfg.rigl.min_salient_weights_per_neuron,  # noqa
         )
     else:
         logger.warning(
@@ -246,8 +251,13 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
         # Start at the next epoch after the last that successfully was saved
         epoch_start = checkpoint.epoch + 1
         step = checkpoint.step
+    if (
+        rank == 0 and pruner is not None
+    ):  # Log inital filter stats before pruning
+        print(f"T_end is: {T_end}")
+        pruner.log_meters(step=step)
     for epoch in range(epoch_start, cfg.training.epochs + 1):
-        if pruner is not None:
+        if pruner is not None and rank == 0:
             logger.info(pruner)
         if cfg.compute.distributed:
             train_loader.sampler.set_epoch(epoch)
@@ -280,7 +290,6 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             break
         scheduler.step()
 
-    print(rank)
     if cfg.training.save_model and rank == 0:
         save_path = pathlib.Path(cfg.paths.artifacts)
         if not save_path.is_dir():
@@ -332,7 +341,7 @@ def train(
             optimizer.step()
             if pruner is not None:
                 # pruner.__call__ returns False if rigl step taken
-                if not pruner() and cfg.wandb.log_filter_stats:
+                if not pruner() and cfg.wandb.log_filter_stats and rank == 0:
                     # If we update the pruner
                     # log filter-wise statistics to wandb
                     pruner.log_meters(step=step)
@@ -353,7 +362,13 @@ def train(
                     loss.item(),
                 )
             )
-            wandb.log({"ITOP Rate": pruner.itop_rs}, step=step)
+            wandb.log(
+                {
+                    "ITOP Rate": pruner.itop_rs,
+                    "Training Loss": loss.item(),
+                },
+                step=step,
+            )
         if cfg.training.dry_run:
             logger.warning("Dry run, exiting after one training step")
             return step

@@ -100,3 +100,13 @@ def test_train_const_fan(pruner, data_loaders):
             if w is None:
                 continue
         assert len(rigl_utils.get_fan_in_tensor(w).unique()) == 1
+
+
+def test_str(pruner):
+    pruner_str = pruner.__str__()
+    str_components = [
+        "ITOP rate",
+        "Active Neuron Count",
+    ]
+    for comp in str_components:
+        assert comp in pruner_str

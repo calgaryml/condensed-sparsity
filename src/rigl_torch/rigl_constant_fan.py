@@ -1,8 +1,9 @@
 """ implementation of https://arxiv.org/abs/1911.11134
 """
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Union
 import torch
 import torch.distributed as dist
+import math
 from rigl_torch.utils.rigl_utils import (
     get_fan_in_tensor,
     get_fan_in_after_ablation,
@@ -16,6 +17,60 @@ from rigl_torch.exceptions import (
 
 
 class RigLConstFanScheduler(RigLScheduler):
+    """RigL Scheduler with constant fan-in.
+
+    Constant fan-in enforced at initalization and during each grow / prune
+    step.
+
+    Parameters:
+        model (torch.nn.Module): Model to sparsify / train.
+        optimizer (torch.optim.Optimizer): Optimizer used to update model
+            parameters during training.
+        dense_allocation (float, optional): The targetted remaining dense
+            parameters (ie., (1-sparsity) ). Defaults to 1.
+        T_end (int, optional): The global mini-batch step to stop regrowing /
+            pruning connections. In original paper, 75% of total steps is used.
+            Defaults to None.
+        sparsity_distribution (str, optional): The layerwise sparsity
+            distribution to use. Implemented options include "uniform" and
+                "erk". Defaults to "uniform".
+        ignore_linear_layers (bool, optional): If True, linear layers are not
+            sparsified and instead are left dense. Defaults to False.
+        delta (int, optional): Number of mini-batch steps between prune /
+            regrowth updates. Defaults to 100.
+        alpha (float, optional): Inital portion of connections to prune each
+            prune step. Defaults to 0.3.
+        static_topo (bool, optional): If True, no dynamic pruning / regrowth is
+            performed during training. Essentially results in a static sparse
+            network during training.. Defaults to False.
+        grad_accumulation_n (int, optional): Number of mini-batch steps to
+            accumulate gradient before a prune / regrowth step. Used to simulate
+            larger batch sizes than can fit into available VRAM. Defaults to 1.
+        state_dict (Dict[str, Any], optional): Dictionary describing state of
+            scheduler from prior training checkpoint. Defaults to None.
+        erk_power_scale (float, optional): Erdos-Renyi Kernel power scale
+            parameter. Defaults to 1.0.
+        filter_ablation_threshold (Optional[float], optional): Percent of
+            required connections active to consider a neuron as active for
+            static ablation. Defaults to None. If None, no threshold exists and
+            static ablation will not be performed.
+        static_ablation (bool, optional): If True, ablates neurons at
+            initalization to reach targetted filter_ablation_threshold. Defaults
+            to False.
+        dynamic_ablation (bool, optional): If True, dynamically ablates neurons
+            during training according to min_salient_weights_per_neuron.
+            Defaults to False.
+        min_salient_weights_per_neuron (int, optional): If dynamic ablation is
+            True, this parameter defines the minimum number of neurons that must
+            be salient to remain active. Defaults to 0. Saliency in this case is
+            the union of regrowth and pruning masks (ie., weight is consider
+            salient if either criterion is satsified)
+
+    Raises:
+        Exception: If attempting to register scheduler to a model that already
+            has IndexMaskHooks registered.
+    """
+
     def __init__(
         self,
         model: torch.nn.Module,
@@ -31,35 +86,11 @@ class RigLConstFanScheduler(RigLScheduler):
         state_dict: Optional[Dict[str, Any]] = None,
         erk_power_scale=1.0,
         filter_ablation_threshold: Optional[float] = None,
+        static_ablation: bool = False,
+        dynamic_ablation: bool = False,
+        min_salient_weights_per_neuron: Union[int, float] = 0,
     ):
-        """RigL Scheduler with constant fan-in.
 
-        Constant fan-in enforced at initalization and during each grow / prune
-        step.
-
-        Args:
-            model (torch.nn.Module): Model to sparsify.
-            optimizer (torch.optim.Optimizer): Optimizer to wrap with rigl
-                scheduler
-            dense_allocation (int, optional): Percentage of dense parameters
-                allowed. if None, pruning will not be used. must be on the
-                interval (0, 1]". Defaults to 1.
-            T_end (Optional[int], optional): Number of epochs to simulate (only
-                used for tuning). Defaults to None.
-            sparsity_distribution (str, optional): Description of sparsity
-                distribution. Defaults to "uniform".
-            ignore_linear_layers (bool, optional): If True, linear layers are
-                not sparsified. Defaults to False.
-            delta (int, optional): Delta param for pruning. Defaults to 100.
-            alpha (float, optional): Alpha param for pruning. Defaults to 0.3.
-            static_topo (bool, optional): If True, use random sparsity topo and
-                remain static. Defaults to False.
-            grad_accumulation_n (int, optional): Number of gradients to
-                accumulate before scoring for rigl. Defaults to 1.
-            state_dict (Dict[str, Any], optional): State dict used to initalize
-                from rigl scheduler already initalized / trained. Defaults to
-                None.
-        """
         super().__init__(
             model,
             optimizer,
@@ -74,7 +105,11 @@ class RigLConstFanScheduler(RigLScheduler):
             state_dict,
             erk_power_scale,
             filter_ablation_threshold,
+            static_ablation,
+            dynamic_ablation,
+            min_salient_weights_per_neuron,
         )
+        self._dynamically_ablated_neuron_idx = [[] for _ in range(len(self.W))]
 
     @torch.no_grad()
     def random_sparsify(self) -> None:
@@ -84,7 +119,7 @@ class RigLConstFanScheduler(RigLScheduler):
         is_dist: bool = dist.is_initialized()
         self.backward_masks: List[torch.tensor] = []
         for idx, (w, num_neurons_to_ablate) in enumerate(
-            list(zip(self.W, self.inital_ablated_filters))
+            list(zip(self.W, self.static_ablated_filters))
         ):
             # if sparsity is 0%, skip
             if self.S[idx] <= 0:
@@ -140,28 +175,36 @@ class RigLConstFanScheduler(RigLScheduler):
         s = super().__str__()
         s = s[:-1]  # Remove trailing ')'
         const_fan_ins = []
-        for mask, W, neurons_ablated in zip(
+        for mask, w, neurons_ablated in zip(
             self.backward_masks,
             self.W,
-            self.inital_ablated_filters,
+            self._dynamically_ablated_neuron_idx,
         ):
             if mask is None:
-                fan_in, _ = calculate_fan_in_and_fan_out(W)
+                fan_in, _ = calculate_fan_in_and_fan_out(w)
                 const_fan_ins.append(fan_in)
             else:
                 try:
+                    active_filters = [
+                        i for i in range(len(w)) if i not in neurons_ablated
+                    ]
                     const_fan_ins.append(
-                        get_fan_in_tensor(mask)[neurons_ablated:]
-                        .unique()
-                        .item()
+                        get_fan_in_tensor(mask[active_filters]).unique().item()
                     )
+
                 except ValueError:
-                    raise ConstantFanInException(get_fan_in_tensor(mask))
+                    raise ConstantFanInException(
+                        get_fan_in_tensor(mask[active_filters])
+                    )
 
         s = f"{s}constant fan ins={str(const_fan_ins)}\n"
         s = (
-            f"{s}Neurons Ablated per layer = "
-            f"{str(self.inital_ablated_filters)}\n)"
+            f"{s}Neurons Statically Ablated per layer = "
+            f"{str(self.static_ablated_filters)}\n"
+        )
+        s = (
+            f"{s}Neurons Dynamically Ablated per layer = "
+            f"{str([len(x) for x in self._dynamically_ablated_neuron_idx])}\n)"
         )
         return s
 
@@ -178,25 +221,30 @@ class RigLConstFanScheduler(RigLScheduler):
         is_dist = dist.is_initialized()
         world_size = dist.get_world_size() if is_dist else None
 
+        self._dynamically_ablated_neuron_idx = []
+        last_layer_idx = len(self.W) - 1
         for idx, w in enumerate(self.W):
             # if sparsity is 0%, skip
             if self.S[idx] <= 0:
+                self._dynamically_ablated_neuron_idx.append([])
                 continue
 
             # calculate raw scores
             score_drop = torch.abs(w)
+            _max_score_drop = score_drop.max().item()
 
             # Set ablated filter drop scores to min of score_grow to avoid
             # pruning already inactive weights
+            # TODO: Remove inital ablated filtering.
             score_drop[
-                : self.inital_ablated_filters[idx]
+                : self.static_ablated_filters[idx]
             ] = score_drop.min().item()
 
             score_grow = torch.abs(self.backward_hook_objects[idx].dense_grad)
 
             # Set ablated filter scores to min of score_grow to avoid regrowing
             score_grow[
-                : self.inital_ablated_filters[idx]
+                : self.static_ablated_filters[idx]
             ] = score_grow.min().item()
 
             # if is distributed, synchronize scores
@@ -211,18 +259,7 @@ class RigLConstFanScheduler(RigLScheduler):
                 )
 
             current_mask = self.backward_masks[idx]
-
-            # calculate drop/grow quantities
-            try:
-                n_fan_in = (
-                    get_fan_in_tensor(
-                        current_mask[self.inital_ablated_filters[idx] :]  # noqa
-                    )
-                    .unique()
-                    .item()
-                )
-            except ValueError:
-                raise ConstantFanInException(get_fan_in_tensor(current_mask))
+            # n_total = self.N[idx]
             n_ones = torch.sum(current_mask).item()
             n_prune = int(n_ones * drop_fraction)
             n_keep = int(n_ones - n_prune)
@@ -234,15 +271,40 @@ class RigLConstFanScheduler(RigLScheduler):
                 n_keep = n_non_zero_weights
                 n_prune = n_ones - n_keep
 
+            # Get neurons to ablate
+            if idx == last_layer_idx:  # Do not ablate last layer!
+                neurons_to_ablate = []
+            else:
+                neurons_to_ablate = self._get_neurons_to_ablate(
+                    score_drop=score_drop,
+                    score_grow=score_grow,
+                    n_keep=n_keep,
+                    n_prune=n_prune,
+                    sparsity=self.S[idx],
+                )
+            self._dynamically_ablated_neuron_idx.append(neurons_to_ablate)
+            # print(f"neurons to ablate = {neurons_to_ablate}")
+            # print(f"len neurons to ablate = {len(neurons_to_ablate)}")
+            n_fan_in = get_fan_in_after_ablation(
+                weight_tensor=w,
+                num_neurons_to_ablate=len(neurons_to_ablate),
+                sparsity=self.S[idx],
+            )
+
             # create drop mask
-            drop_mask = self._get_drop_mask(score_drop, n_keep)
+            drop_mask = self._get_drop_mask(
+                score_drop,
+                n_keep,
+                neurons_to_ablate=neurons_to_ablate,
+                n_fan_in=n_fan_in,
+            )
 
             # create growth mask per filter
             grow_mask = self._get_grow_mask(
                 score_grow,
                 drop_mask,
                 n_fan_in,
-                self.inital_ablated_filters[idx],
+                neurons_to_ablate,
             )
 
             # get new weights
@@ -256,9 +318,126 @@ class RigLConstFanScheduler(RigLScheduler):
             self.apply_mask_to_weights()
             self.apply_mask_to_gradients()
             self._verify_neuron_ablation()
+            if (
+                self.min_salient_weights_per_neuron == 1
+                and torch.abs(w).max().item() != _max_score_drop
+            ):
+                self._logger.warning(
+                    "Max score drop not equal to max weight after masking! "
+                    f"I have a pre-mask max of {_max_score_drop} and a post "
+                    f"mask max of {torch.abs(w).max().item()}"
+                )
 
+    @torch.no_grad()
+    def _get_neurons_to_ablate(
+        self,
+        score_drop: torch.Tensor,
+        score_grow: torch.Tensor,
+        n_keep: int,
+        n_prune: int,
+        sparsity: float,
+    ) -> List[int]:
+        """Return List of neuron indices to ablate.
+
+        Args:
+            score_drop (torch.Tensor): Score for weight based magnitude pruning
+                provided by torch.abs(this_layer_weights)
+            score_grow (torch.Tensor): Score for gradient based magnitude
+                regrowth provided by torch.abs(gradient)
+            n_keep (int): Number of connections to keep during this step.
+            n_prune (int): Number of connections to prune this step.
+            sparsity (float): Sparsity target for this layer.
+
+        Returns:
+            List[int]: List of neuron indices that remain active.
+        """
+        if self.dynamic_ablation and self.min_salient_weights_per_neuron != 0:
+            neurons_to_ablate: List[int] = []
+            saliency_mask = torch.zeros(
+                size=(score_drop.numel(),),
+                dtype=torch.bool,
+                device=score_drop.device,
+            )
+            _, keep_idx = score_drop.flatten().sort(descending=True)
+            saliency_mask[keep_idx[:n_keep]] = True
+
+            _, grow_idx = score_grow.flatten().sort(descending=True)
+            saliency_mask[grow_idx[:n_prune]] = True
+
+            saliency_mask = saliency_mask.reshape(shape=score_drop.shape)
+            neuron_saliency_counts = {
+                neuron_idx: neuron.sum().item()
+                for neuron_idx, neuron in enumerate(saliency_mask)
+            }
+            neuron_saliency_counts = {
+                k: v
+                for k, v in sorted(
+                    neuron_saliency_counts.items(),
+                    key=lambda x: x[1],
+                    reverse=True,
+                )
+            }
+            _invalid_ablation = True
+            if self.min_salient_weights_per_neuron >= 1:
+                _min_salient_weights_per_neuron = (
+                    self.min_salient_weights_per_neuron
+                )
+            else:
+                dense_fan_in = math.prod(saliency_mask.shape[1:])
+                _min_salient_weights_per_neuron = max(
+                    [
+                        1,
+                        int(self.min_salient_weights_per_neuron * dense_fan_in),
+                    ]
+                )
+            while _invalid_ablation:
+                neurons_to_ablate = [
+                    neuron_idx
+                    for neuron_idx in neuron_saliency_counts.keys()
+                    if neuron_saliency_counts[neuron_idx]
+                    < _min_salient_weights_per_neuron
+                ]
+                fan_in = get_fan_in_after_ablation(
+                    weight_tensor=saliency_mask,
+                    num_neurons_to_ablate=len(neurons_to_ablate),
+                    sparsity=sparsity,
+                )
+                if fan_in <= math.prod(saliency_mask.shape[1:]):
+                    _invalid_ablation = False
+                else:
+                    self._logger.warning(
+                        f"_min_salient_weights_per_neuron of"
+                        f" {_min_salient_weights_per_neuron} was too high, "
+                        f"resulted in fan_in of {fan_in} when max fan in is "
+                        f"{math.prod(saliency_mask.shape[1:])} "
+                        "decrementing _min_salient_weights for this iteration "
+                        "and this layer.\n"
+                        f"sorted neuron saliency: {neuron_saliency_counts} \n"
+                        f"num neurons to ablate: {len(neurons_to_ablate)} \n"
+                    )
+                    _min_salient_weights_per_neuron -= 1
+                    if _min_salient_weights_per_neuron == 0:
+                        self._logger.error(
+                            "No salient weights found at _min_salient_weights "
+                            "== 1"
+                        )
+                        return []
+            return neurons_to_ablate
+
+        elif self.static_ablation:
+            return (
+                self.static_ablated_filters
+            )  # Check type -> Need to convert to list of indices
+        else:
+            return []
+
+    @torch.no_grad()
     def _get_drop_mask(
-        self, score_drop: torch.Tensor, n_keep: int
+        self,
+        score_drop: torch.Tensor,
+        n_keep: int,
+        neurons_to_ablate: List[int],
+        n_fan_in: int,
     ) -> torch.Tensor:
         """Gets weights to prune by selecting -abs(score_drop).
 
@@ -273,6 +452,10 @@ class RigLConstFanScheduler(RigLScheduler):
             torch.Tensor: Boolean mask of connections to keep. Where True, keep
                 connection else prune.
         """
+        # Set ablated neuron scores to min
+        for neuron_idx in range(len(score_drop)):
+            if neuron_idx in neurons_to_ablate:
+                score_drop[neuron_idx] = score_drop.min() - 1
         try:
             idx_to_not_drop = torch.topk(
                 score_drop.flatten(), k=n_keep, sorted=False
@@ -289,20 +472,32 @@ class RigLConstFanScheduler(RigLScheduler):
         drop_mask = torch.zeros(size=(score_drop.numel(),), dtype=torch.bool)
         drop_mask[idx_to_not_drop] = True
         drop_mask = drop_mask.reshape(score_drop.shape)
+
+        # In some cases, one neuron may have more than n_fan_in salient weights
+        # So we sort each filter and ensure that weights not in topk are maksed
+        # to False
+        for idx, neuron_mask in enumerate(drop_mask):
+            neuron_mask_shape = neuron_mask.shape
+            neuron_mask = neuron_mask.flatten()
+            _, sorted_idx = neuron_mask.sort(descending=True)
+            neuron_mask[sorted_idx[n_fan_in:]] = False
+            drop_mask[idx] = neuron_mask.reshape(neuron_mask_shape)
         return drop_mask.to(device=score_drop.device)
 
+    @torch.no_grad()
     def _get_grow_mask(
         self,
         score_grow: torch.Tensor,
         drop_mask: torch.Tensor,
         n_fan_in: int,
-        n_neurons_ablated: Optional[int] = 0,
+        neurons_to_ablate: List[int],
     ) -> torch.Tensor:
         """Get weights to grow by selecting abs(score_grow) where not already
             active with constant fan-in.
 
         Args:
-            score_grow (torch.Tensor): Absolute value of dense gradients.
+            score_grow (torch.Tensor): Absolute value of dense gradients for one
+                layer.
             drop_mask (torch.Tensor): Boolean mask from _get_drop_mask(). Where
                 True, connections are active.
             n_fan_in (int): Number of connections to grow.
@@ -321,12 +516,12 @@ class RigLConstFanScheduler(RigLScheduler):
         for idx, (drop_mask_filter, grow_mask_filter) in enumerate(
             list(zip(drop_mask, grow_mask))
         ):  # Iterate over filters
-            if idx < n_neurons_ablated:
+            if idx in neurons_to_ablate:
                 grow_mask_filter[:] = False
                 grow_mask[idx] = grow_mask_filter
             elif drop_mask_filter.sum() < n_fan_in:
                 # set scores of the enabled connections(ones) to min(s) - 1,
-                # so that they have the lowest scores
+                # so that they have the lowest scores in that filter / neuron
                 score_grow_lifted = torch.where(
                     drop_mask_filter == True,  # noqa: E712
                     torch.ones_like(drop_mask_filter)
@@ -335,30 +530,51 @@ class RigLConstFanScheduler(RigLScheduler):
                 )
                 # Set currently active connections to min score to avoid
                 # reselecting them
-                idx_to_grow = torch.topk(
-                    score_grow_lifted.flatten(),
-                    k=n_fan_in - drop_mask_filter.sum(),
-                ).indices
+                try:
+                    idx_to_grow = torch.topk(
+                        score_grow_lifted.flatten(),
+                        k=n_fan_in - drop_mask_filter.sum(),
+                    ).indices
+                except RuntimeError:
+                    self._logger.error(
+                        "topk issue in _get_grow_mask."
+                        "Relvent info: \n"
+                        f"Score grow numel: {score_grow_lifted.numel()}\n"
+                        f"n_fan_in: {n_fan_in}\n"
+                        f"drop_mask_filter.sum(): {drop_mask_filter.sum()}\n"
+                        f"target k: {n_fan_in - drop_mask_filter.sum()}\n"
+                    )
+                    idx_to_grow = []
                 # Grow enough connections to get to n_fan_in
                 grow_mask_filter = grow_mask_filter.flatten()
                 grow_mask_filter[idx_to_grow] = True
                 grow_mask[idx] = grow_mask_filter.reshape(drop_mask[idx].shape)
-            elif drop_mask_filter.sum() > n_fan_in:
+            elif (
+                drop_mask_filter.sum() > n_fan_in
+            ):  # TODO: Should handle this case in drop mask
                 self._logger.error(
                     get_fan_in_tensor(
-                        drop_mask[self.inital_ablated_filters[idx] :]  # noqa
+                        drop_mask[self.static_ablated_filters[idx] :]  # noqa
                     )
                 )
                 raise ValueError(
                     f"Filter with {drop_mask_filter.sum()} fan in > than ",
                     "n_fan_in ({n_fan_in})",
                 )
-        assert (
-            get_fan_in_tensor(
-                drop_mask[n_neurons_ablated:] + grow_mask[n_neurons_ablated:]
+        # TODO need inverse select
+        should_be_active_neurons = [
+            i for i in range(len(grow_mask)) if i not in neurons_to_ablate
+        ]
+
+        fan_in_tensor = get_fan_in_tensor(
+            drop_mask[should_be_active_neurons]
+            + grow_mask[should_be_active_neurons]
+        )
+        if not (fan_in_tensor == n_fan_in).all():
+            self._logger.warning(
+                f"Mask update const-fan in violated: {fan_in_tensor}"
+                f"Target fan_in: {n_fan_in}"
             )
-            == n_fan_in
-        ).all()
         return grow_mask
 
     def _get_new_weights(
@@ -401,7 +617,7 @@ class RigLConstFanScheduler(RigLScheduler):
                 False.
         """
         for mask_index, (m, n) in enumerate(
-            list(zip(self.backward_masks, self.inital_ablated_filters))
+            list(zip(self.backward_masks, self.static_ablated_filters))
         ):
             if m is None:
                 continue
