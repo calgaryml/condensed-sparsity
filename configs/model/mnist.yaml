@@ -1,1 +1,2 @@
 name: mnist
+activation_function: relu

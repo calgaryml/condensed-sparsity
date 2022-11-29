@@ -43,7 +43,7 @@ rigl:
   # Filter abalation threshold criterion
   filter_ablation_threshold: 0.01 # 1%
   # If True, update weight initalization to account for sparse const fan in. 
-  use_sparse_initialization: False ## TODO!
+  use_sparse_initialization: True
   # Param for minimum number of salient weights per neuron. If < this value, the neuron will be dynamically ablated. 
   min_salient_weights_per_neuron: 0.002
   # Instructs scheduler to ignore linear layers and leave dense if True.

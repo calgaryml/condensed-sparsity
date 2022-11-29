@@ -89,6 +89,7 @@ class RigLConstFanScheduler(RigLScheduler):
         static_ablation: bool = False,
         dynamic_ablation: bool = False,
         min_salient_weights_per_neuron: Union[int, float] = 0,
+        use_sparse_init: bool = False,
     ):
 
         super().__init__(
@@ -108,6 +109,7 @@ class RigLConstFanScheduler(RigLScheduler):
             static_ablation,
             dynamic_ablation,
             min_salient_weights_per_neuron,
+            use_sparse_init,
         )
         self._dynamically_ablated_neuron_idx = [[] for _ in range(len(self.W))]
 

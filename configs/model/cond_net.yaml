@@ -1,1 +1,2 @@
 name: cond_net
+activation_function: relu

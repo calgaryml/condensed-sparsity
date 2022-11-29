@@ -208,6 +208,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             static_ablation=cfg.rigl.static_ablation,
             dynamic_ablation=cfg.rigl.dynamic_ablation,
             min_salient_weights_per_neuron=cfg.rigl.min_salient_weights_per_neuron,  # noqa
+            use_sparse_init=cfg.rigl.use_sparse_initialization,
         )
     else:
         logger.warning(
