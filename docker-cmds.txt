@@ -115,7 +115,7 @@ docker run -itd --env-file ./.env \
   rigl.dense_allocation=0.01 \
   rigl.delta=100 \
   rigl.grad_accumulation_n=1 \
-  rigl.min_salient_weights_per_neuron=0.005 \
+  rigl.min_salient_weights_per_neuron=0.0001 \
   training.batch_size=128 \
   training.max_steps=null \
   training.weight_decay=5.0e-4 \
@@ -126,4 +126,25 @@ docker run -itd --env-file ./.env \
   training.scheduler=step_lr \
   training.step_size=77 \
   training.gamma=0.2 \
-  compute.distributed=False
+  compute.distributed=False \
+  rigl.use_sparse_initialization=True
+
+# Imagenet
+  python ./train_rigl.py \
+  dataset=imagenet \
+  model=resnet50 \
+  rigl.dense_allocation=0.01 \
+  rigl.delta=800 \
+  rigl.grad_accumulation_n=8 \
+  rigl.min_salient_weights_per_neuron=1 \
+  training.batch_size=512 \
+  training.max_steps=256000 \
+  training.weight_decay=0.0001 \
+  training.label_smoothing=0.1 \
+  training.lr=0.2 \
+  training.epochs=104 \
+  training.warm_up_steps=5 \
+  training.scheduler=step_lr_with_warm_up \
+  training.step_size=[30,70,90] \
+  training.gamma=0.1 \
+  compute.distributed=True

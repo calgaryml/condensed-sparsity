@@ -4,7 +4,7 @@ defaults:
   - _self_
 
 experiment:
-  comment: dense_alloc-${rigl.dense_allocation}_const_fan_in-${rigl.const_fan_in}_weight_per_neuron-${rigl.min_salient_weights_per_neuron}
+  comment: dense_alloc-${rigl.dense_allocation}_const_fan_in-${rigl.const_fan_in}_weight_per_neuron-${rigl.min_salient_weights_per_neuron}_sparse_init-${rigl.use_sparse_initialization}
   name: ${model.name}_${dataset.name}_${experiment.comment}
   resume_from_checkpoint: False
   run_id: null
@@ -45,7 +45,7 @@ rigl:
   # If True, update weight initalization to account for sparse const fan in. 
   use_sparse_initialization: True
   # Param for minimum number of salient weights per neuron. If < this value, the neuron will be dynamically ablated. 
-  min_salient_weights_per_neuron: 0.002
+  min_salient_weights_per_neuron: 0.001
   # Instructs scheduler to ignore linear layers and leave dense if True.
   ignore_linear_layers: False
 

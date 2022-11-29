@@ -253,12 +253,13 @@ class RigLScheduler:
                 self._sparse_init()
 
     def _sparse_init(self):
+        is_dist = dist.is_initialized()
         for idx, mask in enumerate(self.backward_masks):
             if mask is None:
                 continue
             prior_W = self.W[idx].clone()
-            self.W[idx] = sparse_kaiming_normal(
-                tensor=self.W[idx],
+            self.W[idx].data = sparse_kaiming_normal(
+                tensor=self.W[idx].data,
                 sparsity_mask=mask,
                 a=0,
                 mode="fan_in",
@@ -271,6 +272,9 @@ class RigLScheduler:
             ).all():
                 print(self.W[idx][0])
                 print(prior_W[0])
+
+            if is_dist:
+                dist.broadcast(self.W[idx].data, 0)
 
     def _validate_params(self) -> None:
         """Validates that parameters provided to constructor are valid.
