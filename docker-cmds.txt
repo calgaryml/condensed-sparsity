@@ -103,9 +103,9 @@ docker run -itd --env-file ./.env \
   --mount source=/home/mike/condensed-sparsity/wandb,target=/home/user/condensed-sparsity/wandb,type=bind \
   --mount source=/datasets/ILSVRC2012,target=/datasets/ILSVRC2012,type=bind \
   --mount source=/scratch/datasets/ILSVRC2012,target=/scratch/datasets/ILSVRC2012,type=bind \
-  --gpus '"device=1"' \
+  --gpus '"device=0"' \
   --shm-size 16G \
-  --name gpu-1 \
+  --name gpu-0 \
   --cpus 12 \
   --memory 30G \
   rigl-agent:latest \
@@ -115,7 +115,7 @@ docker run -itd --env-file ./.env \
   rigl.dense_allocation=0.01 \
   rigl.delta=100 \
   rigl.grad_accumulation_n=1 \
-  rigl.min_salient_weights_per_neuron=0.0001 \
+  rigl.min_salient_weights_per_neuron=0.01 \
   training.batch_size=128 \
   training.max_steps=null \
   training.weight_decay=5.0e-4 \
