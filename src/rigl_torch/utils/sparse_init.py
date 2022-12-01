@@ -72,6 +72,71 @@ def sparse_kaiming_normal(
     return tensor
 
 
+def sparse_kaiming_uniform(
+    tensor: torch.Tensor,
+    sparsity_mask: Optional[torch.Tensor] = None,
+    a: float = 0,
+    mode: str = "fan_in",
+    nonlinearity: str = "relu",
+    logger: Optional[logging.Logger] = None,
+):
+    r"""Fills the input `Tensor` with values according to the method
+    described in `Delving deep into rectifiers: Surpassing human-level
+    performance on ImageNet classification` - He, K. et al. (2015), using a
+    uniform distribution. The resulting tensor will have values sampled from
+    :math:`\mathcal{U}(-\text{bound}, \text{bound})` where
+
+    .. math::
+        \text{bound} = \text{gain} \times \sqrt{\frac{3}{\text{fan\_mode}}}
+
+    Also known as He initialization.
+
+    Args:
+        tensor: an n-dimensional `torch.Tensor`
+        a: the negative slope of the rectifier used after this layer (only
+            used with ``'leaky_relu'``)
+        mode: either ``'fan_in'`` (default) or ``'fan_out'``. Choosing
+            ``'fan_in'`` preserves the magnitude of the variance of the weights
+            in the forward pass. Choosing ``'fan_out'`` preserves the magnitudes
+            in the backwards pass.
+        nonlinearity: the non-linear function (`nn.functional` name),
+            recommended to use only with ``'relu'`` or ``'leaky_relu'``
+            (default).
+
+    Examples:
+        >>> w = torch.empty(3, 5)
+        >>> nn.init.kaiming_uniform_(w, mode='fan_in', nonlinearity='relu')
+    """  # noqa
+    if mode.lower() != "fan_in":
+        raise NotImplementedError(
+            "Only mode==`fan_in` has currently been implemented at this time."
+        )
+    if sparsity_mask.shape != tensor.shape:
+        raise ValueError("Sparsity mask and tensor shape do not match!")
+    if logger is None:
+        logger = logging.Logger(name=__file__, level=logging.INFO)
+    if 0 in tensor.shape:
+        logger.warning("Initializing zero-element tensors is a no-op")
+        return tensor
+    if sparsity_mask is None:
+        fan_in_tensor = get_fan_in_tensor(tensor)
+    else:
+        fan_in_tensor = get_fan_in_tensor(sparsity_mask)
+    gain = calculate_gain(nonlinearity, a)
+    for i in range(len(tensor)):
+        fan_in = fan_in_tensor[i]
+        if fan_in != 0:  # Neuron has some active connections
+            std = gain / math.sqrt(fan_in)
+            bound = math.sqrt(3.0) * std
+        with torch.no_grad():
+            if fan_in == 0:  # Neuron has been ablated
+                tensor[i] = 0
+            tensor[i] = tensor[i].unform_(-bound, bound)
+    if sparsity_mask is not None:
+        tensor = tensor * sparsity_mask
+    return tensor
+
+
 def calculate_gain(nonlinearity, param=None):
     r"""Return the recommended gain value for the given nonlinearity function.
     The values are as follows:
