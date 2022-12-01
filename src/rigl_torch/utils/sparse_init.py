@@ -131,7 +131,7 @@ def sparse_kaiming_uniform(
         with torch.no_grad():
             if fan_in == 0:  # Neuron has been ablated
                 tensor[i] = 0
-            tensor[i] = tensor[i].unform_(-bound, bound)
+            tensor[i] = tensor[i].uniform_(-bound, bound)
     if sparsity_mask is not None:
         tensor = tensor * sparsity_mask
     return tensor
