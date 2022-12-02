@@ -16,6 +16,7 @@ from rigl_torch.utils.rigl_utils import (
 from rigl_torch.utils.sparse_init import (  # noqa
     sparse_kaiming_normal,
     sparse_kaiming_uniform,
+    sparse_torch_init,
 )
 from rigl_torch.meters.layer_meter import LayerMeter
 
@@ -261,7 +262,7 @@ class RigLScheduler:
             if mask is None:
                 continue
             prior_W = self.W[idx].clone()
-            self.W[idx].data = sparse_kaiming_uniform(
+            self.W[idx].data = sparse_torch_init(
                 tensor=self.W[idx].data,
                 sparsity_mask=mask,
                 a=0,

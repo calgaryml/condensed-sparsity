@@ -4,7 +4,7 @@ defaults:
   - _self_
 
 experiment:
-  comment: dense_alloc-${rigl.dense_allocation}_const_fan_in-${rigl.const_fan_in}_weight_per_neuron-${rigl.min_salient_weights_per_neuron}_sparse_init-True-kaiming-uniform
+  comment: dense_alloc-${rigl.dense_allocation}_const_fan_in-${rigl.const_fan_in}_weight_per_neuron-${rigl.min_salient_weights_per_neuron}_sparse_init-True-torch-init
   name: ${model.name}_${dataset.name}_${experiment.comment}
   resume_from_checkpoint: False
   run_id: null

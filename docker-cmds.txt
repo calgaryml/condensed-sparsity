@@ -127,7 +127,8 @@ docker run -itd --env-file ./.env \
   training.step_size=77 \
   training.gamma=0.2 \
   compute.distributed=False \
-  rigl.use_sparse_initialization=True
+  rigl.use_sparse_initialization=True \
+  training.seed=2048
 
 # Imagenet
   python ./train_rigl.py \
