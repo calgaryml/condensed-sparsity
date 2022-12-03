@@ -13,11 +13,7 @@ from rigl_torch.utils.rigl_utils import (
     get_static_filters_to_ablate,
     get_names_and_W,
 )
-from rigl_torch.utils.sparse_init import (  # noqa
-    sparse_kaiming_normal,
-    sparse_kaiming_uniform,
-    sparse_torch_init,
-)
+from rigl_torch.utils.sparse_init import sparse_init
 from rigl_torch.meters.layer_meter import LayerMeter
 
 
@@ -169,6 +165,7 @@ class RigLScheduler:
         dynamic_ablation: bool = False,
         min_salient_weights_per_neuron: Union[int, float] = 0,
         use_sparse_init: bool = False,
+        init_method_str: str = "",
     ):
         """Initalizes scheduler object."""
         self._logger = logging.getLogger(__file__)
@@ -186,6 +183,7 @@ class RigLScheduler:
         self.optimizer = optimizer
         self.min_salient_weights_per_neuron = min_salient_weights_per_neuron
         self.use_sparse_init = use_sparse_init
+        self.init_method_str = init_method_str
 
         self.W, self._linear_layers_mask = get_W(
             model, return_linear_layers_mask=True
@@ -262,7 +260,8 @@ class RigLScheduler:
             if mask is None:
                 continue
             prior_W = self.W[idx].clone()
-            self.W[idx].data = sparse_torch_init(
+            self.W[idx].data = sparse_init(
+                init_method_str=self.init_method_str,
                 tensor=self.W[idx].data,
                 sparsity_mask=mask,
                 a=0,

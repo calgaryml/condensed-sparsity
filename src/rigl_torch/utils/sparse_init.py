@@ -1,7 +1,7 @@
 import torch
 import logging
-from typing import Optional
 import math
+from typing import Optional, Dict, Callable
 
 from rigl_torch.utils.rigl_utils import get_fan_in_tensor
 
@@ -266,3 +266,17 @@ def calculate_gain(nonlinearity, param=None):
     # Value found empirically (https://github.com/pytorch/pytorch/pull/50664)
     else:
         raise ValueError("Unsupported nonlinearity {}".format(nonlinearity))
+
+
+def sparse_init(init_method_str: str, *args, **kwargs) -> torch.Tensor:
+    _IMPLEMENTED_INIT_METHODS: Dict[str, Callable] = {
+        "kaiming_normal": sparse_kaiming_normal,
+        "kaiming_uniform": sparse_kaiming_normal,
+        "sparse_torch": sparse_torch_init,
+    }
+    if init_method_str not in _IMPLEMENTED_INIT_METHODS:
+        raise NotImplementedError(
+            f"Sparse init method {init_method_str} not valid. Please select"
+            f" from {_IMPLEMENTED_INIT_METHODS.keys()}"
+        )
+    return _IMPLEMENTED_INIT_METHODS[init_method_str](*args, **kwargs)
