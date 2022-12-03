@@ -1,13 +1,13 @@
 program: train_rigl.py
 method: grid
 project: condensed-rigl
-name: wideresnet22_min_salient
+name: wide_resnet22_min_salient
 metric:
   goal: maximize
   name: accuracy
 parameters:
   model:
-    values: [wideresnet22]
+    values: [wide_resnet22]
   dataset:
     value: cifar10
   rigl.dense_allocation: 
