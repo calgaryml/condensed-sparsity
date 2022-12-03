@@ -11,7 +11,7 @@ _EXCLUDED_TYPES = (torch.nn.BatchNorm2d,)
 
 def get_names_and_W(
     model: torch.nn.Module,
-) -> List[torch.nn.parameter.Parameter]:
+) -> Tuple[List[str], List[torch.nn.parameter.Parameter]]:
     """Much simpler implementation"""
     target_types = [torch.nn.Conv2d, torch.nn.Linear]
     target_layers = []

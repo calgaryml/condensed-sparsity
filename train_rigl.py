@@ -26,6 +26,7 @@ from rigl_torch.optim import (
 )
 from rigl_torch.utils.checkpoint import Checkpoint
 from rigl_torch.utils.rigl_utils import get_T_end
+from rigl_torch.meters import TrainingMeter
 
 
 def _get_checkpoint(cfg: omegaconf.DictConfig, rank: int, logger) -> Checkpoint:
@@ -258,6 +259,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
     ):  # Log inital filter stats before pruning
         print(f"T_end is: {T_end}")
         pruner.log_meters(step=step)
+    training_meter = TrainingMeter()
     for epoch in range(epoch_start, cfg.training.epochs + 1):
         if pruner is not None and rank == 0:
             logger.info(pruner)
@@ -276,7 +278,15 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             rank=rank,
         )
         loss, acc = test(
-            cfg, model, device, test_loader, epoch, step, rank, logger
+            cfg,
+            model,
+            device,
+            test_loader,
+            epoch,
+            step,
+            rank,
+            logger,
+            training_meter,
         )
         if rank == 0:
             writer.add_scalar("loss", loss, epoch)
@@ -379,7 +389,9 @@ def train(
     return step
 
 
-def test(cfg, model, device, test_loader, epoch, step, rank, logger):
+def test(
+    cfg, model, device, test_loader, epoch, step, rank, logger, training_meter
+):
     model.eval()
     test_loss = 0
     correct = 0
@@ -413,17 +425,19 @@ def test(cfg, model, device, test_loader, epoch, step, rank, logger):
         if cfg.dataset.name == "imagenet":
             dist.all_reduce(top_k_correct, dist.ReduceOp.SUM, async_op=False)
             top_k_correct = top_k_correct / len(test_loader.dataset)
+    training_meter.accuracy = (correct / len(test_loader.dataset)).item()
     if rank == 0:
         wandb_log(
             epoch,
             test_loss,
-            correct / len(test_loader.dataset),
+            training_meter.accuracy,
             top_k_correct,
             data,
             logits,
             target,
             pred,
             step,
+            training_meter.max_accuracy,
             cfg.wandb.log_images,
         )
         logger.info(
@@ -449,13 +463,15 @@ def wandb_log(
     captions,
     pred,
     step,
+    best_accuracy: float,
     log_images,
 ):
     log_data = {
         "epoch": epoch,
         "loss": loss.item(),
-        "accuracy": accuracy.item(),
+        "accuracy": accuracy,
         "logits": wandb.Histogram(logits.cpu()),
+        "best_accuracy": best_accuracy,
     }
     if top_k_accuracy is not None:
         log_data.update({"top_5_accuracy": top_k_accuracy.item()})

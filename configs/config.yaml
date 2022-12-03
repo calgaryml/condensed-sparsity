@@ -1,10 +1,12 @@
 defaults:
   - dataset: cifar10
-  - model: resnet18
+  - model: wideresnet22
   - _self_
 
 experiment:
-  comment: dense_alloc-${rigl.dense_allocation}_const_fan_in-${rigl.const_fan_in}_weight_per_neuron-${rigl.min_salient_weights_per_neuron}_sparse_init-True-torch-init
+  comment: "dense_alloc-${rigl.dense_allocation}_const_fan_in-${rigl.const_fan_in}"\
+            "_weight_per_neuron-${rigl.min_salient_weights_per_neuron}"\
+            "_sparse_init-${rigl.use_sparse_initialization}"
   name: ${model.name}_${dataset.name}_${experiment.comment}
   resume_from_checkpoint: False
   run_id: null
@@ -43,9 +45,9 @@ rigl:
   # Filter abalation threshold criterion
   filter_ablation_threshold: 0.01 # 1%
   # If True, update weight initalization to account for sparse const fan in. 
-  use_sparse_initialization: True
-  # Param to choose between sparse init methods -> options include "kaiming uniform", "kaiming normal", and "sparse torch" 
-  init_method_str: sparse torch
+  use_sparse_initialization: False
+  # Param to choose between sparse init methods -> options include "kaiming_uniform", "kaiming_normal", and "sparse_torch" 
+  init_method_str: null
   # Param for minimum number of salient weights per neuron. If < this value, the neuron will be dynamically ablated. 
   min_salient_weights_per_neuron: 1
   # Instructs scheduler to ignore linear layers and leave dense if True.
@@ -61,7 +63,7 @@ training:
   # batch size for testing
   test_batch_size: 1000
   # number of epochs to train
-  epochs: 1  # For imagenet, training will finish at ~ epoch 102.31, use 250 for cifar10
+  epochs: 250  # For imagenet, training will finish at ~ epoch 102.31, use 250 for cifar10
   # random seed
   seed: 42
   # Log interval (number of mini-batch steps)
@@ -92,7 +94,7 @@ training:
   # Learning rate step gamma
   gamma: 0.2  # 0.1 for imagenet, 0.2 for cifar
   # Step size to use in learning rate scheduler if StepLR is used. List[int] || int
-  step_size: 77  # Imagenet -> [30,70,90] TODO: Convert to cifar 10 -> every 30,000 mini-batch steps ~= 77 epochs
+  step_size: 77  # Imagenet -> [30,70,90] For cifar 10 -> every 30,000 mini-batch steps ~= 77 epochs
 
 
 compute:
