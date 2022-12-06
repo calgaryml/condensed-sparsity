@@ -13,6 +13,7 @@ from rigl_torch.utils.rigl_utils import (
     get_static_filters_to_ablate,
     get_names_and_W,
 )
+from rigl_torch.utils.sparse_init import sparse_init
 from rigl_torch.meters.layer_meter import LayerMeter
 
 
@@ -131,13 +132,13 @@ class RigLScheduler:
         dynamic_ablation (bool, optional): If True, dynamically ablates neurons
             during training according to min_salient_weights_per_neuron.
             Defaults to False.
-        min_salient_weights_per_neuron (Union[int, float], optional): If dynamic ablation is
-            True, this parameter defines the minimum number of neurons that must
-            be salient to remain active if an int >=1 is passed. If a float < 1
-            is passed, is interpretted as minimum percentage of salient
-            connections. Saliency in this case is the union of regrowth and
-            pruning masks (ie., weight is consider salient if either criterion
-            is satsified). Defaults to 0.
+        min_salient_weights_per_neuron (Union[int, float], optional): If dynamic
+            ablation is True, this parameter defines the minimum number of
+            neurons that must be salient to remain active if an int >=1 is
+            passed. If a float < 1 is passed, is interpretted as minimum
+            percentage of salient connections. Saliency in this case is the
+            union of regrowth and pruning masks (ie., weight is consider salient
+            if either criterion is satsified). Defaults to 0.
     Raises:
         Exception: If attempting to register scheduler to a model that already
             has IndexMaskHooks registered.
@@ -163,6 +164,8 @@ class RigLScheduler:
         static_ablation: bool = False,
         dynamic_ablation: bool = False,
         min_salient_weights_per_neuron: Union[int, float] = 0,
+        use_sparse_init: bool = False,
+        init_method_str: str = "",
     ):
         """Initalizes scheduler object."""
         self._logger = logging.getLogger(__file__)
@@ -179,6 +182,8 @@ class RigLScheduler:
         self.model = model
         self.optimizer = optimizer
         self.min_salient_weights_per_neuron = min_salient_weights_per_neuron
+        self.use_sparse_init = use_sparse_init
+        self.init_method_str = init_method_str
 
         self.W, self._linear_layers_mask = get_W(
             model, return_linear_layers_mask=True
@@ -215,7 +220,8 @@ class RigLScheduler:
             else:
                 self.static_ablated_filters = [0 for _ in range(len(self.W))]
 
-            # randomly sparsify model according to S
+            # randomly sparsify model according to S.
+            # Creates backwards_mask attribute
             self.random_sparsify()
 
             # scheduler keeps a log of how many times it's called. this is how
@@ -245,6 +251,33 @@ class RigLScheduler:
             self._update_active_neurons()
             self._validate_params()
             self._update_current_filter_ablation()
+            if self.use_sparse_init:
+                self._sparse_init()
+
+    def _sparse_init(self):
+        is_dist = dist.is_initialized()
+        for idx, mask in enumerate(self.backward_masks):
+            if mask is None:
+                continue
+            prior_W = self.W[idx].clone()
+            self.W[idx].data = sparse_init(
+                init_method_str=self.init_method_str,
+                tensor=self.W[idx].data,
+                sparsity_mask=mask,
+                a=0,
+                mode="fan_in",
+                nonlinearity="relu",
+                logger=self._logger,
+            )
+            # Check only non-zero!
+            if not (
+                self.W[idx].masked_select(mask) != prior_W.masked_select(mask)
+            ).all():
+                print(self.W[idx][0])
+                print(prior_W[0])
+
+            if is_dist:
+                dist.broadcast(self.W[idx].data, 0)
 
     def _validate_params(self) -> None:
         """Validates that parameters provided to constructor are valid.
@@ -875,13 +908,13 @@ class RigLScheduler:
 
     def _register_meters(self) -> None:
         """Registers LayerMeters on each layer of the network.
-
         The LayerMeters are used to track active neurons, max inactive weights,
         max inactive grads, etc.
         """
         self.meters = []
         names, weights = get_names_and_W(self.model)
-        assert weights == self.W
+        # for idx, _ in enumerate(weights):
+        #     assert (weights[idx] == self.W[idx]).all()
         for idx, _ in enumerate(self.backward_masks):
             self.meters.append(
                 LayerMeter(

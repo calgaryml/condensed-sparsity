@@ -1,33 +1,38 @@
-from rigl_torch import RiglScheduler
-from layer_meter import LayerMeter
-from typing import List
 import torch
 
 
 class TrainingMeter(object):
-    def __init__(self, pruner: RiglScheduler):
-        self.pruner = pruner
-        self._layer_meters = self._initalize_meters()
+    def __init__(self):
+        self._max_accuracy = -torch.inf
+        self._accuracy = -torch.inf
+        self.accuracies = []
 
-    def update_grads(self, grads: torch.Tensor) -> None:
-        for layer_grad, lm in list(zip(grads, self._layer_meters)):
-            lm.grad = layer_grad
-        return
+    @property
+    def accuracy(self) -> float:
+        return self._accuracy
 
-    def update_pruner(self, updated_pruner: RiglScheduler):
-        self.pruner = updated_pruner
-        for layer_idx, (layer, mask) in enumerate(
-            list(zip(self.pruner.W, self.pruner.backward_masks))
-        ):
-            assert layer.idx == layer_idx
-            layer.update(weight_tensor=layer, mask_tensor=mask)
+    @accuracy.setter
+    def accuracy(self, accuracy: float) -> None:
+        self._accuracy = accuracy
+        self.accuracies.append(self._accuracy)
+        if self._accuracy >= self._max_accuracy:
+            self._max_accuracy = self._accuracy
 
-    def _initalize_meters(self) -> List[LayerMeter]:
-        layer_meters = []
-        for layer_idx, (layer, mask) in enumerate(
-            list(zip(self.pruner.W, self.pruner.backward_masks))
-        ):
-            layer_meters.append(
-                LayerMeter(idx=layer_idx, weight_tensor=layer, mask_tensor=mask)
-            )
-        return layer_meters
+    @property
+    def max_accuracy(self) -> float:
+        return self._max_accuracy
+
+
+if __name__ == "__main__":
+    meter = TrainingMeter()
+    meter.accuracy = 0.1
+    print(meter.max_accuracy)
+    meter.accuracy = 0.2
+    print(meter.max_accuracy)
+    meter.accuracy = 0.1
+    print(meter.max_accuracy)
+    print(meter.accuracy)
+    meter.accuracy = 0.3
+    print(meter.max_accuracy)
+    print(meter.accuracy)
+    print(meter.accuracies)
