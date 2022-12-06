@@ -149,6 +149,6 @@ training.warm_up_steps=5 \
 training.scheduler=step_lr_with_warm_up \
 training.step_size=[30,70,90] \
 training.gamma=0.1 \
-compute.distributed=True \ 
+compute.distributed=True \
 rigl.use_sparse_initialization=True \
 rigl.init_method_str=grad_flow_init
