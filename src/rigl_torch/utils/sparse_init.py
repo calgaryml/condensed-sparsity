@@ -61,12 +61,13 @@ def sparse_kaiming_normal(
     gain = calculate_gain(nonlinearity, a)
     for i in range(len(tensor)):
         fan_in = fan_in_tensor[i]
-        if fan_in != 0:  # Neuron has some active connections
-            std = gain / math.sqrt(fan_in)
         with torch.no_grad():
-            if fan_in == 0:  # Neuron has been ablated
+            if fan_in != 0:  # Neuron has some active connections
+                std = gain / math.sqrt(fan_in)
+                tensor[i] = tensor[i].normal_(0, std)
+            elif fan_in == 0:  # Neuron has been ablated
                 tensor[i] = 0
-            tensor[i] = tensor[i].normal_(0, std)
+
     if sparsity_mask is not None:
         tensor = tensor * sparsity_mask
     return tensor
@@ -125,13 +126,14 @@ def sparse_kaiming_uniform(
     gain = calculate_gain(nonlinearity, a)
     for i in range(len(tensor)):
         fan_in = fan_in_tensor[i]
-        if fan_in != 0:  # Neuron has some active connections
-            std = gain / math.sqrt(fan_in)
-            bound = math.sqrt(3.0) * std
         with torch.no_grad():
-            if fan_in == 0:  # Neuron has been ablated
+            if fan_in != 0:  # Neuron has some active connections
+                std = gain / math.sqrt(fan_in)
+                bound = math.sqrt(3.0) * std
+                tensor[i] = tensor[i].uniform_(-bound, bound)
+            elif fan_in == 0:  # Neuron has been ablated
                 tensor[i] = 0
-            tensor[i] = tensor[i].uniform_(-bound, bound)
+
     if sparsity_mask is not None:
         tensor = tensor * sparsity_mask
     return tensor
@@ -189,12 +191,13 @@ def sparse_torch_init(
         fan_in_tensor = get_fan_in_tensor(sparsity_mask)
     for i in range(len(tensor)):
         fan_in = fan_in_tensor[i]
-        if fan_in != 0:  # Neuron has some active connections
-            bound = math.sqrt(1 / fan_in)
         with torch.no_grad():
-            if fan_in == 0:  # Neuron has been ablated
+            if fan_in != 0:  # Neuron has some active connections
+                bound = math.sqrt(1 / fan_in)
+                tensor[i] = tensor[i].uniform_(-bound, bound)
+            elif fan_in == 0:  # Neuron has been ablated
                 tensor[i] = 0
-            tensor[i] = tensor[i].uniform_(-bound, bound)
+
     if sparsity_mask is not None:
         tensor = tensor * sparsity_mask
     return tensor
@@ -268,11 +271,62 @@ def calculate_gain(nonlinearity, param=None):
         raise ValueError("Unsupported nonlinearity {}".format(nonlinearity))
 
 
+def grad_flow_init(
+    tensor: torch.Tensor,
+    sparsity_mask: Optional[torch.Tensor] = None,
+    a: float = 0,
+    mode: str = "fan_in",
+    nonlinearity: str = "relu",
+    logger: Optional[logging.Logger] = None,
+):
+    r"""Fills the input `Tensor` with values according to the method
+    described in `Gradient Flow in Sparse Neural Networks and How Lottery
+    Tickets Win`.
+    Args:
+        tensor: an n-dimensional `torch.Tensor`
+        a: the negative slope of the rectifier used after this layer (only
+            used with ``'leaky_relu'``)
+        mode: either ``'fan_in'`` (default) or ``'fan_out'``. Choosing
+            ``'fan_in'`` preserves the magnitude of the variance of the weights
+            in the forward pass. Choosing ``'fan_out'`` preserves the magnitudes
+            in the backwards pass.
+        nonlinearity: the non-linear function (`nn.functional` name),
+            recommended to use only with ``'relu'`` or ``'leaky_relu'``
+            (default).
+    """  # noqa
+    if mode.lower() != "fan_in":
+        raise NotImplementedError(
+            "Only mode==`fan_in` has currently been implemented at this time."
+        )
+    if sparsity_mask.shape != tensor.shape:
+        raise ValueError("Sparsity mask and tensor shape do not match!")
+    if logger is None:
+        logger = logging.Logger(name=__file__, level=logging.INFO)
+    if 0 in tensor.shape:
+        logger.warning("Initializing zero-element tensors is a no-op")
+        return tensor
+    if sparsity_mask is None:
+        fan_in_tensor = get_fan_in_tensor(tensor)
+    else:
+        fan_in_tensor = get_fan_in_tensor(sparsity_mask)
+    for i in range(len(tensor)):
+        fan_in = fan_in_tensor[i]
+        with torch.no_grad():
+            if fan_in != 0:  # Neuron has some active connections
+                tensor[i] = tensor[i].normal_(0, 2 / fan_in)
+            elif fan_in == 0:  # Neuron has been ablated
+                tensor[i] = 0
+    if sparsity_mask is not None:
+        tensor = tensor * sparsity_mask
+    return tensor
+
+
 def sparse_init(init_method_str: str, *args, **kwargs) -> torch.Tensor:
     _IMPLEMENTED_INIT_METHODS: Dict[str, Callable] = {
         "kaiming_normal": sparse_kaiming_normal,
         "kaiming_uniform": sparse_kaiming_normal,
         "sparse_torch": sparse_torch_init,
+        "grad_flow_init": grad_flow_init,
     }
     if init_method_str not in _IMPLEMENTED_INIT_METHODS:
         raise NotImplementedError(

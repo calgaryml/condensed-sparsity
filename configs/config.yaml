@@ -43,11 +43,11 @@ rigl:
   # Dyanmic ablation will ablate filters dynamically during traing based on gradient information. Cannot be True if static_ablation is True
   dynamic_ablation: True
   # Filter abalation threshold criterion
-  filter_ablation_threshold: 0.01 # 1%
+  filter_ablation_threshold: null # 1%
   # If True, update weight initalization to account for sparse const fan in. 
-  use_sparse_initialization: False
-  # Param to choose between sparse init methods -> options include "kaiming_uniform", "kaiming_normal", and "sparse_torch" 
-  init_method_str: null
+  use_sparse_initialization: True
+  # Param to choose between sparse init methods -> options include "kaiming_uniform", "kaiming_normal", "sparse_torch", and "grad_flow_init"
+  init_method_str: grad_flow_init
   # Param for minimum number of salient weights per neuron. If < this value, the neuron will be dynamically ablated. 
   min_salient_weights_per_neuron: 1
   # Instructs scheduler to ignore linear layers and leave dense if True.
