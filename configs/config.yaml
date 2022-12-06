@@ -1,6 +1,6 @@
 defaults:
   - dataset: cifar10
-  - model: wide_resnet22
+  - model: resnet18
   - _self_
 
 experiment:
