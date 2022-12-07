@@ -3,7 +3,7 @@ import torch.nn as nn
 import torchvision
 from omegaconf import DictConfig
 from math import prod
-from typing import Tuple, Union, List
+from typing import Tuple, Union, List, Optional
 
 
 _EXCLUDED_TYPES = (torch.nn.BatchNorm2d,)
@@ -258,3 +258,22 @@ def get_conv_idx_from_flat_idx(
         - kernel_row_idx * prod(conv_shape[3:])
     )
     return (filter_idx, in_channel_idx, kernel_row_idx, kernel_col_idx)
+
+
+@torch.no_grad()
+def active_neuron_count_in_layer(
+    mask: torch.Tensor, weight: Optional[torch.Tensor] = None
+) -> int:
+    if mask is None:
+        return len(weight)
+    else:
+        active_count = sum([n.any() for n in mask])
+    return active_count
+
+
+if __name__ == "__main__":
+    t = torch.zeros(size=(16, 3, 3, 3), dtype=torch.bool)
+    w = torch.ones(size=t.size(), dtype=torch.bool)
+    active_n = 16
+    t[:active_n] = True
+    assert active_n == active_neuron_count_in_layer(None, w)

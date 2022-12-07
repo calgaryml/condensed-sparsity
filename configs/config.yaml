@@ -6,7 +6,8 @@ defaults:
 experiment:
   comment: "dense_alloc-${rigl.dense_allocation}_const_fan_in-${rigl.const_fan_in}\
             _weight_per_neuron-${rigl.min_salient_weights_per_neuron}\
-            _sparse_init-${rigl.init_method_str}"
+            _sparse_init-${rigl.init_method_str}
+            _salients_only_for_ablation"
   name: ${model.name}_${dataset.name}_${experiment.comment}
   resume_from_checkpoint: False
   run_id: null
@@ -42,14 +43,16 @@ rigl:
   static_ablation: False
   # Dyanmic ablation will ablate filters dynamically during traing based on gradient information. Cannot be True if static_ablation is True
   dynamic_ablation: True
-  # Filter abalation threshold criterion
+  # If False, min_salient_weights_per_neuron as a percentage will ablate based on percentage of dense fan-in. If True, use sparse fan in as percentage demoniator.
+  use_sparse_const_fan_in_for_ablation: True
+  # Static Filter abalation threshold criterion -> Not used for dynamic ablation
   filter_ablation_threshold: null # 1%
   # If True, update weight initalization to account for sparse const fan in. 
   use_sparse_initialization: True
   # Param to choose between sparse init methods -> options include "kaiming_uniform", "kaiming_normal", "sparse_torch", and "grad_flow_init"
   init_method_str: grad_flow_init
   # Param for minimum number of salient weights per neuron. If < this value, the neuron will be dynamically ablated. 
-  min_salient_weights_per_neuron: 1
+  min_salient_weights_per_neuron: 0.01
   # Instructs scheduler to ignore linear layers and leave dense if True.
   ignore_linear_layers: False
 
