@@ -27,6 +27,7 @@ from rigl_torch.optim import (
 from rigl_torch.utils.checkpoint import Checkpoint
 from rigl_torch.utils.rigl_utils import get_T_end
 from rigl_torch.meters import TrainingMeter
+from rigl_torch.utils.wandb_run_name import WandbRunName
 
 
 def _get_checkpoint(cfg: omegaconf.DictConfig, rank: int, logger) -> Checkpoint:
@@ -46,6 +47,7 @@ def _get_checkpoint(cfg: omegaconf.DictConfig, rank: int, logger) -> Checkpoint:
 
 
 def init_wandb(cfg: omegaconf.DictConfig, wandb_init_kwargs: Dict[str, Any]):
+    _ = WandbRunName(name=cfg.experiment.name)  # Verify name is OK
     run = wandb.init(
         name=cfg.experiment.name,
         entity=cfg.wandb.entity,
@@ -177,12 +179,6 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
         model.load_state_dict(model_state)
     optimizer = get_optimizer(cfg, model, state_dict=optimizer_state)
     scheduler = get_lr_scheduler(cfg, optimizer, state_dict=scheduler_state)
-
-    if "filter_ablation_threshold" not in cfg.rigl:
-        from omegaconf import open_dict
-
-        with open_dict(cfg):
-            cfg.rigl.filter_ablation_threshold = None
     pruner = None
     if cfg.rigl.dense_allocation is not None:
         T_end = get_T_end(cfg, train_loader)
@@ -232,6 +228,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             log_freq=cfg.training.log_interval,
         )
     logger.info(f"Model Summary: {model}")
+    training_meter = TrainingMeter()
     if not cfg.experiment.resume_from_checkpoint:
         step = 0
         if rank == 0:
@@ -246,8 +243,12 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
                 step=step,
                 parent_dir=cfg.paths.checkpoints,
             )
+            if pruner is not None:
+                # Log inital filter stats before pruning
+                pruner.log_meters(step=step)
+                
         epoch_start = 1
-    else:
+    else:  # Resuming from checkpoint
         checkpoint.model = model
         checkpoint.optimizer = optimizer
         checkpoint.scheduler = scheduler
@@ -255,12 +256,8 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
         # Start at the next epoch after the last that successfully was saved
         epoch_start = checkpoint.epoch + 1
         step = checkpoint.step
-    if (
-        rank == 0 and pruner is not None
-    ):  # Log inital filter stats before pruning
-        print(f"T_end is: {T_end}")
-        pruner.log_meters(step=step)
-    training_meter = TrainingMeter()
+        training_meter._max_accuracy = checkpoint.best_acc
+
     for epoch in range(epoch_start, cfg.training.epochs + 1):
         if pruner is not None and rank == 0:
             logger.info(pruner)
