@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from omegaconf import DictConfig
 import datetime
 import logging
-import os
 import glob
 
 from rigl_torch.rigl_scheduler import RigLScheduler
@@ -29,7 +28,7 @@ class Checkpoint(object):
     checkpoint_dir: Optional[Union[pathlib.Path, str]] = None
     f_name: str = "checkpoint.pt.tar"
     best_file_name: Optional[str] = f"best-{f_name}"
-    parent_dir: pathlib.Path = pathlib.Path(os.environ["BASE_PATH"])
+    parent_dir: pathlib.Path = pathlib.Path.cwd()
     _logger = logging.getLogger(__name__)
     _RUN_ID_DELIMITER: str = "_"
 
