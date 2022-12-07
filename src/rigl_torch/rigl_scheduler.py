@@ -249,12 +249,13 @@ class RigLScheduler:
             self.backward_hook_objects.append(IndexMaskHook(i, self))
             w.register_hook(self.backward_hook_objects[-1])
             setattr(w, "_has_rigl_backward_hook", True)
-            self._register_meters()
-            self._update_active_neurons()
-            self._validate_params()
-            self._update_current_filter_ablation()
-            if self.use_sparse_init:
-                self._sparse_init()
+
+        self._register_meters()
+        self._update_active_neurons()
+        self._validate_params()
+        self._update_current_filter_ablation()
+        if self.use_sparse_init and state_dict is not None:
+            self._sparse_init()  # Don't re-init if loading from checkpoint
 
     def _sparse_init(self):
         is_dist = dist.is_initialized()

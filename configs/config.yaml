@@ -7,7 +7,7 @@ experiment:
   comment: "dense_alloc-${rigl.dense_allocation}_const_fan_in-${rigl.const_fan_in}\
             _weight_per_neuron-${rigl.min_salient_weights_per_neuron}\
             _sparse_init-${rigl.init_method_str}\
-            _salients_only_for_ablation"
+            _salients_only"
   name: ${model.name}_${dataset.name}_${experiment.comment}
   resume_from_checkpoint: False
   run_id: null
