@@ -10,6 +10,8 @@
 #SBATCH --time=0-04:00
 #SBATCH --mail-user=mklasby@ucalgary.ca
 #SBATCH --mail-type=BEGIN,END,FAIL
+#SBATCH --account=def-yani
+
 ## SET ENV ##:
 module load singularity python/3.8.10 cuda cudnn
 source ../.venv/bin/activate
