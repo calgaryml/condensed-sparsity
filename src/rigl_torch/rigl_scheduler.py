@@ -254,7 +254,7 @@ class RigLScheduler:
         self._update_active_neurons()
         self._validate_params()
         self._update_current_filter_ablation()
-        if self.use_sparse_init and state_dict is not None:
+        if self.use_sparse_init and state_dict is None:
             self._sparse_init()  # Don't re-init if loading from checkpoint
 
     def _sparse_init(self):
