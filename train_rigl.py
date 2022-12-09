@@ -89,6 +89,8 @@ def initalize_main(cfg: omegaconf.DictConfig) -> None:
 
 def _get_logger(rank, cfg: omegaconf.DictConfig) -> logging.Logger:
     log_path = pathlib.Path(cfg.paths.logs)
+    if not log_path.is_dir():
+            log_path.mkdir()
     logger = logging.getLogger(__file__)
     logger.setLevel(level=logging.INFO)
     current_date = date.today().strftime("%Y-%m-%d")
@@ -215,7 +217,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             "network..."
         )
 
-    writer = SummaryWriter(log_dir="./graphs")
+    writer = SummaryWriter(log_dir=cfg.paths.graphs)
     if rank == 0:
         if cfg.wandb.watch_model_grad_and_weights:
             log = "all"
