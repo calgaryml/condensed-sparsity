@@ -2,12 +2,12 @@
 
 ## GET RESOURCES ##
 
-#SBATCH --job-name=run_train_rigl
+#SBATCH --job-name=run_train_rigl_2
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 #SBATCH --gres=gpu:1
 #SBATCH --mem=16G    
-#SBATCH --time=01:00:00
+#SBATCH --time=05:00:00
 #SBATCH --mail-user=mklasby@ucalgary.ca
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --account=def-yani
@@ -30,6 +30,6 @@ source ${SLURM_TMPDIR}/.venv/bin/activate
 ## RUN SCRIPT ##
 # wandb agent condensed-sparsity/condensed-rigl/1jyv1omw
 
-python3 ./train_rigl.py training.dry_run=True experiment.comment=cedar_speed_test
+python3 ./train_rigl.py experiment.comment=cedar_speed_test
 cp -r ${SLURM_TMPDIR}/output  ${PROJECT_OUTPUT_DIR}
 
