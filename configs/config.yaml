@@ -120,6 +120,7 @@ compute:
   dist_backend: "nccl"
 
 wandb:
+  log_to_wandb: False
   project: condensed-rigl
   entity: condensed-sparsity
   start_method: thread
