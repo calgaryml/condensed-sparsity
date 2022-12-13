@@ -6,7 +6,7 @@ api = wandb.Api()
 # Project is specified by <entity/project-name>
 runs = api.runs("condensed-sparsity/condensed-rigl")
 
-summary_list, config_list, name_list = [], [], []
+summary_list, config_list, name_list, state_list, id_list = [], [], [], [], []
 for run in runs:
     # .summary contains the output keys/values for metrics like accuracy.
     #  We call ._json_dict to omit large files
@@ -20,9 +20,17 @@ for run in runs:
 
     # .name is the human-readable name of the run.
     name_list.append(run.name)
+    id_list.append(run.id)
+    state_list.append(run.state)
 
 runs_df = pd.DataFrame(
-    {"summary": summary_list, "config": config_list, "name": name_list}
+    {
+        "summary": summary_list,
+        "config": config_list,
+        "name": name_list,
+        "id": id_list,
+        "state": state_list,
+    }
 )
 
 runs_df.to_csv("project.csv")
