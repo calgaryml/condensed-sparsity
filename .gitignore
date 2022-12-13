@@ -26,6 +26,7 @@ share/python-wheels/
 *.egg
 MANIFEST
 
+
 *.pkl 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -190,3 +191,4 @@ artifacts/
 .python-version
 
 *.whl
+*.csv
