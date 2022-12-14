@@ -8,6 +8,7 @@ import pytorch_lightning as pl
 import random
 import dotenv
 import omegaconf
+from datetime import datetime
 import hydra
 import logging
 import wandb
@@ -27,7 +28,7 @@ from rigl_torch.optim import (
 from rigl_torch.utils.checkpoint import Checkpoint
 from rigl_torch.utils.rigl_utils import get_T_end
 from rigl_torch.meters import TrainingMeter
-from rigl_torch.utils.wandb_run_name import WandbRunName
+from rigl_torch.utils.wandb_utils import WandbRunName, wandb_log_check
 
 
 def _get_checkpoint(cfg: omegaconf.DictConfig, rank: int, logger) -> Checkpoint:
@@ -47,6 +48,17 @@ def _get_checkpoint(cfg: omegaconf.DictConfig, rank: int, logger) -> Checkpoint:
 
 
 def init_wandb(cfg: omegaconf.DictConfig, wandb_init_kwargs: Dict[str, Any]):
+    # We override logging functions now to avoid any calls
+    if not cfg.wandb.log_to_wandb:
+        print("No logging to WANDB! See cfg.wandb.log_to_wandb")
+        wandb.log = wandb_log_check(wandb.log, cfg.wandb.log_to_wandb)
+        wandb.log_artifact = wandb_log_check(
+            wandb.log_artifact, cfg.wandb.log_to_wandb
+        )
+        wandb.watch = wandb_log_check(
+            wandb.watch, cfg.wandb.log_to_wandb
+        )
+        return None
     _ = WandbRunName(name=cfg.experiment.name)  # Verify name is OK
     run = wandb.init(
         name=cfg.experiment.name,
@@ -89,6 +101,8 @@ def initalize_main(cfg: omegaconf.DictConfig) -> None:
 
 def _get_logger(rank, cfg: omegaconf.DictConfig) -> logging.Logger:
     log_path = pathlib.Path(cfg.paths.logs)
+    if not log_path.is_dir():
+        log_path.mkdir()
     logger = logging.getLogger(__file__)
     logger.setLevel(level=logging.INFO)
     current_date = date.today().strftime("%Y-%m-%d")
@@ -215,7 +229,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             "network..."
         )
 
-    writer = SummaryWriter(log_dir="./graphs")
+    writer = SummaryWriter(log_dir=cfg.paths.graphs)
     if rank == 0:
         if cfg.wandb.watch_model_grad_and_weights:
             log = "all"
@@ -232,8 +246,12 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
     if not cfg.experiment.resume_from_checkpoint:
         step = 0
         if rank == 0:
+            if run is None:
+                run_id = datetime.now().strftime("%h-%m-%d-%H-%M")
+            else:
+                run_id = run.id
             checkpoint = Checkpoint(
-                run_id=run.id,
+                run_id=run_id,
                 cfg=cfg,
                 model=model,
                 optimizer=optimizer,
@@ -243,10 +261,10 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
                 step=step,
                 parent_dir=cfg.paths.checkpoints,
             )
-            if pruner is not None:
+            if (pruner is not None) and (cfg.wandb.log_filter_stats):
                 # Log inital filter stats before pruning
                 pruner.log_meters(step=step)
-                
+
         epoch_start = 1
     else:  # Resuming from checkpoint
         checkpoint.model = model
@@ -310,7 +328,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
         art.add_file(f_path)
         logging.info(f"artifact path: {f_path}")
         wandb.log_artifact(art)
-    if rank == 0:
+    if rank == 0 and cfg.wandb.log_to_wandb:
         run.finish()
 
 

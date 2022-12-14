@@ -13,11 +13,17 @@ experiment:
   run_id: null
 
 paths:
+  # base: ${oc.env:BASE_PATH}
+  # data_folder: ${paths.base}/data
+  # artifacts: ${paths.base}/artifacts
+  # logs: ${paths.base}/logs
+  # checkpoints: ${paths.artifacts}/checkpoints
   base: ${oc.env:BASE_PATH}
-  data_folder: ${paths.base}/data
-  artifacts: ${paths.base}/artifacts
-  logs: ${paths.base}/logs
-  checkpoints: ${paths.artifacts}/checkpoints
+  data_folder: ${oc.env:SLURM_TMPDIR}/data
+  artifacts: ${oc.env:SLURM_TMPDIR}/output/artifacts
+  logs: ${oc.env:SLURM_TMPDIR}/output/logs
+  checkpoints: ${oc.env:SLURM_TMPDIR}/output/checkpoints
+  graphs: ${oc.env:SLURM_TMPDIR}/output/graphs
 
 rigl: 
   # percentage of dense parameters allowed. if null, pruning will not 
@@ -114,6 +120,7 @@ compute:
   dist_backend: "nccl"
 
 wandb:
+  log_to_wandb: False
   project: condensed-rigl
   entity: condensed-sparsity
   start_method: thread
