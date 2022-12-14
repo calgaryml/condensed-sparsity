@@ -33,4 +33,3 @@ source ${SLURM_TMPDIR}/.venv/bin/activate
 wandb offline
 python3 ./train_rigl.py experiment.comment=cedar_speed_test_no_wandb
 cp -r ${SLURM_TMPDIR}/output  ${PROJECT_OUTPUT_DIR}
-

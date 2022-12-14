@@ -92,4 +92,3 @@ python train_rigl.py \
     training.weight_decay=0.0005 \
     training.momentum=0.9 \
     training.optimizer=adamw
-

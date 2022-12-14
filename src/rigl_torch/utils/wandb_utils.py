@@ -25,4 +25,5 @@ def wandb_log_check(fn: Callable, log_to_wandb: bool = True) -> Callable:
             return fn(*args, **kwargs)
         else:
             return None
+
     return wrapper
