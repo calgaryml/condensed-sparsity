@@ -8,6 +8,7 @@ from rigl_torch.utils.rigl_utils import (
     get_fan_in_tensor,
     get_fan_in_after_ablation,
     calculate_fan_in_and_fan_out,
+    active_neuron_count_in_layer,
 )
 from rigl_torch.rigl_scheduler import RigLScheduler
 from rigl_torch.exceptions import (
@@ -91,6 +92,7 @@ class RigLConstFanScheduler(RigLScheduler):
         min_salient_weights_per_neuron: Union[int, float] = 0,
         use_sparse_init: bool = False,
         init_method_str: str = "",
+        use_sparse_const_fan_in_for_ablation: bool = False,
     ):
 
         super().__init__(
@@ -112,6 +114,7 @@ class RigLConstFanScheduler(RigLScheduler):
             min_salient_weights_per_neuron,
             use_sparse_init,
             init_method_str,
+            use_sparse_const_fan_in_for_ablation,
         )
         self._dynamically_ablated_neuron_idx = [[] for _ in range(len(self.W))]
 
@@ -285,6 +288,8 @@ class RigLConstFanScheduler(RigLScheduler):
                     n_keep=n_keep,
                     n_prune=n_prune,
                     sparsity=self.S[idx],
+                    mask=self.backward_masks[idx],
+                    weight=self.W[idx],
                 )
             self._dynamically_ablated_neuron_idx.append(neurons_to_ablate)
             # print(f"neurons to ablate = {neurons_to_ablate}")
@@ -340,6 +345,8 @@ class RigLConstFanScheduler(RigLScheduler):
         n_keep: int,
         n_prune: int,
         sparsity: float,
+        mask: torch.Tensor,
+        weight: torch.Tensor,
     ) -> List[int]:
         """Return List of neuron indices to ablate.
 
@@ -387,11 +394,14 @@ class RigLConstFanScheduler(RigLScheduler):
                     self.min_salient_weights_per_neuron
                 )
             else:
-                dense_fan_in = math.prod(saliency_mask.shape[1:])
+                if self.use_sparse_const_fan_in_for_ablation:
+                    total_fan_in = active_neuron_count_in_layer(mask, weight)
+                else:
+                    total_fan_in = math.prod(saliency_mask.shape[1:])
                 _min_salient_weights_per_neuron = max(
                     [
                         1,
-                        int(self.min_salient_weights_per_neuron * dense_fan_in),
+                        int(self.min_salient_weights_per_neuron * total_fan_in),
                     ]
                 )
             while _invalid_ablation:

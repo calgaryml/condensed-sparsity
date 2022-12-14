@@ -166,6 +166,7 @@ class RigLScheduler:
         min_salient_weights_per_neuron: Union[int, float] = 0,
         use_sparse_init: bool = False,
         init_method_str: str = "",
+        use_sparse_const_fan_in_for_ablation: bool = False,
     ):
         """Initalizes scheduler object."""
         self._logger = logging.getLogger(__file__)
@@ -184,6 +185,7 @@ class RigLScheduler:
         self.min_salient_weights_per_neuron = min_salient_weights_per_neuron
         self.use_sparse_init = use_sparse_init
         self.init_method_str = init_method_str
+        self.use_sparse_const_fan_in_for_ablation = use_sparse_const_fan_in_for_ablation # noqa
 
         self.W, self._linear_layers_mask = get_W(
             model, return_linear_layers_mask=True
@@ -247,12 +249,13 @@ class RigLScheduler:
             self.backward_hook_objects.append(IndexMaskHook(i, self))
             w.register_hook(self.backward_hook_objects[-1])
             setattr(w, "_has_rigl_backward_hook", True)
-            self._register_meters()
-            self._update_active_neurons()
-            self._validate_params()
-            self._update_current_filter_ablation()
-            if self.use_sparse_init:
-                self._sparse_init()
+
+        self._register_meters()
+        self._update_active_neurons()
+        self._validate_params()
+        self._update_current_filter_ablation()
+        if self.use_sparse_init and state_dict is None:
+            self._sparse_init()  # Don't re-init if loading from checkpoint
 
     def _sparse_init(self):
         is_dist = dist.is_initialized()

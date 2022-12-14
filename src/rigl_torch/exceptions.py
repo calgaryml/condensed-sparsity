@@ -14,3 +14,11 @@ class InvalidAblatedNeuronException(Exception):
             "Initally ablated neuron detected with elements != False. I found"
             f"an invalid filter with values in mask index = {mask_index}"
         )
+
+
+class WandbRunNameException(Exception):
+    def __init__(self, message, name) -> None:
+        super().__init__(
+            f"Wandb run name of {name} is invalid! "
+            f"{message}"
+        )
