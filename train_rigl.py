@@ -55,9 +55,7 @@ def init_wandb(cfg: omegaconf.DictConfig, wandb_init_kwargs: Dict[str, Any]):
         wandb.log_artifact = wandb_log_check(
             wandb.log_artifact, cfg.wandb.log_to_wandb
         )
-        wandb.watch = wandb_log_check(
-            wandb.watch, cfg.wandb.log_to_wandb
-        )
+        wandb.watch = wandb_log_check(wandb.watch, cfg.wandb.log_to_wandb)
         return None
     _ = WandbRunName(name=cfg.experiment.name)  # Verify name is OK
     run = wandb.init(

@@ -39,7 +39,8 @@ def get_optimizer(
     }
     if cfg.training.optimizer.lower() not in optimizers:
         raise ValueError(
-            f"Unrecongized optmizier: {cfg.training.optimizer}. Select from: {list(optimizers.keys())}"
+            f"Unrecongized optmizier: {cfg.training.optimizer}."
+            f" Select from: {list(optimizers.keys())}"
         )
     else:
         optim = optimizers[cfg.training.optimizer.lower()]()

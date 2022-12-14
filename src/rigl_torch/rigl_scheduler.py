@@ -185,7 +185,9 @@ class RigLScheduler:
         self.min_salient_weights_per_neuron = min_salient_weights_per_neuron
         self.use_sparse_init = use_sparse_init
         self.init_method_str = init_method_str
-        self.use_sparse_const_fan_in_for_ablation = use_sparse_const_fan_in_for_ablation # noqa
+        self.use_sparse_const_fan_in_for_ablation = (
+            use_sparse_const_fan_in_for_ablation  # noqa
+        )
 
         self.W, self._linear_layers_mask = get_W(
             model, return_linear_layers_mask=True

@@ -18,7 +18,4 @@ class InvalidAblatedNeuronException(Exception):
 
 class WandbRunNameException(Exception):
     def __init__(self, message, name) -> None:
-        super().__init__(
-            f"Wandb run name of {name} is invalid! "
-            f"{message}"
-        )
+        super().__init__(f"Wandb run name of {name} is invalid! " f"{message}")

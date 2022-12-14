@@ -25,12 +25,14 @@ def main(rank, cfg):
     # )
     train_loader, test_loader = get_dataloaders(cfg)
     print(
-        f"Num samples in rank {rank}: {len(train_loader)*train_loader.batch_size}"
+        f"Num samples in rank {rank}: "
+        f"{len(train_loader)*train_loader.batch_size}"
     )
     print(f"dataset length: {len(train_loader.dataset)}")
     dist.barrier()
     print(
-        f"Num test samples in rank {rank}: {len(test_loader)*test_loader.batch_size}"
+        f"Num test samples in rank {rank}: "
+        f"{len(test_loader)*test_loader.batch_size}"
     )
     print(f"dataset length: {len(test_loader.dataset)}")
 

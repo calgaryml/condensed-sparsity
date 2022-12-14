@@ -1,0 +1,22 @@
+program: train_rigl.py
+method: grid
+project: condensed-rigl
+name: imagenet_sweep
+metric:
+  goal: maximize
+  name: accuracy
+parameters:
+  rigl.dense_allocation: 
+    values: [0.01, 0.05, 0.1, 0.2]
+      # percentage of dense parameters allowed. if None, pruning will not 
+      # be used. must be on the interval (0, 1]
+  rigl.const_fan_in: 
+    values: [True, False]
+  training.seed:
+    values: [42]
+
+command:
+  - ${env}
+  - python
+  - ${program}
+  - ${args_no_hyphens}
