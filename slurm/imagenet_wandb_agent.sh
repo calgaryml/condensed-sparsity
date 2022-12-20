@@ -26,4 +26,5 @@ module load python/3.8.10 cuda/11.4 cudnn
 source ${SLURM_TMPDIR}/.venv/bin/activate
 
 ## RUN SCRIPT ##
+wandb online
 wandb agent condensed-sparsity/condensed-rigl/${WANDB_SWEEP_ID}
