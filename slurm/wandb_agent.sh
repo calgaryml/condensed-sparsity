@@ -2,7 +2,7 @@
 
 ## GET RESOURCES ##
 
-#SBATCH --job-name=wandb_agent
+#SBATCH --job-name=wandb_agent_${SLURM_ARRAY_JOB_ID}
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 #SBATCH --gres=gpu:1
