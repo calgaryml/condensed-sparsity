@@ -7,14 +7,14 @@
 #SBATCH --cpus-per-task=16
 #SBATCH --gres=gpu:1
 #SBATCH --mem=16G    
-#SBATCH --time=03-00:00:00
+#SBATCH --time=01-00:00:00
 #SBATCH --mail-user=mklasby@ucalgary.ca
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --account=def-yani
 
 ## --- Migrate venv / data to local node storage --- ##
 export WORKDIR=/home/mklasby/projects/def-yani/mklasby/condensed-sparsity/
-export WANDB_SWEEP_ID=hgqc3joo
+export WANDB_SWEEP_ID=uw4nrruy
 cp -r $WORKDIR/.venv $SLURM_TMPDIR/.venv
 
 ## SET ENV ##:
