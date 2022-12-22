@@ -2,7 +2,7 @@
 
 ## GET RESOURCES ##
 
-#SBATCH --job-name=wandb_agent_${SLURM_ARRAY_JOB_ID}
+#SBATCH --job-name=cifar_wandb_agent
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 #SBATCH --gres=gpu:1
@@ -14,7 +14,7 @@
 
 ## --- Migrate venv / data to local node storage --- ##
 export WORKDIR=/home/mklasby/projects/def-yani/mklasby/condensed-sparsity/
-export WANDB_SWEEP_ID=uw4nrruy
+export WANDB_SWEEP_ID=b8oddlxz
 cp -r $WORKDIR/.venv $SLURM_TMPDIR/.venv
 
 ## SET ENV ##:
