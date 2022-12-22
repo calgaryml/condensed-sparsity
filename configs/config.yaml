@@ -90,7 +90,7 @@ training:
   # Momentum coefficient for SGD optimizer
   momentum: 0.9  # 0.9 -> rigl value
   # Label smoothing for cross entropy
-  label_smoothing: null  # 0.1 for imagenet, 0.0 or null for cifar
+  label_smoothing: 0.0  # 0.1 for imagenet, 0.0 for cifar
 
 
   ## Scheduler
