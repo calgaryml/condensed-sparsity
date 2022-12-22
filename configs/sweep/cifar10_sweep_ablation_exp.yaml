@@ -1,7 +1,7 @@
 program: train_rigl.py
 method: grid
 project: condensed-rigl
-name: cifar10_sweep_ablation_exp
+name: cifar10_vanilla_rigl_ablation
 metric:
   goal: maximize
   name: accuracy
@@ -11,7 +11,7 @@ parameters:
   dataset:
     value: cifar10
   rigl.dense_allocation: 
-    values: [0.01, 0.05, 0.1, 0.75, 0.5]
+    values: [0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5,]
       # percentage of dense parameters allowed. if None, pruning will not 
       # be used. must be on the interval (0, 1]
   rigl.const_fan_in: 
