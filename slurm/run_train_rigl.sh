@@ -31,7 +31,7 @@ source ${SLURM_TMPDIR}/.venv/bin/activate
 wandb online
 python3 ./train_rigl.py \
     experiment.resume_from_checkpoint=True \
-    experiment.run_id=3cnfm1wh \
+    experiment.run_id=8euvnykc \
     dataset=cifar10 \
     model=resnet18 \
     rigl.dense_allocation=0.01 \
