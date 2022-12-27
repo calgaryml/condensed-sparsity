@@ -15,7 +15,7 @@
 ## --- Migrate venv / data to local node storage --- ##
 export SCRATCH=/scratch/mklasby/ILSVRC/
 export WORKDIR=/home/mklasby/projects/def-yani/mklasby/condensed-sparsity/
-export WANDB_SWEEP_ID=
+export WANDB_SWEEP_ID=snb0sphc
 cp -r $WORKDIR/.venv $SLURM_TMPDIR/.venv
 cp $SCRATCH/ILSVRC2012_devkit_t12.tar.gz $SLURM_TMPDIR
 cp $SCRATCH/ILSVRC2012_img_train.tar $SLURM_TMPDIR
@@ -26,4 +26,5 @@ module load python/3.8.10 cuda/11.4 cudnn
 source ${SLURM_TMPDIR}/.venv/bin/activate
 
 ## RUN SCRIPT ##
+wandb online
 wandb agent condensed-sparsity/condensed-rigl/${WANDB_SWEEP_ID}
