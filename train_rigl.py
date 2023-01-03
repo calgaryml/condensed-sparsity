@@ -388,13 +388,12 @@ def train(
                     loss.item(),
                 )
             )
-            wandb.log(
-                {
-                    "ITOP Rate": pruner.itop_rs,
-                    "Training Loss": loss.item(),
-                },
-                step=step,
-            )
+            wandb_data = {
+                "Training Loss": loss.item(),
+            }
+            if pruner is not None:
+                wandb_data["ITOP Rate"] = pruner.itop_rs
+            wandb.log(wandb_data, step=step)
         if cfg.training.dry_run:
             logger.warning("Dry run, exiting after one training step")
             return step
