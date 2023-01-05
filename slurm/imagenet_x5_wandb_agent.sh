@@ -5,10 +5,10 @@
 #SBATCH --job-name=imagenet_agent
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=16
+#SBATCH --cpus-per-task=32
 #SBATCH --gpus-per-node=v100l:4
 #SBATCH --mem=125G
-#SBATCH --time=1-00:00:00
+#SBATCH --time=14-00:00:00
 #SBATCH --mail-user=mklasby@ucalgary.ca
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --account=def-yani
