@@ -116,7 +116,11 @@ class RigLConstFanScheduler(RigLScheduler):
             init_method_str,
             use_sparse_const_fan_in_for_ablation,
         )
-        self._dynamically_ablated_neuron_idx = [[] for _ in range(len(self.W))]
+        if not hasattr(self, "dynamically_ablated_neuron_idx"):
+            # Only init if not loaded by checkpoint
+            self.dynamically_ablated_neuron_idx = [
+                [] for _ in range(len(self.W))
+            ]
 
     @torch.no_grad()
     def random_sparsify(self) -> None:
@@ -182,19 +186,20 @@ class RigLConstFanScheduler(RigLScheduler):
         s = super().__str__()
         s = s[:-1]  # Remove trailing ')'
         const_fan_ins = []
-        for mask, w, neurons_ablated in zip(
+        for idx, (mask, w, neurons_ablated) in enumerate(zip(
             self.backward_masks,
             self.W,
-            self._dynamically_ablated_neuron_idx,
-        ):
+            self.dynamically_ablated_neuron_idx,
+        )):
             if mask is None:
                 fan_in, _ = calculate_fan_in_and_fan_out(w)
                 const_fan_ins.append(fan_in)
             else:
                 try:
-                    active_filters = [
-                        i for i in range(len(w)) if i not in neurons_ablated
-                    ]
+                    # active_filters = [
+                    #     i for i in range(len(w)) if i not in neurons_ablated
+                    # ]
+                    active_filters = self.active_neurons[idx]
                     const_fan_ins.append(
                         get_fan_in_tensor(mask[active_filters]).unique().item()
                     )
@@ -211,7 +216,7 @@ class RigLConstFanScheduler(RigLScheduler):
         )
         s = (
             f"{s}Neurons Dynamically Ablated per layer = "
-            f"{str([len(x) for x in self._dynamically_ablated_neuron_idx])}\n)"
+            f"{str([len(x) for x in self.dynamically_ablated_neuron_idx])}\n)"
         )
         return s
 
@@ -228,12 +233,12 @@ class RigLConstFanScheduler(RigLScheduler):
         is_dist = dist.is_initialized()
         world_size = dist.get_world_size() if is_dist else None
 
-        self._dynamically_ablated_neuron_idx = []
+        self.dynamically_ablated_neuron_idx = []
         last_layer_idx = len(self.W) - 1
         for idx, w in enumerate(self.W):
             # if sparsity is 0%, skip
             if self.S[idx] <= 0:
-                self._dynamically_ablated_neuron_idx.append([])
+                self.dynamically_ablated_neuron_idx.append([])
                 continue
 
             # calculate raw scores
@@ -291,7 +296,7 @@ class RigLConstFanScheduler(RigLScheduler):
                     mask=self.backward_masks[idx],
                     weight=self.W[idx],
                 )
-            self._dynamically_ablated_neuron_idx.append(neurons_to_ablate)
+            self.dynamically_ablated_neuron_idx.append(neurons_to_ablate)
             # print(f"neurons to ablate = {neurons_to_ablate}")
             # print(f"len neurons to ablate = {len(neurons_to_ablate)}")
             n_fan_in = get_fan_in_after_ablation(
