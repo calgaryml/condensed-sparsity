@@ -54,12 +54,17 @@ def get_lr_scheduler(
     optim: torch.optim.Optimizer,
     state_dict: Optional[Dict[str, Any]] = None,
 ) -> torch.optim.lr_scheduler._LRScheduler:
+    if state_dict is not None:
+        last_epoch = state_dict["last_epoch"]
+    else:
+        last_epoch = -1
     schedulers = {
         "step_lr": partial(
             torch.optim.lr_scheduler.StepLR,
             optimizer=optim,
             step_size=cfg.training.step_size,
             gamma=cfg.training.gamma,
+            last_epoch=last_epoch,
         ),
         "step_lr_with_warm_up": partial(  # For imagnet
             StepLrWithLinearWarmUp,
@@ -69,6 +74,7 @@ def get_lr_scheduler(
             gamma=cfg.training.gamma,
             init_lr=cfg.training.init_lr,
             lr=cfg.training.lr,
+            last_epoch=last_epoch,
         ),
         "cosine_annealing_with_warm_up": partial(
             CosineAnnealingWithLinearWarmUp,
@@ -77,6 +83,7 @@ def get_lr_scheduler(
             eta_min=0,
             lr=cfg.training.lr,
             warm_up_steps=cfg.training.warm_up_steps,
+            last_epoch=last_epoch,
         ),
     }
     if cfg.training.scheduler.lower() not in list(schedulers.keys()):
