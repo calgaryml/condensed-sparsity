@@ -53,6 +53,7 @@ def get_lr_scheduler(
     cfg: OmegaConf,
     optim: torch.optim.Optimizer,
     state_dict: Optional[Dict[str, Any]] = None,
+    logger=None,
 ) -> torch.optim.lr_scheduler._LRScheduler:
     if state_dict is not None:
         last_epoch = state_dict["last_epoch"]
@@ -75,6 +76,7 @@ def get_lr_scheduler(
             init_lr=cfg.training.init_lr,
             lr=cfg.training.lr,
             last_epoch=last_epoch,
+            logger=logger,
         ),
         "cosine_annealing_with_warm_up": partial(
             CosineAnnealingWithLinearWarmUp,
