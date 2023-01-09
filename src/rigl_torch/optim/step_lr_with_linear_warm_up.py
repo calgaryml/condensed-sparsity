@@ -1,6 +1,6 @@
 import numpy as np
 from torch.optim.lr_scheduler import _LRScheduler
-from typing import Union, List
+from typing import Union, List, Optional
 from omegaconf.listconfig import ListConfig
 import logging
 
@@ -16,6 +16,7 @@ class StepLrWithLinearWarmUp(_LRScheduler):
         verbose=False,
         lr=0.001,
         init_lr=None,
+        logger: Optional[logging.Logger] = None,
     ):
         if isinstance(step_size, ListConfig):
             step_size = list(step_size)
@@ -30,7 +31,10 @@ class StepLrWithLinearWarmUp(_LRScheduler):
         self._linear_warmup_lrs = np.linspace(
             init_lr, self.lr, self.warm_up_steps
         )
-        self._logger = logging.getLogger(__file__)
+        if logger is None:
+            self._logger = logging.getLogger(__file__)
+        else:
+            self._logger = logger
         super().__init__(optimizer, last_epoch=last_epoch, verbose=verbose)
 
     def get_lr(self):
