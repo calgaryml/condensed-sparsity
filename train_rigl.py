@@ -306,6 +306,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             writer.add_scalar("loss", loss, epoch)
             writer.add_scalar("accuracy", acc, epoch)
             wandb.log({"Learning Rate": scheduler.get_last_lr()[0]}, step=step)
+            logger.info(f"Learning Rate: {scheduler.get_last_lr()[0]}")
             checkpoint.current_acc = acc
             checkpoint.step = step
             checkpoint.epoch = epoch
