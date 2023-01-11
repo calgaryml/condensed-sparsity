@@ -5,10 +5,10 @@ import torch
 import torch.distributed as dist
 import math
 from rigl_torch.utils.rigl_utils import (
+    active_neuron_count_in_layer,
     get_fan_in_tensor,
     get_fan_in_after_ablation,
     calculate_fan_in_and_fan_out,
-    active_neuron_count_in_layer,
 )
 from rigl_torch.rigl_scheduler import RigLScheduler
 from rigl_torch.exceptions import (
@@ -186,19 +186,18 @@ class RigLConstFanScheduler(RigLScheduler):
         s = super().__str__()
         s = s[:-1]  # Remove trailing ')'
         const_fan_ins = []
-        for idx, (mask, w, neurons_ablated) in enumerate(zip(
-            self.backward_masks,
-            self.W,
-            self.dynamically_ablated_neuron_idx,
-        )):
+        for idx, (mask, w, neurons_ablated) in enumerate(
+            zip(
+                self.backward_masks,
+                self.W,
+                self.dynamically_ablated_neuron_idx,
+            )
+        ):
             if mask is None:
                 fan_in, _ = calculate_fan_in_and_fan_out(w)
                 const_fan_ins.append(fan_in)
             else:
                 try:
-                    # active_filters = [
-                    #     i for i in range(len(w)) if i not in neurons_ablated
-                    # ]
                     active_filters = self.active_neurons[idx]
                     const_fan_ins.append(
                         get_fan_in_tensor(mask[active_filters]).unique().item()
@@ -400,7 +399,18 @@ class RigLConstFanScheduler(RigLScheduler):
                 )
             else:
                 if self.use_sparse_const_fan_in_for_ablation:
-                    total_fan_in = active_neuron_count_in_layer(mask, weight)
+                    # We will compare against the const-fan-in before ablation
+                    total_fan_in = get_fan_in_after_ablation(
+                        weight, 0, sparsity
+                    )
+                    active_neuron_count = active_neuron_count_in_layer(
+                        mask, weight
+                    )
+                    self._logger.info(
+                        f"Total sparse fan-in = {total_fan_in}\n"
+                        f"Num active neurons = {active_neuron_count}"
+                    )
+
                 else:
                     total_fan_in = math.prod(saliency_mask.shape[1:])
                 _min_salient_weights_per_neuron = max(

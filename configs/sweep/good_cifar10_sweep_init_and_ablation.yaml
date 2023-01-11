@@ -1,7 +1,7 @@
 program: train_rigl.py
 method: grid
 project: condensed-rigl
-name: cifar10_sweep_init_and_ablation
+name: cifar10_sparse_fan_ablation_fixed
 metric:
   goal: maximize
   name: accuracy
