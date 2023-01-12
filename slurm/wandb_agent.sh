@@ -14,7 +14,7 @@
 
 ## --- Migrate venv / data to local node storage --- ##
 export WORKDIR=/home/mklasby/projects/def-yani/mklasby/condensed-sparsity/
-export WANDB_SWEEP_ID=0irf1g96
+export WANDB_SWEEP_ID=1fik36lx
 cp -r $WORKDIR/.venv $SLURM_TMPDIR/.venv
 
 ## SET ENV ##:
