@@ -5,7 +5,6 @@ import torch
 import torch.distributed as dist
 import math
 from rigl_torch.utils.rigl_utils import (
-    active_neuron_count_in_layer,
     get_fan_in_tensor,
     get_fan_in_after_ablation,
     calculate_fan_in_and_fan_out,
@@ -402,13 +401,6 @@ class RigLConstFanScheduler(RigLScheduler):
                     # We will compare against the const-fan-in before ablation
                     total_fan_in = get_fan_in_after_ablation(
                         weight, 0, sparsity
-                    )
-                    active_neuron_count = active_neuron_count_in_layer(
-                        mask, weight
-                    )
-                    self._logger.info(
-                        f"Total sparse fan-in = {total_fan_in}\n"
-                        f"Num active neurons = {active_neuron_count}"
                     )
 
                 else:
