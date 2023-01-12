@@ -30,7 +30,7 @@ parameters:
   training.batch_size:
     value: 128
   training.max_steps:
-    value: 0
+    value: null
   training.weight_decay:
     value: 5.0e-4
   training.label_smoothing:
