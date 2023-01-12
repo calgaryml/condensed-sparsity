@@ -111,11 +111,11 @@ docker run -itd --env-file ./.env \
   rigl-agent:latest \
   python ./train_rigl.py \
   dataset=cifar10 \
-  model=resnet18 \
+  model=wide_resnet22 \
   rigl.dense_allocation=0.01 \
   rigl.delta=100 \
   rigl.grad_accumulation_n=1 \
-  rigl.min_salient_weights_per_neuron=1 \
+  rigl.min_salient_weights_per_neuron=0.1 \
   training.batch_size=128 \
   training.max_steps=null \
   training.weight_decay=5.0e-4 \
