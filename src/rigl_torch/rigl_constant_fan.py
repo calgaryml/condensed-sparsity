@@ -402,7 +402,6 @@ class RigLConstFanScheduler(RigLScheduler):
                     total_fan_in = get_fan_in_after_ablation(
                         weight, 0, sparsity
                     )
-
                 else:
                     total_fan_in = math.prod(saliency_mask.shape[1:])
                 _min_salient_weights_per_neuron = max(
