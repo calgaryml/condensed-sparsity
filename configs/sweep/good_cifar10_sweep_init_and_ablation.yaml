@@ -20,7 +20,7 @@ parameters:
       # sparsity_distribution: erk
       # # Define layer-wise sparsity distribution. Options include `uniform` & `erk`
   rigl.filter_ablation_threshold:
-    values: [0.2, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0001]
+    values: [0.5, 0.4, 0.3, 0.2, 0.1, 0.05, 0.01, 0.005]
   training.seed:
     values: [8746, 6037, 7303, 2078, 42]
 
