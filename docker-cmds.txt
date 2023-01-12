@@ -136,9 +136,9 @@ python ./train_rigl.py \
 dataset=imagenet \
 model=resnet50 \
 rigl.dense_allocation=0.01 \
-rigl.delta=800 \
+rigl.delta=50 \
 rigl.grad_accumulation_n=8 \
-rigl.min_salient_weights_per_neuron=1 \
+rigl.min_salient_weights_per_neuron=0.2 \
 training.batch_size=512 \
 training.max_steps=256000 \
 training.weight_decay=0.0001 \

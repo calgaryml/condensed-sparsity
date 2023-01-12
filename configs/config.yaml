@@ -57,7 +57,7 @@ rigl:
   # If False, min_salient_weights_per_neuron as a percentage will ablate based on percentage of dense fan-in. If True, use sparse fan in as percentage demoniator.
   use_sparse_const_fan_in_for_ablation: True
   # Param for minimum number of salient weights per neuron. If < this value, the neuron will be dynamically ablated. 
-  min_salient_weights_per_neuron: 0.005
+  min_salient_weights_per_neuron: 0.2
   # If True, update weight initalization to account for sparse const fan in. 
   use_sparse_initialization: True
   # Param to choose between sparse init methods -> options include "kaiming_uniform", "kaiming_normal", "sparse_torch", and "grad_flow_init"
