@@ -27,9 +27,6 @@ for instance in missing_params:
     )
     for x in args:
         config_string += f"{x} "
-    command = (arg_string + config_string).strip().split(" ")
+    command = ("sbatch " + arg_string + config_string).strip().split(" ")
     print(command)
-    # command = (arg_string+config_string)
-    # subprocess.run([arg_string, config_string])
     subprocess.run(command)
-    break
