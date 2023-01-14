@@ -190,7 +190,9 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
     if model_state is not None:
         model.load_state_dict(model_state)
     optimizer = get_optimizer(cfg, model, state_dict=optimizer_state)
-    scheduler = get_lr_scheduler(cfg, optimizer, state_dict=scheduler_state)
+    scheduler = get_lr_scheduler(
+        cfg, optimizer, state_dict=scheduler_state, logger=logger
+    )
     pruner = None
     if cfg.rigl.dense_allocation is not None:
         T_end = get_T_end(cfg, train_loader)
@@ -306,6 +308,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             writer.add_scalar("loss", loss, epoch)
             writer.add_scalar("accuracy", acc, epoch)
             wandb.log({"Learning Rate": scheduler.get_last_lr()[0]}, step=step)
+            logger.info(f"Learning Rate: {scheduler.get_last_lr()[0]}")
             checkpoint.current_acc = acc
             checkpoint.step = step
             checkpoint.epoch = epoch
