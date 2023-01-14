@@ -28,3 +28,6 @@ source ${SLURM_TMPDIR}/.venv/bin/activate
 ## RUN SCRIPT ##
 wandb online
 wandb agent condensed-sparsity/condensed-rigl/${WANDB_SWEEP_ID}
+
+#SBATCH --time=3-00:00:00
+#SBATCH --gres=gpu:v100l:2

@@ -9,5 +9,6 @@
     80,
   ],
   "autoDocstring.docstringFormat": "google",
-  "files.insertFinalNewline": true
+  "files.insertFinalNewline": true,
+  "python.analysis.typeCheckingMode": "off"
 }
