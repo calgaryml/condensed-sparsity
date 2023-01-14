@@ -136,9 +136,9 @@ python ./train_rigl.py \
 dataset=imagenet \
 model=resnet50 \
 rigl.dense_allocation=0.01 \
-rigl.delta=50 \
+rigl.delta=800 \
 rigl.grad_accumulation_n=8 \
-rigl.min_salient_weights_per_neuron=0.2 \
+rigl.min_salient_weights_per_neuron=0.5 \
 training.batch_size=512 \
 training.max_steps=256000 \
 training.weight_decay=0.0001 \
@@ -150,6 +150,7 @@ training.scheduler=step_lr_with_warm_up \
 training.step_size=[30,70,90] \
 training.gamma=0.1 \
 compute.distributed=True \
+compute.world_size=4 \
 rigl.use_sparse_initialization=True \
 rigl.init_method_str=grad_flow_init
 
