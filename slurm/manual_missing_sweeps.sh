@@ -2,12 +2,12 @@
 
 ## GET RESOURCES ##
 
-#SBATCH --job-name=run_train_rigl
+#SBATCH --job-name=missing_sweep
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 #SBATCH --gres=gpu:1
 #SBATCH --mem=16G    
-#SBATCH --time=03:00:00
+#SBATCH --time=06:00:00
 #SBATCH --mail-user=mklasby@ucalgary.ca
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --account=def-yani
@@ -23,15 +23,32 @@ export WORKDIR=/home/mklasby/projects/def-yani/mklasby/condensed-sparsity/
 cp -r ${WORKDIR}/.venv ${SLURM_TMPDIR}
 
 
-# ## SET ENV ##:
+## SET ENV ##:
 module load python/3.8.10 cuda/11.4 cudnn
 source ${SLURM_TMPDIR}/.venv/bin/activate
 
 ## RUN SCRIPT ##
-id=$1
-printf "Id recieved: ${id}"
 wandb online
-python3 ./train_rigl.py \
+python3 ./train_rigl.py "${@}"
     experiment.resume_from_checkpoint=True \
-    experiment.run_id=${id} \
-    compute.distributed=False
+    experiment.run_id=8euvnykc \
+    dataset=cifar10 \
+    model=resnet18 \
+    rigl.dense_allocation=0.01 \
+    rigl.delta=100 \
+    rigl.grad_accumulation_n=1 \
+    rigl.min_salient_weights_per_neuron=1 \
+    training.batch_size=128 \
+    training.max_steps=null \
+    training.weight_decay=5.0e-4 \
+    training.label_smoothing=0 \
+    training.lr=0.1 \
+    training.epochs=250 \
+    training.warm_up_steps=0 \
+    training.scheduler=step_lr \
+    training.step_size=77 \
+    training.gamma=0.2 \
+    compute.distributed=False \
+    rigl.use_sparse_initialization=True \
+    rigl.init_method_str=grad_flow_init \
+    training.seed=42

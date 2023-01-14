@@ -6,7 +6,14 @@ api = wandb.Api()
 # Project is specified by <entity/project-name>
 runs = api.runs("condensed-sparsity/condensed-rigl")
 
-summary_list, config_list, name_list, state_list, id_list = [], [], [], [], []
+summary_list, config_list, name_list, state_list, id_list, tags = (
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+)
 sweep_list = []
 for run in runs:
     # .summary contains the output keys/values for metrics like accuracy.
@@ -27,6 +34,7 @@ for run in runs:
     if hasattr(run.sweep, "id"):
         sweep_id = run.sweep.id
     sweep_list.append(sweep_id)
+    tags.append(run.tags)
 
 runs_df = pd.DataFrame(
     {
@@ -36,6 +44,7 @@ runs_df = pd.DataFrame(
         "id": id_list,
         "state": state_list,
         "sweep_id": sweep_list,
+        "tags": tags,
     }
 )
 

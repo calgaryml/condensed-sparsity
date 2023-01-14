@@ -4,9 +4,9 @@
 
 #SBATCH --job-name=train_imagenet
 #SBATCH --ntasks=1
-#SBATCH -p bigmem
+#SBATCH -p gpu-v100
 #SBATCH --cpus-per-task=16
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:2
 #SBATCH --mem=325G
 #SBATCH --time=1-00:00:00
 #SBATCH --mail-user=mklasby@ucalgary.ca
@@ -18,9 +18,9 @@ export WORKDIR=/work/souza_lab/lasby/condensed-sparsity
 export SLURM_TMPDIR=/dev/shm
 export SCRATCH=/work/souza_lab/Data/ILSVRC2012
 
-cp $SCRATCH/ILSVRC2012_devkit_t12.tar.gz $SLURM_TMPDIR
-cp $SCRATCH/ILSVRC2012_img_train.tar $SLURM_TMPDIR
-cp $SCRATCH/ILSVRC2012_img_val.tar $SLURM_TMPDIR
+# cp $SCRATCH/ILSVRC2012_devkit_t12.tar.gz $SLURM_TMPDIR
+# cp $SCRATCH/ILSVRC2012_img_train.tar $SLURM_TMPDIR
+# cp $SCRATCH/ILSVRC2012_img_val.tar $SLURM_TMPDIR
 cp -r $WORKDIR/.venv $SLURM_TMPDIR
 
 ## SET ENV ##:
