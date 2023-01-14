@@ -6,8 +6,7 @@ ARG WORKSPACE_DIR=/home/user/condensed-sparsity
 ARG USER_UID=1000003
 ARG USER_GID=1000001
 
-# We use this image as latest tag is still on py37
-FROM pytorch/pytorch:1.11.0-cuda11.3-cudnn8-devel AS pytorch-base
+FROM pytorch/pytorch:1.13.1-cuda11.6-cudnn8-devel AS pytorch-base
 ARG USERNAME
 ARG WORKSPACE_DIR
 ARG USER_UID
@@ -17,14 +16,14 @@ SHELL ["/bin/bash", "-c"]
 
 # Deal with nvidia GPG key issues
 # https://developer.nvidia.com/blog/updating-the-cuda-linux-gpg-repository-key/
-ARG DISTRO=ubuntu1804
-ARG ARCH=x86_64
-RUN rm /etc/apt/sources.list.d/cuda.list
-RUN rm /etc/apt/sources.list.d/nvidia-ml.list
-RUN apt-key del 7fa2af80
-RUN apt-get update && apt-get install -y wget
-RUN wget https://developer.download.nvidia.com/compute/cuda/repos/$DISTRO/$ARCH/cuda-keyring_1.0-1_all.deb \
-    && dpkg -i cuda-keyring_1.0-1_all.deb
+# ARG DISTRO=ubuntu1804
+# ARG ARCH=x86_64
+# RUN rm /etc/apt/sources.list.d/cuda.list
+# RUN rm /etc/apt/sources.list.d/nvidia-ml.list
+# RUN apt-key del 7fa2af80
+# RUN apt-get update && apt-get install -y wget
+# RUN wget https://developer.download.nvidia.com/compute/cuda/repos/$DISTRO/$ARCH/cuda-keyring_1.0-1_all.deb \
+#     && dpkg -i cuda-keyring_1.0-1_all.deb
 
 # Create the user
 RUN groupadd --gid $USER_GID ${USERNAME} \
@@ -78,4 +77,4 @@ RUN python -m venv .venv && \
     poetry install -vvv
 
 RUN echo "source ${VENV_PATH}/bin/activate" >> /home/$USERNAME/.bashrc
-CMD wandb agent condensed-sparsity/condensed-rigl/q6n2w203
+CMD bash

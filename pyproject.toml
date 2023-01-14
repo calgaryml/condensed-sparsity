@@ -13,7 +13,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 packages= [
@@ -22,11 +22,11 @@ packages= [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.8,<3.11"
-torch={version="1.12.1+cu116*", source="torch_repo"}
-torchvision={version="^0.13.1+cu116*", source="torch_repo"}
-# torch = "1.12.1"
-# torchvision = "^0.13.1"
+python = "^3.9,<3.11"
+torch={version="1.13.1+cu116*", source="torch_repo"}
+torchvision={version="^0.14.1+cu116*", source="torch_repo"}
+# torch = "1.13.1"
+# torchvision = "^0.14.1"
 tensorboard = "^2.10.0"
 hydra-core = "^1.2.0"
 python-dotenv="0.20.0"
