@@ -33,6 +33,7 @@ python-dotenv="0.20.0"
 pytorch-lightning="1.6.5"
 scipy="1.8.0"
 wandb="0.12.5"
+xmanager="^0.3"
 
 [[tool.poetry.source]]
 name="torch_repo"
