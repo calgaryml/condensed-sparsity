@@ -5,6 +5,7 @@
 .github
 .venv
 .env
+.env.gcs
 !wandb/
 wandb/*
 !logs/

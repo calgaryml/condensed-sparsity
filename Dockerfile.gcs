@@ -34,41 +34,60 @@ RUN apt-get update \
 RUN apt-get install -y apt-transport-https ca-certificates gnupg
 RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg  add - && apt-get update -y && apt-get install google-cloud-cli -y
 
-# FROM dev-container-base AS poetry-base
-# # Install poetry
-# # https://python-poetry.org/docs/configuration/#using-environment-variables
-# ARG USERNAME
-# ARG WORKSPACE_DIR
-# ARG USER_UID
-# ARG USER_GID
-# ENV POETRY_VERSION="1.2.0" \
-#     POETRY_HOME="/home/${USERNAME}/poetry" \
-#     POETRY_NO_INTERACTION=1 \
-#     POETRY_VIRTUALENVS_IN_PROJECT=false \
-#     VENV_PATH="${WORKSPACE_DIR}/.venv" \
-#     NVIDIA_DRIVER_CAPABILITIES="all" \
-#     WORKSPACE_DIR=${WORKSPACE_DIR} \
-#     PATH="/home/${USERNAME}/.local/bin:${PATH}" \
-#     VIRTUAL_ENV=$VENV_PATH
+FROM dev-container-base AS poetry-base
+# Install poetry
+# https://python-poetry.org/docs/configuration/#using-environment-variables
+ARG USERNAME
+ARG WORKSPACE_DIR
+ARG USER_UID
+ARG USER_GID
+ENV POETRY_VERSION="1.2.0" \
+    POETRY_HOME="/home/${USERNAME}/poetry" \
+    POETRY_NO_INTERACTION=1 \
+    POETRY_VIRTUALENVS_IN_PROJECT=false \
+    VENV_PATH="${WORKSPACE_DIR}/.venv" \
+    NVIDIA_DRIVER_CAPABILITIES="all" \
+    WORKSPACE_DIR=${WORKSPACE_DIR} \
+    PATH="/home/${USERNAME}/.local/bin:${PATH}" \
+    VIRTUAL_ENV=$VENV_PATH
 
-# ENV PATH="$VENV_PATH/bin:$POETRY_HOME/bin:$PATH"
+ENV PATH="$VENV_PATH/bin:$POETRY_HOME/bin:$PATH"
 
-# RUN curl -sSL https://install.python-poetry.org | python3 - && exec bash
+RUN curl -sSL https://install.python-poetry.org | python3 - && exec bash
 
-# # Install project requirements 
-# RUN mkdir ${WORKSPACE_DIR}/ && \
-#     chown -R ${USER_UID}:${USER_GID} ${WORKSPACE_DIR} && \
-#     chmod -R a+rX ${WORKSPACE_DIR}
-# WORKDIR ${WORKSPACE_DIR}
-# COPY --chown=${USER_UID}:${USER_GID} . ${WORKSPACE_DIR}
-# RUN mkdir ${VENV_PATH}/ && \
-#     chown -R ${USER_UID}:${USER_GID} ${VENV_PATH} && \
-#     chmod -R a+rX ${VENV_PATH}
-# USER user
-# RUN python -m venv .venv && \ 
-#     source .venv/bin/activate && \
-#     pip install --upgrade pip && \
-#     poetry install -vvv
+# Install project requirements 
+RUN mkdir ${WORKSPACE_DIR}/ && \
+    chown -R ${USER_UID}:${USER_GID} ${WORKSPACE_DIR} && \
+    chmod -R a+rX ${WORKSPACE_DIR}
+WORKDIR ${WORKSPACE_DIR}
+COPY --chown=${USER_UID}:${USER_GID} . ${WORKSPACE_DIR}
+RUN mkdir ${VENV_PATH}/ && \
+    chown -R ${USER_UID}:${USER_GID} ${VENV_PATH} && \
+    chmod -R a+rX ${VENV_PATH}
+USER user
+RUN python -m venv .venv && \ 
+    source .venv/bin/activate && \
+    pip install --upgrade pip && \
+    poetry install -vvv
 
-# RUN echo "source ${VENV_PATH}/bin/activate" >> /home/$USERNAME/.bashrc
-CMD bash
+RUN echo "source ${VENV_PATH}/bin/activate" >> /home/$USERNAME/.bashrc
+
+CMD python ./train_rigl.py \
+    training.dry_run=True \
+    dataset=cifar10 \
+    model=resnet18 \
+    rigl.dense_allocation=0.01 \
+    rigl.delta=100 \
+    rigl.grad_accumulation_n=1 \
+    rigl.min_salient_weights_per_neuron=0.05 \
+    training.batch_size=128 \
+    training.max_steps=null \
+    training.weight_decay=5.0e-4 \
+    training.label_smoothing=0 \
+    training.lr=0.1 \
+    training.epochs=250 \
+    training.warm_up_steps=0 \
+    training.scheduler=step_lr \
+    training.step_size=77 \
+    training.gamma=0.2 \
+    compute.distributed=False
