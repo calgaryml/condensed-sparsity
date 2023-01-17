@@ -66,6 +66,7 @@ def init_wandb(cfg: omegaconf.DictConfig, wandb_init_kwargs: Dict[str, Any]):
             cfg=cfg, resolve=True, throw_on_missing=True
         ),
         settings=wandb.Settings(start_method=cfg.wandb.start_method),
+        dir=cfg.paths.logs,
         **wandb_init_kwargs,
     )
     return run
@@ -73,6 +74,7 @@ def init_wandb(cfg: omegaconf.DictConfig, wandb_init_kwargs: Dict[str, Any]):
 
 @hydra.main(config_path="configs/", config_name="config", version_base="1.2")
 def initalize_main(cfg: omegaconf.DictConfig) -> None:
+    print(f"steps: {cfg.training.step_size}")
     use_cuda = not cfg.compute.no_cuda and torch.cuda.is_available()
     if not use_cuda:
         raise SystemError("GPU has stopped responding...waiting to die!")
@@ -544,5 +546,8 @@ def _get_steps_to_accumulate_grad(
 
 
 if __name__ == "__main__":
-    dotenv.load_dotenv(dotenv_path=".env", override=True)
+    import os
+
+    dotenv.load_dotenv(dotenv_path=".env", override=False)
+    print(f"Base Path: {os.environ['BASE_PATH']}")
     initalize_main()

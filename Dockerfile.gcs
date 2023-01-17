@@ -33,6 +33,7 @@ RUN apt-get update \
 # https://cloud.google.com/sdk/docs/install#deb
 RUN apt-get install -y apt-transport-https ca-certificates gnupg
 RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg  add - && apt-get update -y && apt-get install google-cloud-cli -y
+# COPY --chown=${USER_UID}:${USER_GID} .gcloud_auth /home/user/.config/gcloud
 
 FROM dev-container-base AS poetry-base
 # Install poetry
@@ -72,22 +73,4 @@ RUN python -m venv .venv && \
 
 RUN echo "source ${VENV_PATH}/bin/activate" >> /home/$USERNAME/.bashrc
 
-CMD python ./train_rigl.py \
-    training.dry_run=True \
-    dataset=cifar10 \
-    model=resnet18 \
-    rigl.dense_allocation=0.01 \
-    rigl.delta=100 \
-    rigl.grad_accumulation_n=1 \
-    rigl.min_salient_weights_per_neuron=0.05 \
-    training.batch_size=128 \
-    training.max_steps=null \
-    training.weight_decay=5.0e-4 \
-    training.label_smoothing=0 \
-    training.lr=0.1 \
-    training.epochs=250 \
-    training.warm_up_steps=0 \
-    training.scheduler=step_lr \
-    training.step_size=77 \
-    training.gamma=0.2 \
-    compute.distributed=False
+CMD python ./train_rigl.py
