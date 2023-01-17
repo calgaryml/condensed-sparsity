@@ -8,7 +8,7 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --gpus-per-node=v100l:4
 #SBATCH --mem=125G
-#SBATCH --time=7-00:00:00
+#SBATCH --time=3-00:00:00
 #SBATCH --mail-user=mklasby@ucalgary.ca
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --account=def-rmsouza
@@ -24,7 +24,9 @@ cp $SCRATCH/ILSVRC2012_img_val.tar $SLURM_TMPDIR
 ## SET ENV ##:
 module load python/3.8.10 cuda/11.4 cudnn
 source ${SLURM_TMPDIR}/.venv/bin/activate
+id=$1
+printf "Resuming run with id == ${id}\n"
 
 ## RUN SCRIPT ##
 wandb online
-python ./train_rigl.py experiment.resume_from_checkpoint=True experiment.run_id=vchnjrf5
+python ./train_rigl.py experiment.resume_from_checkpoint=True experiment.run_id=id
