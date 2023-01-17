@@ -67,7 +67,7 @@ _imagenet_args = [
 _large_batch_imagenet_args = [
     "dataset=imagenet",
     "model=resnet50",
-    "rigl.dense_allocation=0.1",
+    "rigl.dense_allocation=0.1",  # TODO
     "rigl.delta=100",
     "rigl.grad_accumulation_n=1",
     "rigl.min_salient_weights_per_neuron=0.3",
@@ -124,13 +124,6 @@ def main(argv: Sequence[str]) -> None:
 
         args.extend(_large_batch_imagenet_args)
         executor = xm_local.Vertex(xm.JobRequirements(a100=12))
-        # job = xm.Job(
-        #         executable=executable,
-        #         executor=executor,
-        #         env_vars=env_vars,
-        #         args=args,
-        #     )
-        # print(job.args)
         experiment.add(
             xm.Job(
                 executable=executable,
