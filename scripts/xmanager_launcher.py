@@ -117,7 +117,7 @@ def main(argv: Sequence[str]) -> None:
     docker_image = "mklasby/condensed-sparsity:rigl_gcs"
     # docker_image = "gcr.io/external-collab-experiment/condensed_sparsity:20230116-211607-665612"  # noqa
     with xm_local.create_experiment(
-        experiment_title="condensed-sparsity-x5"
+        experiment_title="condensed-sparsity-x2"
     ) as experiment:
         executable_spec = xm.Dockerfile(
             path="/home/mike/condensed-sparsity/",
@@ -145,7 +145,7 @@ def main(argv: Sequence[str]) -> None:
         # args.extend(_imagenet_args)
         # executor=xm_local.Vertex(xm.JobRequirements(a100=2))
 
-        args.extend(_large_batch_imagenet_args)
+        args.extend(_x2_imagenet_args)
         executor = xm_local.Vertex(xm.JobRequirements(a100=8))
         for dense_alloc in [0.1, 0.01, 0.05, 0.2]:
             these_args = copy.deepcopy(args)
