@@ -1,8 +1,6 @@
 #!/bin/bash
-# run_ids=("hkak5806" "p5n21r8q" "bbkeuxvr" "1hfmurvv")
-dense_allocs=(0.01 0.05 0.1 0.2)
-# dense_allocs=(0.2 0.05)
+dense_allocs=(0.2 0.1 0.05 0.01)
 for da in ${dense_allocs[@]}
 do
-    sbatch ./slurm/train_imagenet_arc.sh $da
+    sbatch ./slurm/train_imagenet_x2.sh $da
 done

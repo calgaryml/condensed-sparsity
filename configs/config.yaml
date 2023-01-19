@@ -5,7 +5,7 @@ defaults:
 
 experiment:
   comment: "dense_alloc-${rigl.dense_allocation}_const_fan_in-${rigl.const_fan_in}\
-            _weight_per_neuron-${rigl.min_salient_weights_per_neuron}"
+            _weight_per_neuron-${rigl.min_salient_weights_per_neuron}_x2"
   name: ${model.name}_${dataset.name}_${experiment.comment}
   resume_from_checkpoint: False
   run_id: null
