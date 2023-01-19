@@ -64,28 +64,29 @@ _imagenet_args = [
     "rigl.use_sparse_initialization=True",
     "rigl.init_method_str=grad_flow_init",
 ]
-# _large_batch_imagenet_args = [
-#     "dataset=imagenet",
-#     "model=resnet50",
-#     "rigl.dense_allocation=0.1",  # TODO
-#     "rigl.delta=100",
-#     "rigl.grad_accumulation_n=1",
-#     "rigl.min_salient_weights_per_neuron=0.3",
-#     "training.batch_size=4096",
-#     "training.max_steps=160000",
-#     "training.weight_decay=0.0001",
-#     "training.label_smoothing=0.1",
-#     "training.lr=1.6",
-#     "training.epochs=515",
-#     "training.log_interval=200",
-#     "training.warm_up_steps=25",
-#     "training.scheduler=step_lr_with_warm_up",
-#     "training.gamma=0.1",
-#     "compute.distributed=True",
-#     "compute.world_size=8",
-#     "rigl.use_sparse_initialization=True",
-#     "rigl.init_method_str=grad_flow_init",
-# ]
+
+_x2_imagenet_args = [
+    "dataset=imagenet",
+    "training.log_interval=200",
+    "model=resnet50",
+    # "rigl.dense_allocation=0.1",  # TODO
+    "rigl.delta=200",
+    "rigl.grad_accumulation_n=2",
+    "rigl.min_salient_weights_per_neuron=0.3",
+    "training.batch_size=2048",
+    "training.max_steps=128000",
+    "training.weight_decay=0.0001",
+    "training.label_smoothing=0.1",
+    "training.lr=0.8",
+    "training.epochs=206",
+    "training.warm_up_steps=10",
+    "training.scheduler=step_lr_with_warm_up",
+    "training.gamma=0.1",
+    "compute.distributed=True",
+    "compute.world_size=8",
+    "rigl.use_sparse_initialization=True",
+    "rigl.init_method_str=grad_flow_init",
+]
 
 _large_batch_imagenet_args = [
     "dataset=imagenet",
