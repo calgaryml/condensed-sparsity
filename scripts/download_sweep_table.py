@@ -1,6 +1,7 @@
 import pandas as pd
 import wandb
 import ast
+from datetime import datetime
 
 
 def parse_wandb_results(project_results_csv: str) -> pd.DataFrame:
@@ -26,17 +27,16 @@ def parse_wandb_results(project_results_csv: str) -> pd.DataFrame:
     )
     sorted_cols = sorted(combined_df.columns)
     combined_df = combined_df[sorted_cols]
-    combined_df.to_csv("../processed_results.csv")
+    combined_df.to_csv("./processed_results.csv")
     return combined_df
 
 
 if __name__ == "__main__":
-
+    start_time = datetime.now()
+    print("Downloading runs...")
     api = wandb.Api()
-
     # Project is specified by <entity/project-name>
     runs = api.runs("condensed-sparsity/condensed-rigl")
-
     summary_list, config_list, name_list, state_list, id_list, tags = (
         [],
         [],
@@ -46,6 +46,7 @@ if __name__ == "__main__":
         [],
     )
     sweep_list = []
+
     for run in runs:
         # .summary contains the output keys/values for metrics like accuracy.
         #  We call ._json_dict to omit large files
@@ -80,7 +81,12 @@ if __name__ == "__main__":
     )
 
     runs_df.to_csv("project_raw_data.csv")
+    print("Raw data download completed and saved to project_raw_data.csv")
+    print("Parsing results into human readable format...")
 
     processed_df = parse_wandb_results("./project_raw_data.csv")
+    print("Parsing complete. Results saved to processed_results.csv")
+    end_time = datetime.now() - start_time
+    print(f"Script completed in {end_time}")
 
     # Load with df = pd.read_csv("../processed_results.csv", index_col="id")

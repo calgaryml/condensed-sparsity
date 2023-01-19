@@ -205,7 +205,6 @@ class RigLScheduler:
 
         else:
             self._max_inactive_weights = None
-            self._max_inactive_weights = None
             self.sparsity_distribution = sparsity_distribution
             self.static_topo = static_topo
             self.grad_accumulation_n = grad_accumulation_n
