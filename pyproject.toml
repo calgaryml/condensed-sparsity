@@ -23,10 +23,10 @@ packages= [
 
 [tool.poetry.dependencies]
 python = "^3.8,<3.11"
-torch={version="1.12.1+cu116*", source="torch_repo"}
-torchvision={version="^0.13.1+cu116*", source="torch_repo"}
-# torch = "1.12.1"
-# torchvision = "^0.13.1"
+#torch={version="1.12.1+cu116*", source="torch_repo"}
+#torchvision={version="^0.13.1+cu116*", source="torch_repo"}
+torch = "1.12.1"
+torchvision = "^0.13.1"
 tensorboard = "^2.10.0"
 hydra-core = "^1.2.0"
 python-dotenv="0.20.0"

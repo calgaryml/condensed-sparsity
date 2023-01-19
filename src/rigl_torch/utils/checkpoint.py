@@ -134,7 +134,7 @@ class Checkpoint(object):
         if not checkpoint_path.is_file():
             raise ValueError(f"{checkpoint_path} not found!")
         cls._logger.info(f"Loading checkpoint from {checkpoint_path}...")
-        state = torch.load(checkpoint_path, map_location=f"cuda:{rank}")
+        state = torch.load(checkpoint_path, map_location="cpu")
         return Checkpoint(**state)
 
     @classmethod
