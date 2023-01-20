@@ -219,7 +219,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             sparsity_distribution=cfg.rigl.sparsity_distribution,
             erk_power_scale=cfg.rigl.erk_power_scale,
             state_dict=pruner_state,
-            filter_ablation_threshold=cfg.rigl.filter_ablation_threshold,
+            static_filter_ablation_threshold=cfg.rigl.static_filter_ablation_threshold,  # noqa
             static_ablation=cfg.rigl.static_ablation,
             dynamic_ablation=cfg.rigl.dynamic_ablation,
             min_salient_weights_per_neuron=cfg.rigl.min_salient_weights_per_neuron,  # noqa

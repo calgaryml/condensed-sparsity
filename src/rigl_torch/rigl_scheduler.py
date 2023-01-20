@@ -122,13 +122,14 @@ class RigLScheduler:
             scheduler from prior training checkpoint. Defaults to None.
         erk_power_scale (float, optional): Erdos-Renyi Kernel power scale
             parameter. Defaults to 1.0.
-        filter_ablation_threshold (Optional[float], optional): Percent of
-            required connections active to consider a neuron as active for
-            static ablation. Defaults to None. If None, no threshold exists and
-            static ablation will not be performed.
+       static_filter_ablation_threshold
+            (Optional[Union[float, List[List[int]]]], optional):
+            Percent of required connections active to consider a neuron as
+            active for static ablation. Defaults to None. If None, no threshold
+            exists and static ablation will not be performed.
         static_ablation (bool, optional): If True, ablates neurons at
-            initalization to reach targetted filter_ablation_threshold. Defaults
-            to False.
+            initalization to reach targetted static_filter_ablation_threshold.
+            Defaults to False.
         dynamic_ablation (bool, optional): If True, dynamically ablates neurons
             during training according to min_salient_weights_per_neuron.
             Defaults to False.
@@ -160,7 +161,9 @@ class RigLScheduler:
         grad_accumulation_n: int = 1,
         state_dict: Dict[str, Any] = None,
         erk_power_scale: float = 1.0,
-        filter_ablation_threshold: Optional[float] = None,
+        static_filter_ablation_threshold: Optional[
+            Union[float, List[List[int]]]
+        ] = None,
         static_ablation: bool = False,
         dynamic_ablation: bool = False,
         min_salient_weights_per_neuron: Union[int, float] = 0,
@@ -173,7 +176,7 @@ class RigLScheduler:
         self.explored_params = None
         self.static_ablation = static_ablation
         self.dynamic_ablation = dynamic_ablation
-        self.filter_ablation_threshold = filter_ablation_threshold
+        self.static_filter_ablation_threshold = static_filter_ablation_threshold
         self.erk_power_scale = erk_power_scale
         # define the actual schedule
         self.delta_T = delta
@@ -218,7 +221,7 @@ class RigLScheduler:
             # sparsity threshold
             if self.static_ablation:
                 self.static_ablated_filters = (
-                    self.get_inital_num_filters_to_ablate()
+                    self.get_static_num_filters_to_ablate()
                 )
             else:
                 self.static_ablated_filters = [0 for _ in range(len(self.W))]
@@ -295,9 +298,6 @@ class RigLScheduler:
                 "`dynamic ablation` may be True!"
             )
         self._validate_percent_params(self.dense_allocation, "dense_allocation")
-        self._validate_percent_params(
-            self.filter_ablation_threshold, "filter_ablation_threshold"
-        )
         assert (
             self.grad_accumulation_n > 0
             and self.grad_accumulation_n < self.delta_T
@@ -308,7 +308,7 @@ class RigLScheduler:
         )
 
     @torch.no_grad()
-    def get_inital_num_filters_to_ablate(self) -> List[int]:
+    def get_static_num_filters_to_ablate(self) -> List[int]:
         """Populate list of filters to ablate with index of list corresponding
             to layer.
 
@@ -318,10 +318,9 @@ class RigLScheduler:
         inital_ablated_filters = []
         for idx, w in enumerate(self.W):
             # if sparsity is 0%, no neurons to ablate by defn.
-            if (
-                self.S[idx] <= 0
-                or self.filter_ablation_threshold is None
-                or self.filter_ablation_threshold <= 0
+            if self.static_filter_ablation_threshold is None or (
+                type(self.static_filter_ablation_threshold) == float
+                and self.static_filter_ablation_threshold <= 0
             ):
                 inital_ablated_filters.append(0)
             else:
@@ -329,7 +328,8 @@ class RigLScheduler:
                     get_static_filters_to_ablate(
                         weight_tensor=w,
                         sparsity=self.S[idx],
-                        filter_ablation_threshold=self.filter_ablation_threshold,  # noqa E501
+                        static_filter_ablation_threshold=self.static_filter_ablation_threshold,  # noqa E501
+                        layer_idx=idx,
                     )
                 )
         return inital_ablated_filters

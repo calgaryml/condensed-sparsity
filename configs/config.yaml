@@ -1,6 +1,6 @@
 defaults:
-  - dataset: imagenet
-  - model: resnet50
+  - dataset: cifar10
+  - model: resnet18
   - _self_
 
 experiment:
@@ -27,11 +27,11 @@ paths:
 rigl: 
   # percentage of dense parameters allowed. if null, pruning will not 
   # be used. must be on the interval (0, 1]
-  dense_allocation: 0.01
+  dense_allocation: 1.0
   # number of steps between rigl pruning / regrow iterations
-  delta: 400 # 4096 * 100 / 512 = 800 || 100 for cifar || x5 -> No change?
+  delta: 100 # 4096 * 100 / 512 = 800 || 100 for cifar || x5 -> No change?
   # number of gradients to accumulate before scoring for rigl
-  grad_accumulation_n: 4  # 4096 / 512 without simulated batch size, 1 otheriwse
+  grad_accumulation_n: 1  # 4096 / 512 without simulated batch size, 1 otheriwse
   # alpha param for pruning for cosine decay in determining how many connections to prune/regrow
   alpha: 0.3  # 0.3 for vanilla rigl, 0.5 for ITOP -> Inital fraction of weights to update every pruner step
   # if 1, use random sparsity topo and remain static
@@ -47,15 +47,15 @@ rigl:
   # Instructs scheduler to ignore linear layers and leave dense if True.
   ignore_linear_layers: False
   # Static ablation, if true, ablate filters at init with static mask. 
-  static_ablation: False
-  # Static Filter abalation threshold criterion -> Not used for dynamic ablation
-  filter_ablation_threshold: null # 1%
+  static_ablation: True
+  # Static Filter abalation threshold criterion -> Percentage or list of filters per layer
+  static_filter_ablation_threshold: [32, 35, 24, 27, 23, 64, 54, 52, 65, 62, 137, 114, 122, 142, 154, 319, 300, 302, 339, 306, 0]
   # Dyanmic ablation will ablate filters dynamically during traing based on gradient information. Cannot be True if static_ablation is True
-  dynamic_ablation: True
+  dynamic_ablation: False
   # If False, min_salient_weights_per_neuron as a percentage will ablate based on percentage of dense fan-in. If True, use sparse fan in as percentage demoniator.
-  use_sparse_const_fan_in_for_ablation: True
+  use_sparse_const_fan_in_for_ablation: False
   # Param for minimum number of salient weights per neuron. If < this value, the neuron will be dynamically ablated. 
-  min_salient_weights_per_neuron: 0.3
+  min_salient_weights_per_neuron: null
   # If True, update weight initalization to account for sparse const fan in. 
   use_sparse_initialization: True
   # Param to choose between sparse init methods -> options include "kaiming_uniform", "kaiming_normal", "sparse_torch", and "grad_flow_init"
@@ -63,46 +63,46 @@ rigl:
 
 training:
   # quickly check a single pass",
-  dry_run: False
+  dry_run: True
   # batch size for training
-  batch_size: 1024  # 128 for cifar10, multiples of 256 for imagenet w/ scaled lr -> 512 with 2 v100s or 4 3090s -> 1024 with 4 v100s
+  batch_size: 128  # 128 for cifar10, multiples of 256 for imagenet w/ scaled lr -> 512 with 2 v100s or 4 3090s -> 1024 with 4 v100s
   # Batch size to simulate by taking multiple steps per optimizer update (accumulate grads)
   simulated_batch_size: null
   # batch size for testing
   test_batch_size: 1000
   # number of epochs to train
-  epochs: 515  # For imagenet, training will finish at ~ epoch 102.31, use 250 for cifar10 || imagenet x5 -> 515
+  epochs: 250  # For imagenet, training will finish at ~ epoch 102.31, use 250 for cifar10 || imagenet x5 -> 515
   # random seed
   seed: 42
   # Log interval (number of mini-batch steps)
-  log_interval: 1000
+  log_interval: 200
   # For Saving the current Model
   save_model: True
   # max number of steps (will override epochs) -> Based on mini-batch steps (NOT SIMULATED BATCHES!)
-  max_steps: 640000  # 4096 * 32000 / 512 = 256000 from rigl paper || x5 -> 4096*32000/1024 = 640000
+  max_steps: null  # 4096 * 32000 / 512 = 256000 from rigl paper || x5 -> 4096*32000/1024 = 640000
 
   ## Optimization
   optimizer: sgd # "sgd", "adamw"
   # L2 Regularization for optimizer
-  weight_decay: 0.0001 # 5.0e-4 -> cifar10   0.0001 -> imagenet
+  weight_decay: 5.0e-4 # 5.0e-4 -> cifar10   0.0001 -> imagenet
   # Momentum coefficient for SGD optimizer
   momentum: 0.9  # 0.9 -> rigl value
   # Label smoothing for cross entropy
-  label_smoothing: 0.1  # 0.1 for imagenet, 0.0 for cifar
+  label_smoothing: 0.0  # 0.1 for imagenet, 0.0 for cifar
 
 
   ## Scheduler
-  scheduler: step_lr_with_warm_up # step_lr -> cifar # cosine_annealing_with_warm_up, step_lr_with_warm_up -> imagenet
+  scheduler: step_lr # step_lr -> cifar # cosine_annealing_with_warm_up, step_lr_with_warm_up -> imagenet
   # Learning rate after warmup
-  lr: 0.4  # 0.1 * batch size / 256 per original paper -> Use 1.6 for 4096 simulated batch size. 0.1 for ITOP
+  lr: 0.1  # 0.1 * batch size / 256 per original paper -> Use 1.6 for 4096 simulated batch size. 0.1 for ITOP
   # Learning rate for first epoch of warm up, only applies to schedulers with linear warm up
   init_lr: 1.0e-6
   # Number of epochs to warm up for linear warm ups
-  warm_up_steps: 25 # 5 for imagenet | 0 for cifar10 | 25 for x5 imagenet
+  warm_up_steps: 0 # 5 for imagenet | 0 for cifar10 | 25 for x5 imagenet
   # Learning rate step gamma
-  gamma: 0.1  # 0.1 for imagenet, 0.2 for cifar
+  gamma: 0.2  # 0.1 for imagenet, 0.2 for cifar
   # Step size to use in learning rate scheduler if StepLR is used. List[int] || int
-  step_size: [60, 140, 180]  # Imagenet -> [30,70,90] For cifar 10 -> every 30,000 mini-batch steps ~= 77 epochs | [150, 350, 450] for x5 | [60, 140, 180] for x2
+  step_size: 77  # Imagenet -> [30,70,90] For cifar 10 -> every 30,000 mini-batch steps ~= 77 epochs | [150, 350, 450] for x5 | [60, 140, 180] for x2
 
 
 compute:
@@ -112,7 +112,7 @@ compute:
     num_workers: ${ oc.decode:${oc.env:NUM_WORKERS} }  # decode casts to int
     pin_memory: True
   # If True, use data-parallelization model for distributed training
-  distributed: True
+  distributed: False
   # Number of CUDA devices to use for distributed training
   world_size: 4
   # Backend to use for distributed training, options: ["nccl", "gloo"]

@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torchvision
 from omegaconf import DictConfig
+import omegaconf
 from math import prod
 from typing import Tuple, Union, List, Optional
 
@@ -175,7 +176,8 @@ def get_T_end(
 def get_static_filters_to_ablate(
     weight_tensor: torch.Tensor,
     sparsity: float,
-    filter_ablation_threshold: float,
+    static_filter_ablation_threshold: Union[float, List[List[int]]],
+    layer_idx: int,
 ) -> int:
     """Return number of filters to ablate for a given weight tensor and sparsity
 
@@ -184,29 +186,54 @@ def get_static_filters_to_ablate(
             layer
         sparsity (float): Sparisty target of layer. eg., 0.9 means 90% of
             weights set to zero
-        filter_ablation_threshold (float): Threshold for maximum
+        static_filter_ablation_threshold (Union[float, List[List[int]]]):
+            Threshold for maximum based on float of dense connectivity OR list
+            of filters to ablate per layer.
+        layer_idx: layer index for this ablation
 
     Returns:
-        int: _description_
+        int: Number of filters to ablate this layer.
     """
     with torch.no_grad():
-        dense_fan_in, _ = calculate_fan_in_and_fan_out(weight_tensor)
-        receptive_field_size = _get_receptive_field_size(weight_tensor)
-        out_channels = weight_tensor.shape[0]
-        sparse_fan_in = int(dense_fan_in * (1 - sparsity))
-        unadjusted_filter_sparsity = sparse_fan_in / (
-            out_channels * receptive_field_size
-        )
-        if unadjusted_filter_sparsity < filter_ablation_threshold:
-            filters_to_ablate = out_channels - int(
-                sparse_fan_in
-                / (filter_ablation_threshold * receptive_field_size)
+        if isinstance(static_filter_ablation_threshold, float):
+            dense_fan_in, _ = calculate_fan_in_and_fan_out(weight_tensor)
+            receptive_field_size = _get_receptive_field_size(weight_tensor)
+            out_channels = weight_tensor.shape[0]
+            sparse_fan_in = int(dense_fan_in * (1 - sparsity))
+            unadjusted_filter_sparsity = sparse_fan_in / (
+                out_channels * receptive_field_size
             )
-            if filters_to_ablate >= out_channels:
-                filters_to_ablate = out_channels - 1
-            return filters_to_ablate
+            if unadjusted_filter_sparsity < static_filter_ablation_threshold:
+                filters_to_ablate = out_channels - int(
+                    sparse_fan_in
+                    / (static_filter_ablation_threshold * receptive_field_size)
+                )
+                if filters_to_ablate >= out_channels:
+                    filters_to_ablate = out_channels - 1
+                return filters_to_ablate
+            else:
+                return 0  # No filters to remove
         else:
-            return 0  # No filters to remove
+            if not isinstance(
+                static_filter_ablation_threshold,
+                (list, omegaconf.listconfig.ListConfig),
+            ):
+                raise ValueError(
+                    "Expected float or list type for param "
+                    "static_filter_ablation_threshold "
+                    f"recievce type = {type(static_filter_ablation_threshold)}"
+                )
+            if static_filter_ablation_threshold[layer_idx] >= len(
+                weight_tensor
+            ):
+                raise ValueError(
+                    f"Error static ablating in layer {layer_idx}. "
+                    "Recieved static ablation request: "
+                    f"{static_filter_ablation_threshold[layer_idx]} "
+                    "But max num of neurons to ablate is: "
+                    f"{len(weight_tensor)-1}"
+                )
+            return static_filter_ablation_threshold[layer_idx]
 
 
 def get_fan_in_after_ablation(

@@ -50,13 +50,13 @@ class RigLConstFanScheduler(RigLScheduler):
             scheduler from prior training checkpoint. Defaults to None.
         erk_power_scale (float, optional): Erdos-Renyi Kernel power scale
             parameter. Defaults to 1.0.
-        filter_ablation_threshold (Optional[float], optional): Percent of
+        static_filter_ablation_threshold (Optional[float], optional): Percent of
             required connections active to consider a neuron as active for
             static ablation. Defaults to None. If None, no threshold exists and
             static ablation will not be performed.
         static_ablation (bool, optional): If True, ablates neurons at
-            initalization to reach targetted filter_ablation_threshold. Defaults
-            to False.
+            initalization to reach targetted static_filter_ablation_threshold.
+            Defaults to False.
         dynamic_ablation (bool, optional): If True, dynamically ablates neurons
             during training according to min_salient_weights_per_neuron.
             Defaults to False.
@@ -85,7 +85,7 @@ class RigLConstFanScheduler(RigLScheduler):
         grad_accumulation_n: int = 1,
         state_dict: Optional[Dict[str, Any]] = None,
         erk_power_scale=1.0,
-        filter_ablation_threshold: Optional[float] = None,
+        static_filter_ablation_threshold: Optional[float] = None,
         static_ablation: bool = False,
         dynamic_ablation: bool = False,
         min_salient_weights_per_neuron: Union[int, float] = 0,
@@ -107,7 +107,7 @@ class RigLConstFanScheduler(RigLScheduler):
             grad_accumulation_n,
             state_dict,
             erk_power_scale,
-            filter_ablation_threshold,
+            static_filter_ablation_threshold,
             static_ablation,
             dynamic_ablation,
             min_salient_weights_per_neuron,
