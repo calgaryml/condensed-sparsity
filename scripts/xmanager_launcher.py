@@ -114,7 +114,7 @@ _large_batch_imagenet_args = [
 
 def main(argv: Sequence[str]) -> None:
     del argv
-    docker_image = "mklasby/condensed-sparsity:rigl_gcs"
+    docker_image = "mklasby/condensed-sparsity:rigl-gcs"
     # docker_image = "gcr.io/external-collab-experiment/condensed_sparsity:20230116-211607-665612"  # noqa
     with xm_local.create_experiment(
         experiment_title="condensed-sparsity-x2"
@@ -137,27 +137,38 @@ def main(argv: Sequence[str]) -> None:
             ]
         )
         env_vars = dotenv_values("/home/mike/condensed-sparsity/.env.gcs")
-        args = ["python", "train_rigl.py"]
+        # args = ["python", "train_rigl.py"]
+        args = ["wandb", "agent", "condensed-sparsity/condensed-rigl/nq5g6nrr"]
         # args.extend(_cifar_args)
 
-        # executor = xm_local.Vertex(xm.JobRequirements(t4=1))
+        executor = xm_local.Vertex(xm.JobRequirements(t4=1))
 
         # args.extend(_imagenet_args)
         # executor=xm_local.Vertex(xm.JobRequirements(a100=2))
 
-        args.extend(_x2_imagenet_args)
-        executor = xm_local.Vertex(xm.JobRequirements(a100=8))
-        for dense_alloc in [0.1, 0.01, 0.05, 0.2]:
-            these_args = copy.deepcopy(args)
-            these_args.extend([f"rigl.dense_allocation={dense_alloc}"])
+        # args.extend(_x2_imagenet_args)
+        # executor = xm_local.Vertex(xm.JobRequirements(a100=8))
+        for x in range(16):
             experiment.add(
                 xm.Job(
                     executable=executable,
                     executor=executor,
                     env_vars=env_vars,
-                    args=these_args,
+                    args=args,
                 )
             )
+
+        # for dense_alloc in [0.1, 0.01, 0.05, 0.2]:
+        #     these_args = copy.deepcopy(args)
+        #     these_args.extend([f"rigl.dense_allocation={dense_alloc}"])
+        #     experiment.add(
+        #         xm.Job(
+        #             executable=executable,
+        #             executor=executor,
+        #             env_vars=env_vars,
+        #             args=these_args,
+        #         )
+        #     )
 
 
 if __name__ == "__main__":
