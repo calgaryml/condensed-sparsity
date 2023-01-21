@@ -513,7 +513,10 @@ class RigLScheduler:
         for l, w in enumerate(self.W):
             # if sparsity is 0%, skip
             if self.S[l] <= 0:
-                self.backward_masks.append(None)
+                # self.backward_masks.append(None)
+                self.backward_masks.append(
+                    torch.ones(size=w.shape, dtype=torch.bool, device=w.device)
+                )
                 continue
 
             n = self.N[l]
@@ -719,7 +722,17 @@ class RigLScheduler:
 
             # calculate raw scores
             score_drop = torch.abs(w)
+            # Set ablated filter drop scores to min of score_grow to avoid
+            # pruning already inactive weights
+            # TODO: Remove inital ablated filtering.
+            score_drop[
+                : self.static_ablated_filters[idx]
+            ] = score_drop.min().item()
             score_grow = torch.abs(self.backward_hook_objects[idx].dense_grad)
+            # Set ablated filter scores to min of score_grow to avoid regrowing
+            score_grow[
+                : self.static_ablated_filters[idx]
+            ] = score_grow.min().item()
 
             # if is distributed, synchronize scores
             if is_dist:
