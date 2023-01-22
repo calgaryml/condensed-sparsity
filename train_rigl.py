@@ -80,6 +80,9 @@ def initalize_main(cfg: omegaconf.DictConfig) -> None:
         raise SystemError("GPU has stopped responding...waiting to die!")
     if cfg.training.max_steps in ["None", "null"]:
         cfg.training.max_steps = None
+    if "diet" not in cfg.training:
+        with omegaconf.open_dict(cfg):
+            cfg.training.diet = None
     if cfg.compute.distributed:
         # We initalize train and val loaders here to ensure .tar balls have
         # been decompressed before parallel workers try and write the same
@@ -185,8 +188,9 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
         device = torch.device("cuda" if use_cuda else "cpu")
     train_loader, test_loader = get_dataloaders(cfg)
 
+    # load_model_kwargs = dict(model=cfg.model.name, datasets=cfg.dataset.name)
     model = ModelFactory.load_model(
-        model=cfg.model.name, dataset=cfg.dataset.name
+        model=cfg.model.name, dataset=cfg.dataset.name, diet=cfg.rigl.diet
     )
     model.to(device)
     if cfg.compute.distributed:

@@ -1,0 +1,2 @@
+name: skinny_resnet18
+activation_function: relu

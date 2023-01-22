@@ -1,6 +1,6 @@
 defaults:
   - dataset: cifar10
-  - model: resnet18
+  - model: skinny_resnet18
   - _self_
 
 experiment:
@@ -60,10 +60,12 @@ rigl:
   use_sparse_initialization: True
   # Param to choose between sparse init methods -> options include "kaiming_uniform", "kaiming_normal", "sparse_torch", and "grad_flow_init"
   init_method_str: grad_flow_init
+  # Custom topology to use for SkinnyResNet
+  diet: [17, 16, 17, 14, 16, 33, 31, 31, 32, 30, 65, 63, 63, 65, 63, 122, 124, 124, 114, 125, 0]  # For 99%, 50% saliency
 
 training:
   # quickly check a single pass",
-  dry_run: False
+  dry_run: True
   # batch size for training
   batch_size: 128  # 128 for cifar10, multiples of 256 for imagenet w/ scaled lr -> 512 with 2 v100s or 4 3090s -> 1024 with 4 v100s
   # Batch size to simulate by taking multiple steps per optimizer update (accumulate grads)
@@ -112,7 +114,7 @@ compute:
     num_workers: ${ oc.decode:${oc.env:NUM_WORKERS} }  # decode casts to int
     pin_memory: True
   # If True, use data-parallelization model for distributed training
-  distributed: True
+  distributed: False
   # Number of CUDA devices to use for distributed training
   world_size: 4
   # Backend to use for distributed training, options: ["nccl", "gloo"]
