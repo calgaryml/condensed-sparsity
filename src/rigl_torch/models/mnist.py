@@ -31,7 +31,7 @@ class MnistNet(nn.Module):
 
 
 @ModelFactory.register_model_loader(model="mnist", dataset="mnist")
-def Mnist():
+def Mnist(*args, **kwargs):
     return MnistNet()
 
 

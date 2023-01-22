@@ -16,7 +16,7 @@ class CondNetConfig:
 
 
 @ModelFactory.register_model_loader(model="cond_net", dataset="mnist")
-def get_cond_net():
+def get_cond_net(*args, **kwargs):
     args = CondNetConfig()
     return CondNet(**args.__dict__)
 

@@ -1,2 +1,3 @@
 name: skinny_resnet18
 activation_function: relu
+sparsity_scale_factor: 1.6856706794132807 # 11173962/6628793

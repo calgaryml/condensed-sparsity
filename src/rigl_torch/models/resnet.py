@@ -291,12 +291,12 @@ class ResNet(nn.Module):
 
 
 @ModelFactory.register_model_loader(model="resnet18", dataset="cifar10")
-def ResNet18():
+def ResNet18(*args, **kwargs):
     return ResNet(BasicBlock, [2, 2, 2, 2])
 
 
 @ModelFactory.register_model_loader(model="skinny_resnet18", dataset="cifar10")
-def get_skinny_resnet18(diet: List[int]):
+def get_skinny_resnet18(diet: List[int], *args, **kwargs):
     full_width_network = ModelFactory.load_model("resnet18", "cifar10")
     return SkinnyResNet18(
         full_width_network=full_width_network,
