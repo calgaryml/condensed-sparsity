@@ -7,7 +7,7 @@ metric:
   name: accuracy
 parameters:
   model:
-    values: [resnet18]
+    values: [skinny_resnet18]
   dataset:
     value: cifar10
   rigl.dense_allocation: 

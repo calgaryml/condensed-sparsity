@@ -80,6 +80,8 @@ def initalize_main(cfg: omegaconf.DictConfig) -> None:
         raise SystemError("GPU has stopped responding...waiting to die!")
     if cfg.training.max_steps in ["None", "null"]:
         cfg.training.max_steps = None
+    if cfg.rigl.dense_allocation in ["None", "null"]:
+        cfg.rigl.dense_allocation = None
     if "diet" not in cfg.rigl:
         with omegaconf.open_dict(cfg):
             cfg.rigl.diet = None
