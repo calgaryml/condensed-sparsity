@@ -27,7 +27,7 @@ paths:
 rigl: 
   # percentage of dense parameters allowed. if null, pruning will not 
   # be used. must be on the interval (0, 1]
-  dense_allocation: 0.01
+  dense_allocation: null
   # number of steps between rigl pruning / regrow iterations
   delta: 100 # 4096 * 100 / 512 = 800 || 100 for cifar || x5 -> No change?
   # number of gradients to accumulate before scoring for rigl
@@ -81,7 +81,7 @@ training:
   # For Saving the current Model
   save_model: True
   # max number of steps (will override epochs) -> Based on mini-batch steps (NOT SIMULATED BATCHES!)
-  max_steps: 200  # 4096 * 32000 / 512 = 256000 from rigl paper || x5 -> 4096*32000/1024 = 640000
+  max_steps: null  # 4096 * 32000 / 512 = 256000 from rigl paper || x5 -> 4096*32000/1024 = 640000
 
   ## Optimization
   optimizer: sgd # "sgd", "adamw"

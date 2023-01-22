@@ -216,11 +216,9 @@ class SkinnyResNet18(nn.Module):
     def _make_layer(self, num_blocks, stride):
         strides: List[int] = [stride] + [1] * (num_blocks - 1)
         layers = []
-        print(f"strides {strides}")
         for stride in strides:
             skip_conn_output_channels = None
-            if stride != 1:  # Then we have a skip connection!
-                print("found skip")
+            if stride != 1:  # Then we have a skip connection in width target
                 skip_conn_output_channels = self.width[
                     self._block_start_idx + num_blocks
                 ]

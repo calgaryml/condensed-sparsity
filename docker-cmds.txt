@@ -24,7 +24,7 @@ docker run -itd --env-file ./.env \
   --cpus 12 \
   --memory 30G \
   rigl-agent:latest \
-  wandb agent condensed-sparsity/condensed-rigl/nq5g6nrr
+  wandb agent condensed-sparsity/condensed-rigl/u5uqcisr
 
 docker run -itd --env-file ./.env \
   --mount source=/home/mike/condensed-sparsity/artifacts,target=/home/user/condensed-sparsity/artifacts,type=bind \
@@ -38,7 +38,7 @@ docker run -itd --env-file ./.env \
   --cpus 12 \
   --memory 30G \
   rigl-agent:latest \
-  wandb agent condensed-sparsity/condensed-rigl/nq5g6nrr
+  wandb agent condensed-sparsity/condensed-rigl/u5uqcisr
 
 docker run -itd --env-file ./.env \
   --mount source=/home/mike/condensed-sparsity/artifacts,target=/home/user/condensed-sparsity/artifacts,type=bind \
@@ -52,7 +52,7 @@ docker run -itd --env-file ./.env \
   --cpus 12 \
   --memory 30G \
   rigl-agent:latest \
-  wandb agent condensed-sparsity/condensed-rigl/nq5g6nrr
+  wandb agent condensed-sparsity/condensed-rigl/u5uqcisr
 
 docker run -itd --env-file ./.env \
   --mount source=/home/mike/condensed-sparsity/artifacts,target=/home/user/condensed-sparsity/artifacts,type=bind \
@@ -66,7 +66,7 @@ docker run -itd --env-file ./.env \
   --cpus 12 \
   --memory 30G \
   rigl-agent:latest \
-  wandb agent condensed-sparsity/condensed-rigl/nq5g6nrr
+  wandb agent condensed-sparsity/condensed-rigl/u5uqcisr
 
   
 python ./train_rigl.py \
