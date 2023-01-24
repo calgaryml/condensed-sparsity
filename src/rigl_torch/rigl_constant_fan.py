@@ -92,6 +92,7 @@ class RigLConstFanScheduler(RigLScheduler):
         use_sparse_init: bool = False,
         init_method_str: str = "",
         use_sparse_const_fan_in_for_ablation: bool = False,
+        keep_first_layer_dense: bool = False,
     ):
 
         super().__init__(
@@ -114,6 +115,7 @@ class RigLConstFanScheduler(RigLScheduler):
             use_sparse_init,
             init_method_str,
             use_sparse_const_fan_in_for_ablation,
+            keep_first_layer_dense,
         )
         if not hasattr(self, "dynamically_ablated_neuron_idx"):
             # Only init if not loaded by checkpoint

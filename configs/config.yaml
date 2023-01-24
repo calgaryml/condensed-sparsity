@@ -1,6 +1,6 @@
 defaults:
   - dataset: cifar10
-  - model: skinny_resnet18
+  - model: resnet18
   - _self_
 
 experiment:
@@ -62,6 +62,8 @@ rigl:
   init_method_str: grad_flow_init
   # Custom topology to use for SkinnyResNet
   diet: [17, 16, 17, 14, 16, 33, 31, 31, 32, 30, 65, 63, 63, 65, 63, 122, 124, 124, 114, 125, 0]  # For 99%, 50% saliency
+  # keep first layer dense
+  keep_first_layer_dense: False
 
 training:
   # quickly check a single pass",

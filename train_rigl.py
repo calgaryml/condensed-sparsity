@@ -85,6 +85,9 @@ def initalize_main(cfg: omegaconf.DictConfig) -> None:
     if "diet" not in cfg.rigl:
         with omegaconf.open_dict(cfg):
             cfg.rigl.diet = None
+    if "keep_first_layer_dense" not in cfg.rigl:
+        with omegaconf.open_dict(cfg):
+            cfg.rigl.keep_first_layer_dense = False
 
     if cfg.compute.distributed:
         # We initalize train and val loaders here to ensure .tar balls have
@@ -245,6 +248,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             use_sparse_init=cfg.rigl.use_sparse_initialization,
             init_method_str=cfg.rigl.init_method_str,
             use_sparse_const_fan_in_for_ablation=cfg.rigl.use_sparse_const_fan_in_for_ablation,  # noqa
+            keep_first_layer_dense=cfg.rigl.keep_first_layer_dense,
         )
     else:
         logger.warning(

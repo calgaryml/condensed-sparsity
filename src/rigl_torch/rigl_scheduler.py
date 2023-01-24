@@ -139,6 +139,7 @@ class RigLScheduler:
             percentage of salient connections. Saliency in this case is the
             union of regrowth and pruning masks (ie., weight is consider salient
             if either criterion is satsified). Defaults to 0.
+        keep_first_layer_dense: bool
     Raises:
         Exception: If attempting to register scheduler to a model that already
             has IndexMaskHooks registered.
@@ -167,6 +168,7 @@ class RigLScheduler:
         use_sparse_init: bool = False,
         init_method_str: str = "",
         use_sparse_const_fan_in_for_ablation: bool = False,
+        keep_first_layer_dense: bool = False,
     ):
         """Initalizes scheduler object."""
         self._logger = logging.getLogger(__file__)
@@ -188,11 +190,11 @@ class RigLScheduler:
         self.use_sparse_const_fan_in_for_ablation = (
             use_sparse_const_fan_in_for_ablation  # noqa
         )
+        self.keep_first_layer_dense = keep_first_layer_dense
 
         self.W, self._linear_layers_mask = get_W(
             model, return_linear_layers_mask=True
         )
-        # modify optimizer.step() function to call "reset_momentum" after
         _create_step_wrapper(self, optimizer)
 
         self.N = [torch.numel(w) for w in self.W]
@@ -399,6 +401,8 @@ class RigLScheduler:
         eps = None
         is_eps_valid = False
         dense_layers = set()
+        if self.keep_first_layer_dense:
+            dense_layers.append(0)
         while not is_eps_valid:
             divisor = 0
             rhs = 0
@@ -415,7 +419,7 @@ class RigLScheduler:
                 if layer_idx in dense_layers or (
                     is_linear and self.ignore_linear_layers
                 ):
-                    # dense_layers.add(layer_idx)
+                    dense_layers.add(layer_idx)
                     rhs -= n_zeros
                 else:
                     n_ones = n_params - n_zeros
