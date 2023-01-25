@@ -61,8 +61,8 @@ for batch_size, s in product(batch_sizes, sparsities):
     x = benchmark.FuzzedTensor(
         "x",
         size=(batch_size, num_features),
-        min_elements=128,
-        max_elements=10000000,
+        min_elements=2048,
+        max_elements=2048,
         cuda=cuda,
         dtype=dtype,
     )
@@ -71,7 +71,7 @@ for batch_size, s in product(batch_sizes, sparsities):
     if s != 0.0:
         lc_params = dict(
             in_features=int((1 - s) * x.shape[1]),
-            out_features=10,
+            out_features=1000,
             bias=True,
             input_len=x.shape[1],
             fan_out_const=True,
