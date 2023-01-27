@@ -5,7 +5,7 @@ def get_num_allzero_kernels(w):
     count = 0
     for filter_nr in range(num_filters):
         for k_ind, kernel in enumerate(w[filter_nr]):
-            if kernel.any() is False:
+            if not kernel.any():
                 # zero_kernel_inds.append((filter_nr,k_ind))
                 count += 1
     return count
@@ -27,7 +27,7 @@ def get_num_allzero_filters(w):
     count = 0
     for n in range(num_out_channels):
         filter = w[n]
-        if filter.any() is False:
+        if not filter.any():
             count += 1
     return count
 
@@ -39,6 +39,6 @@ def get_num_allzero_fanout(w):
     count = 0
     for depth_ind in range(num_in_channels):
         # tensor.any() = True if any one of the elements in tensor is nonzero
-        if w[:, depth_ind, :, :].any() is False:
+        if not w[:, depth_ind, :, :].any():
             count += 1
     return count
