@@ -13,7 +13,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 packages= [
@@ -22,17 +22,19 @@ packages= [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.8,<3.11"
-torch={version="1.12.1+cu116*", source="torch_repo"}
-torchvision={version="^0.13.1+cu116*", source="torch_repo"}
-# torch = "1.12.1"
-# torchvision = "^0.13.1"
+python = "^3.9,<3.11"
+torch={version="1.13.1+cu116*", source="torch_repo"}
+torchvision={version="^0.14.1+cu116*", source="torch_repo"}
+# torch = "1.13.1"
+# torchvision = "^0.14.1"
 tensorboard = "^2.10.0"
 hydra-core = "^1.2.0"
 python-dotenv="0.20.0"
 pytorch-lightning="1.6.5"
 scipy="1.8.0"
 wandb="0.12.5"
+xmanager="^0.3"
+gcsfs = "^2022.11.0"
 
 [[tool.poetry.source]]
 name="torch_repo"
@@ -54,7 +56,7 @@ coverage={version="5.5", extras=["toml"]}
 distlib="0.3.5"
 executing="0.9.1"
 frozenlist="1.3.0"
-fsspec= {version="2022.7.1", extras=["http"]}
+fsspec= {version="2022.11.0", extras=["http"]}
 grpcio="1.47.0"
 identify="2.0.0"
 ipykernel="6.15.1"

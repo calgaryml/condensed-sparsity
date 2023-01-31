@@ -205,7 +205,6 @@ class RigLScheduler:
 
         else:
             self._max_inactive_weights = None
-            self._max_inactive_weights = None
             self.sparsity_distribution = sparsity_distribution
             self.static_topo = static_topo
             self.grad_accumulation_n = grad_accumulation_n
@@ -480,31 +479,18 @@ class RigLScheduler:
         Returns:
             Dict[str, Any]: Dictionary that describes current state.
         """
-        obj = {
-            "dense_allocation": self.dense_allocation,
-            "S": self.S,
-            "N": self.N,
-            "delta_T": self.delta_T,
-            "alpha": self.alpha,
-            "T_end": self.T_end,
-            "ignore_linear_layers": self.ignore_linear_layers,
-            "static_topo": self.static_topo,
-            "sparsity_distribution": self.sparsity_distribution,
-            "grad_accumulation_n": self.grad_accumulation_n,
-            "erk_power_scale": self.erk_power_scale,
-            "static_ablation": self.static_ablation,
-            "dynamic_ablation": self.dynamic_ablation,
-            "min_salient_weights_per_neuron": self.min_salient_weights_per_neuron,  # noqa
-            "step": self.step,
-            "rigl_steps": self.rigl_steps,
-            "backward_masks": self.backward_masks,
-            "_linear_layers_mask": self._linear_layers_mask,
-            "itop_rs": self.itop_rs,
-            "explored_params": self.explored_params,
-            "active_neurons": self.active_neurons,
-            "static_ablated_filters": self.static_ablated_filters,
-        }
-
+        obj = {k: v for k, v in self.__dict__.items()}
+        unwanted_param_keys = [  # Get rid of refs to other objects
+            "model",
+            "_logger",
+            "optimizer",
+            "backward_hook_objects",
+            "meters",
+            "use_sparse_init",
+            "W",
+        ]
+        for k in unwanted_param_keys:
+            obj.pop(k)
         return obj
 
     def load_state_dict(self, state_dict: Dict[str, Any]) -> None:

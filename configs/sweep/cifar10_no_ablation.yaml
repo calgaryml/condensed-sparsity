@@ -1,0 +1,63 @@
+program: train_rigl.py
+method: grid
+project: condensed-rigl
+name: cifar10_no_ablation
+metric:
+  goal: maximize
+  name: accuracy
+parameters:
+  model:
+    values: [resnet18, wide_resnet22]
+  dataset:
+    value: cifar10
+  rigl.dense_allocation: 
+    values: [0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5]
+      # percentage of dense parameters allowed. if None, pruning will not 
+      # be used. must be on the interval (0, 1]
+  rigl.const_fan_in: 
+    values: [True]
+      # If True, use const_fan_in scheduler.
+      # sparsity_distribution: erk
+      # # Define layer-wise sparsity distribution. Options include `uniform` & `erk`
+  rigl.min_salient_weights_per_neuron:
+    values: [0.0]
+  rigl.dynamic_ablation:
+    values: [False]
+  training.seed:
+    values: [8746, 6037, 7303, 2078, 42]
+  rigl.delta:
+    value: 100
+  rigl.grad_accumulation_n:
+    value: 1
+  training.batch_size:
+    value: 128
+  training.max_steps:
+    value: null
+  training.weight_decay:
+    value: 5.0e-4
+  training.label_smoothing:
+    value: 0
+  training.lr:
+    value: 0.1
+  training.epochs:
+    value: 250
+  training.warm_up_steps:
+    value: 0
+  training.scheduler:
+    value: step_lr
+  training.step_size:
+    value: 77
+  training.gamma:
+    value: 0.2
+  compute.distributed:
+    value: False
+  rigl.use_sparse_initialization:
+    value: True
+  rigl.init_method_str:
+    value: grad_flow_init  
+
+command:
+  - ${env}
+  - python
+  - ${program}
+  - ${args_no_hyphens}
