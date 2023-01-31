@@ -29,4 +29,4 @@ printf "Resuming run with id == ${id}\n"
 
 ## RUN SCRIPT ##
 wandb online
-python ./train_rigl.py experiment.resume_from_checkpoint=True experiment.run_id=id
+python ./train_rigl.py experiment.resume_from_checkpoint=True experiment.run_id=${id}

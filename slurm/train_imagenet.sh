@@ -33,7 +33,7 @@ printf "Resuming run with id == ${id}\n"
 
 python3 ${WORKDIR}/train_rigl.py \
 experiment.resume_from_checkpoint=True \
-experiment.run_id={id}
+experiment.run_id=${id}
 
 # dataset=imagenet \
 # model=resnet50 \
