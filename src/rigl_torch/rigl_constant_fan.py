@@ -235,6 +235,7 @@ class RigLConstFanScheduler(RigLScheduler):
 
         self.dynamically_ablated_neuron_idx = []
         last_layer_idx = len(self.W) - 1
+        self._min_sal_per_layer=[]
         for idx, w in enumerate(self.W):
             # if sparsity is 0%, skip
             if self.S[idx] <= 0:
@@ -444,6 +445,7 @@ class RigLConstFanScheduler(RigLScheduler):
                             "== 1"
                         )
                         return []
+            self._min_sal_per_layer.append(_min_salient_weights_per_neuron)
             return neurons_to_ablate
 
         elif self.static_ablation:
