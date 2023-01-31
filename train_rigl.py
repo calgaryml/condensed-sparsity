@@ -80,6 +80,15 @@ def initalize_main(cfg: omegaconf.DictConfig) -> None:
         raise SystemError("GPU has stopped responding...waiting to die!")
     if cfg.training.max_steps in ["None", "null"]:
         cfg.training.max_steps = None
+    if cfg.rigl.dense_allocation in ["None", "null"]:
+        cfg.rigl.dense_allocation = None
+    if "diet" not in cfg.rigl:
+        with omegaconf.open_dict(cfg):
+            cfg.rigl.diet = None
+    if "keep_first_layer_dense" not in cfg.rigl:
+        with omegaconf.open_dict(cfg):
+            cfg.rigl.keep_first_layer_dense = False
+
     if cfg.compute.distributed:
         # We initalize train and val loaders here to ensure .tar balls have
         # been decompressed before parallel workers try and write the same
@@ -185,8 +194,9 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
         device = torch.device("cuda" if use_cuda else "cpu")
     train_loader, test_loader = get_dataloaders(cfg)
 
+    # load_model_kwargs = dict(model=cfg.model.name, datasets=cfg.dataset.name)
     model = ModelFactory.load_model(
-        model=cfg.model.name, dataset=cfg.dataset.name
+        model=cfg.model.name, dataset=cfg.dataset.name, diet=cfg.rigl.diet
     )
     model.to(device)
     if cfg.compute.distributed:
@@ -198,7 +208,19 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
         cfg, optimizer, state_dict=scheduler_state, logger=logger
     )
     pruner = None
+
     if cfg.rigl.dense_allocation is not None:
+        if cfg.model.name == "skinny_resnet18":
+            dense_allocation = (
+                cfg.rigl.dense_allocation * cfg.model.sparsity_scale_factor
+            )
+            logger.warning(
+                f"Scaling {cfg.rigl.dense_allocation} by "
+                f"{cfg.model.sparsity_scale_factor:.2f} for SkinnyResNet18 "
+                f"New Dense Alloc == {dense_allocation:.6f}"
+            )
+        else:
+            dense_allocation = cfg.rigl.dense_allocation
         T_end = get_T_end(cfg, train_loader)
         if cfg.rigl.const_fan_in:
             rigl_scheduler = RigLConstFanScheduler
@@ -209,7 +231,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
         pruner = rigl_scheduler(
             model,
             optimizer,
-            dense_allocation=cfg.rigl.dense_allocation,
+            dense_allocation=dense_allocation,
             alpha=cfg.rigl.alpha,
             delta=cfg.rigl.delta,
             static_topo=cfg.rigl.static_topo,
@@ -226,6 +248,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             use_sparse_init=cfg.rigl.use_sparse_initialization,
             init_method_str=cfg.rigl.init_method_str,
             use_sparse_const_fan_in_for_ablation=cfg.rigl.use_sparse_const_fan_in_for_ablation,  # noqa
+            keep_first_layer_dense=cfg.rigl.keep_first_layer_dense,
         )
     else:
         logger.warning(

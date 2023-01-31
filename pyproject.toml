@@ -18,7 +18,8 @@ classifiers = [
 ]
 packages= [
     {include = "condensed_sparsity", from = "src"},
-    {include = "rigl_torch", from = "src"}
+    {include = "rigl_torch", from = "src"},
+    {include = "micronet_challenge", from = "src"},
 ]
 
 [tool.poetry.dependencies]
@@ -47,6 +48,7 @@ flake8 = "3.8.4"
 black = "22.6.0"
 jupyter = "^1.0.0"
 jupytext = "^1.14.1"
+fvcore = "^0.1.5.post20221221"
 
 [tool.poetry.group.computecanada.dependencies]
 certifi= "2022.9.14"

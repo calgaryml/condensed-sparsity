@@ -258,7 +258,7 @@ class NetworkBlock(nn.Module):
 
 
 @ModelFactory.register_model_loader(model="wide_resnet22", dataset="cifar10")
-def get_wide_resnet_22():
+def get_wide_resnet_22(*args, **kwargs):
     model = WideResNet(depth=22, widen_factor=2, small_dense_density=1.0)
     return model
 

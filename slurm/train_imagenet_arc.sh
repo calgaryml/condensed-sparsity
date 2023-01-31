@@ -54,4 +54,3 @@ compute.world_size=2 \
 compute.distributed=True \
 rigl.use_sparse_initialization=True \
 rigl.init_method_str=grad_flow_init
-
