@@ -571,6 +571,6 @@ def _get_steps_to_accumulate_grad(
 if __name__ == "__main__":
     import os
 
-    dotenv.load_dotenv(dotenv_path=".env", override=False)
+    dotenv.load_dotenv(dotenv_path=".env", override=True)
     print(f"Base Path: {os.environ['BASE_PATH']}")
     initalize_main()
