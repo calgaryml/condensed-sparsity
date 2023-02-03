@@ -5,7 +5,7 @@ defaults:
 
 experiment:
   comment: "dense_alloc-${rigl.dense_allocation}_const_fan_in-${rigl.const_fan_in}\
-            _diet-99-50"
+            _first_layer_dense"
   name: ${model.name}_${dataset.name}_${experiment.comment}
   resume_from_checkpoint: False
   run_id: null
