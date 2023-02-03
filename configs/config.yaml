@@ -27,7 +27,7 @@ paths:
 rigl: 
   # percentage of dense parameters allowed. if null, pruning will not 
   # be used. must be on the interval (0, 1]
-  dense_allocation: null
+  dense_allocation: 0.01
   # number of steps between rigl pruning / regrow iterations
   delta: 100 # 4096 * 100 / 512 = 800 || 100 for cifar || x5 -> No change?
   # number of gradients to accumulate before scoring for rigl

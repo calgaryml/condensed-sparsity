@@ -1,6 +1,6 @@
 """ implementation of https://arxiv.org/abs/1911.11134
 """
-from typing import Optional, Dict, Any, List, Union
+from typing import Optional, Dict, Any, List, Tuple, Union
 import torch
 import torch.distributed as dist
 import math
@@ -296,6 +296,7 @@ class RigLConstFanScheduler(RigLScheduler):
                     sparsity=self.S[idx],
                     mask=self.backward_masks[idx],
                     weight=self.W[idx],
+                    n_ones=n_ones,
                 )
             self.dynamically_ablated_neuron_idx.append(neurons_to_ablate)
             # print(f"neurons to ablate = {neurons_to_ablate}")
@@ -353,6 +354,7 @@ class RigLConstFanScheduler(RigLScheduler):
         sparsity: float,
         mask: torch.Tensor,
         weight: torch.Tensor,
+        n_ones: int,
     ) -> List[int]:
         """Return List of neuron indices to ablate.
 
@@ -364,11 +366,17 @@ class RigLConstFanScheduler(RigLScheduler):
             n_keep (int): Number of connections to keep during this step.
             n_prune (int): Number of connections to prune this step.
             sparsity (float): Sparsity target for this layer.
+            n_ones (int): Number of non zero weights this layer.
 
         Returns:
             List[int]: List of neuron indices that remain active.
         """
         if self.dynamic_ablation and self.min_salient_weights_per_neuron != 0:
+            dense_fan_in = math.prod(weight.shape[1:])
+            if n_ones % dense_fan_in == 0:
+                min_neurons = int(n_ones / dense_fan_in)
+            else:
+                min_neurons = (n_ones // dense_fan_in) + 1
             neurons_to_ablate: List[int] = []
             saliency_mask = torch.zeros(
                 size=(score_drop.numel(),),
@@ -386,15 +394,14 @@ class RigLConstFanScheduler(RigLScheduler):
                 neuron_idx: neuron.sum().item()
                 for neuron_idx, neuron in enumerate(saliency_mask)
             }
-            neuron_saliency_counts = {
-                k: v
+            neuron_saliency_counts: List[Tuple[int]] = [
+                (k, v)
                 for k, v in sorted(
                     neuron_saliency_counts.items(),
                     key=lambda x: x[1],
                     reverse=True,
                 )
-            }
-            _invalid_ablation = True
+            ]
             if self.min_salient_weights_per_neuron >= 1:
                 _min_salient_weights_per_neuron = (
                     self.min_salient_weights_per_neuron
@@ -413,38 +420,35 @@ class RigLConstFanScheduler(RigLScheduler):
                         int(self.min_salient_weights_per_neuron * total_fan_in),
                     ]
                 )
-            while _invalid_ablation:
-                neurons_to_ablate = [
-                    neuron_idx
-                    for neuron_idx in neuron_saliency_counts.keys()
-                    if neuron_saliency_counts[neuron_idx]
-                    < _min_salient_weights_per_neuron
-                ]
-                fan_in = get_fan_in_after_ablation(
-                    weight_tensor=saliency_mask,
-                    num_neurons_to_ablate=len(neurons_to_ablate),
-                    sparsity=sparsity,
+            if (
+                neuron_saliency_counts[min_neurons][1]
+                < _min_salient_weights_per_neuron
+            ):
+                _min_salient_weights_per_neuron = neuron_saliency_counts[
+                    min_neurons
+                ][1]
+            neurons_to_ablate = [
+                neuron_idx
+                for neuron_idx, neuron_sal in neuron_saliency_counts
+                if neuron_sal < _min_salient_weights_per_neuron
+            ]
+            fan_in = get_fan_in_after_ablation(
+                weight_tensor=saliency_mask,
+                num_neurons_to_ablate=len(neurons_to_ablate),
+                sparsity=sparsity,
+            )
+            if fan_in > math.prod(saliency_mask.shape[1:]):
+                self._logger.error(
+                    "New algo isssue with invalid fan in\n"
+                    f"fan in = {fan_in} "
+                    f"max fan in = {math.prod(saliency_mask.shape[1:])} "
+                    f"min_sal per neuron = {_min_salient_weights_per_neuron} \n"
+                    f"neuron scores = {neuron_saliency_counts} \n"
+                    f"suggested ablation = {len(neurons_to_ablate)} \n"
+                    f"min neurons = {min_neurons} \n"
+                    f"n_ones = {n_ones} \n"
                 )
-                if fan_in <= math.prod(saliency_mask.shape[1:]):
-                    _invalid_ablation = False
-                else:
-                    self._logger.warning(
-                        f"_min_salient_weights_per_neuron of"
-                        f" {_min_salient_weights_per_neuron} was too high, "
-                        f"resulted in fan_in of {fan_in} when max fan in is "
-                        f"{math.prod(saliency_mask.shape[1:])} "
-                        "decrementing _min_salient_weights for this iteration "
-                        "and this layer.\n"
-                        f"sorted neuron saliency: {neuron_saliency_counts} \n"
-                        f"num neurons to ablate: {len(neurons_to_ablate)} \n"
-                    )
-                    _min_salient_weights_per_neuron -= 1
-                    if _min_salient_weights_per_neuron == 0:
-                        self._logger.error(
-                            "No salient weights found at _min_salient_weights "
-                            "== 1"
-                        )
-                        return []
+                raise InvalidAblatedNeuronException("Invalid fan in detected!")
             self._min_sal_per_layer.append(_min_salient_weights_per_neuron)
             return neurons_to_ablate
 
