@@ -1,9 +1,10 @@
 """ implementation of https://arxiv.org/abs/1911.11134
 """
-from typing import Optional, Dict, Any, List, Union
+from typing import Optional, Dict, Any, List, Tuple, Union
 import torch
 import torch.distributed as dist
 import math
+import datetime
 from rigl_torch.utils.rigl_utils import (
     get_fan_in_tensor,
     get_fan_in_after_ablation,
@@ -288,6 +289,7 @@ class RigLConstFanScheduler(RigLScheduler):
             if idx == last_layer_idx:  # Do not ablate last layer!
                 neurons_to_ablate = []
             else:
+                start_time = datetime.datetime.now()
                 neurons_to_ablate = self._get_neurons_to_ablate(
                     score_drop=score_drop,
                     score_grow=score_grow,
@@ -297,6 +299,26 @@ class RigLConstFanScheduler(RigLScheduler):
                     mask=self.backward_masks[idx],
                     weight=self.W[idx],
                 )
+                end_time = datetime.datetime.now()
+                print(f"Original algo took {end_time-start_time}")
+                if n_ones % len(w) == 0:
+                    min_neurons = int(n_ones / len(w))
+                else:
+                    min_neurons = (n_ones // len(w)) + 1
+                start_time = datetime.datetime.now()
+                new_neurons_to_ablate = self._get_neurons_to_ablate_new(
+                    score_drop=score_drop,
+                    score_grow=score_grow,
+                    n_keep=n_keep,
+                    n_prune=n_prune,
+                    sparsity=self.S[idx],
+                    mask=self.backward_masks[idx],
+                    weight=self.W[idx],
+                    min_neurons=min_neurons,
+                )
+                end_time = datetime.datetime.now()
+                print(f"New algo took {end_time-start_time}")
+                assert neurons_to_ablate == new_neurons_to_ablate
             self.dynamically_ablated_neuron_idx.append(neurons_to_ablate)
             # print(f"neurons to ablate = {neurons_to_ablate}")
             # print(f"len neurons to ablate = {len(neurons_to_ablate)}")
@@ -445,6 +467,109 @@ class RigLConstFanScheduler(RigLScheduler):
                             "== 1"
                         )
                         return []
+            self._min_sal_per_layer.append(_min_salient_weights_per_neuron)
+            return neurons_to_ablate
+
+        elif self.static_ablation:
+            return (
+                self.static_ablated_filters
+            )  # Check type -> Need to convert to list of indices
+        else:
+            return []
+
+    @torch.no_grad()
+    def _get_neurons_to_ablate_new(
+        self,
+        score_drop: torch.Tensor,
+        score_grow: torch.Tensor,
+        n_keep: int,
+        n_prune: int,
+        sparsity: float,
+        mask: torch.Tensor,
+        weight: torch.Tensor,
+        min_neurons: int,
+    ) -> List[int]:
+        """Return List of neuron indices to ablate.
+
+        Args:
+            score_drop (torch.Tensor): Score for weight based magnitude pruning
+                provided by torch.abs(this_layer_weights)
+            score_grow (torch.Tensor): Score for gradient based magnitude
+                regrowth provided by torch.abs(gradient)
+            n_keep (int): Number of connections to keep during this step.
+            n_prune (int): Number of connections to prune this step.
+            sparsity (float): Sparsity target for this layer.
+            min_neurons (int): Minimum number of neurons to keep active in this
+                layer to meet minimum n_ones.
+
+        Returns:
+            List[int]: List of neuron indices that remain active.
+        """
+        if self.dynamic_ablation and self.min_salient_weights_per_neuron != 0:
+            neurons_to_ablate: List[int] = []
+            saliency_mask = torch.zeros(
+                size=(score_drop.numel(),),
+                dtype=torch.bool,
+                device=score_drop.device,
+            )
+            _, keep_idx = score_drop.flatten().sort(descending=True)
+            saliency_mask[keep_idx[:n_keep]] = True
+
+            _, grow_idx = score_grow.flatten().sort(descending=True)
+            saliency_mask[grow_idx[:n_prune]] = True
+
+            saliency_mask = saliency_mask.reshape(shape=score_drop.shape)
+            neuron_saliency_counts = {
+                neuron_idx: neuron.sum().item()
+                for neuron_idx, neuron in enumerate(saliency_mask)
+            }
+            neuron_saliency_counts: List[Tuple[int]] = [
+                (k, v)
+                for k, v in sorted(
+                    neuron_saliency_counts.items(),
+                    key=lambda x: x[1],
+                    reverse=True,
+                )
+            ]
+
+            if self.min_salient_weights_per_neuron >= 1:
+                _min_salient_weights_per_neuron = (
+                    self.min_salient_weights_per_neuron
+                )
+            else:
+                if self.use_sparse_const_fan_in_for_ablation:
+                    # We will compare against the const-fan-in before ablation
+                    total_fan_in = get_fan_in_after_ablation(
+                        weight, 0, sparsity
+                    )
+                else:
+                    total_fan_in = math.prod(saliency_mask.shape[1:])
+                _min_salient_weights_per_neuron = max(
+                    [
+                        1,
+                        int(self.min_salient_weights_per_neuron * total_fan_in),
+                    ]
+                )
+            if (
+                neuron_saliency_counts[min_neurons][1]
+                < _min_salient_weights_per_neuron
+            ):
+                _min_salient_weights_per_neuron = neuron_saliency_counts[
+                    min_neurons
+                ][1]
+            neurons_to_ablate = [
+                neuron_idx
+                for neuron_idx in neuron_saliency_counts.keys()
+                if neuron_saliency_counts[neuron_idx]
+                < _min_salient_weights_per_neuron
+            ]
+            fan_in = get_fan_in_after_ablation(
+                weight_tensor=saliency_mask,
+                num_neurons_to_ablate=len(neurons_to_ablate),
+                sparsity=sparsity,
+            )
+            if fan_in > math.prod(saliency_mask.shape[1:]):
+                raise InvalidAblatedNeuronException("Invalid fan in detected!")
             self._min_sal_per_layer.append(_min_salient_weights_per_neuron)
             return neurons_to_ablate
 
