@@ -249,6 +249,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             init_method_str=cfg.rigl.init_method_str,
             use_sparse_const_fan_in_for_ablation=cfg.rigl.use_sparse_const_fan_in_for_ablation,  # noqa
             keep_first_layer_dense=cfg.rigl.keep_first_layer_dense,
+            initialize_grown_weights=cfg.rigl.initialize_grown_weights,
         )
     else:
         logger.warning(

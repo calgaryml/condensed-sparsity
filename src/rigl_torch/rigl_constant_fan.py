@@ -93,6 +93,7 @@ class RigLConstFanScheduler(RigLScheduler):
         init_method_str: str = "",
         use_sparse_const_fan_in_for_ablation: bool = False,
         keep_first_layer_dense: bool = False,
+        initialize_grown_weights: float = 0,
     ):
 
         super().__init__(
@@ -116,6 +117,7 @@ class RigLConstFanScheduler(RigLScheduler):
             init_method_str,
             use_sparse_const_fan_in_for_ablation,
             keep_first_layer_dense,
+            initialize_grown_weights,
         )
         if not hasattr(self, "dynamically_ablated_neuron_idx"):
             # Only init if not loaded by checkpoint
@@ -604,37 +606,6 @@ class RigLConstFanScheduler(RigLScheduler):
                 f"Target fan_in: {n_fan_in}"
             )
         return grow_mask
-
-    def _get_new_weights(
-        self,
-        w: torch.nn.parameter.Parameter,
-        current_mask: torch.Tensor,
-        grow_mask: torch.Tensor,
-    ) -> torch.Tensor:
-        """Gets new weights for grown connections.
-
-        New weights initalized to 0, otherwise previous weight value retained.
-
-        Args:
-            w (torch.nn.parameter.Parameter): Weight matrix for a given layer
-            current_mask (torch.Tensor): Current mask from last step for a given
-                layer.
-            grow_mask (torch.Tensor): New grow_mask obtained in this rigl step.
-                Where True, weights initalized to zero.
-
-        Returns:
-            torch.Tensor: New weight matrix with zeros for newly grown weights.
-        """
-        grow_tensor = torch.zeros_like(w)
-        new_connections = ~current_mask & grow_mask.to(
-            device=current_mask.device
-        )
-        new_weights = torch.where(
-            new_connections,
-            grow_tensor,  # init to 0
-            w,  # else keep existing weight
-        )
-        return new_weights
 
     def _verify_neuron_ablation(self) -> None:
         """Verify that backward_masks do not have any active elements i
