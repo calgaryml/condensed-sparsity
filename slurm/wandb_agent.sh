@@ -18,7 +18,7 @@ export WANDB_SWEEP_ID=nq5g6nrr
 cp -r $WORKDIR/.venv $SLURM_TMPDIR/.venv
 
 ## SET ENV ##:
-module load singularity python/3.8.10 cuda/11.4 cudnn
+module load singularity python/3.10.2 cuda/11.4 cudnn
 source ${SLURM_TMPDIR}/.venv/bin/activate
 
 ## RUN SCRIPT ##

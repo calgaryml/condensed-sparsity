@@ -2,12 +2,11 @@
 
 ## GET RESOURCES ##
 
-#SBATCH --job-name=imagenet_x2
-#SBATCH --nodes=1
-#SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=48
-#SBATCH --gpus-per-node=a100:4
-#SBATCH --mem=510000M
+#SBATCH --job-name=imagenet_itop
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=16
+#SBATCH --gres=gpu:a100:1
+#SBATCH --mem=32G
 #SBATCH --time=7-00:00:00
 #SBATCH --mail-user=mklasby@ucalgary.ca
 #SBATCH --mail-type=BEGIN,END,FAIL
@@ -23,7 +22,7 @@ cp $SCRATCH/ILSVRC2012_img_train.tar $SLURM_TMPDIR
 cp $SCRATCH/ILSVRC2012_img_val.tar $SLURM_TMPDIR
 
 ## SET ENV ##:
-module load singularity python/3.10.2 cuda/11.4 cudnn
+module load python/3.10.2 cuda/11.4 cudnn
 source ${SLURM_TMPDIR}/.venv/bin/activate
 
 ## RUN SCRIPT ##
@@ -34,22 +33,27 @@ python3 ${WORKDIR}/train_rigl.py \
 dataset=imagenet \
 model=resnet50 \
 rigl.dense_allocation=${dense_alloc} \
-rigl.delta=400 \
-rigl.grad_accumulation_n=4 \
+rigl.delta=4000 \
+rigl.grad_accumulation_n=1 \
+rigl.alpha=0.5 \
+rigl.const_fan_in=True \
+rigl.use_t_end=False \
+rigl.dynamic_ablation=True \
 rigl.min_salient_weights_per_neuron=0.3 \
-training.batch_size=1024 \
-training.max_steps=256000 \
+rigl.use_sparse_initialization=True \
+rigl.init_method_str=grad_flow_init \
+rigl.keep_first_layer_dense=False \
+training.batch_size=64 \
+training.epochs=104 \
+training.log_interval=1000 \
+training.max_steps=2048000 \
+training.optimizer=sgd \
 training.weight_decay=0.0001 \
 training.label_smoothing=0.1 \
-training.seed=8746 \
-training.lr=0.4 \
-training.epochs=206 \
-training.warm_up_steps=10 \
+training.lr=0.1 \
+training.warm_up_steps=5 \
 training.scheduler=step_lr_with_warm_up \
-training.step_size=[60,140,180] \
+training.step_size=[30,70,90] \
 training.gamma=0.1 \
-training.log_interval=500 \
-compute.world_size=4 \
-compute.distributed=True \
-rigl.use_sparse_initialization=True \
-rigl.init_method_str=grad_flow_init
+compute.distributed=False \
+experiment.comment="_ITOPx1"

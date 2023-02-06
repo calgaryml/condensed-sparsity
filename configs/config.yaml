@@ -4,9 +4,8 @@ defaults:
   - _self_
 
 experiment:
-  comment: "dense_alloc-${rigl.dense_allocation}_const_fan_in-${rigl.const_fan_in}\
-            _first_layer_dense"
-  name: ${model.name}_${dataset.name}_${experiment.comment}
+  comment: ""
+  name: ${model.name}_${dataset.name}_dense_alloc-${rigl.dense_allocation}_const_fan_in-${rigl.const_fan_in}${experiment.comment}
   resume_from_checkpoint: False
   run_id: null
 

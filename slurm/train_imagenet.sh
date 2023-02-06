@@ -22,7 +22,7 @@ cp $SCRATCH/ILSVRC2012_img_train.tar $SLURM_TMPDIR
 cp $SCRATCH/ILSVRC2012_img_val.tar $SLURM_TMPDIR
 
 ## SET ENV ##:
-module load singularity python/3.8.10 cuda/11.4 cudnn
+module load singularity python/3.10.2 cuda/11.4 cudnn
 source ${SLURM_TMPDIR}/.venv/bin/activate
 
 ## RUN SCRIPT ##
