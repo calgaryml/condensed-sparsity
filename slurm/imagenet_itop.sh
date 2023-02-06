@@ -26,6 +26,7 @@ module load python/3.10.2 cuda/11.4 cudnn
 source ${SLURM_TMPDIR}/.venv/bin/activate
 
 ## RUN SCRIPT ##
+wandb offline
 dense_alloc=$1
 printf "Starting run with dense alloc == ${dense_alloc}\n"
 
