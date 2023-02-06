@@ -402,7 +402,7 @@ class RigLScheduler:
         is_eps_valid = False
         dense_layers = set()
         if self.keep_first_layer_dense:
-            dense_layers.append(0)
+            dense_layers.add(0)
         while not is_eps_valid:
             divisor = 0
             rhs = 0
