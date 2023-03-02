@@ -6,13 +6,14 @@
 	"context": "..",
 	// Update the 'dockerFile' property if you aren't using the standard 'Dockerfile' filename.
 	"dockerFile": "../Dockerfile.dev",
-	// Set *default* container specific settings.json values on container create.
-	"settings": {},
 	// Add the IDs of extensions you want installed when the container is created.
 	"extensions": [
 		"ms-python.python",
 		"njpwerner.autodocstring",
 	],
+	"settings": {
+		"terminal.integrated.defaultProfile.linux": "bash"
+	},
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
 	// Uncomment the next line to run commands after the container is created - for example installing curl.

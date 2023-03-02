@@ -169,6 +169,7 @@ class RigLScheduler:
         init_method_str: str = "",
         use_sparse_const_fan_in_for_ablation: bool = False,
         keep_first_layer_dense: bool = False,
+        initialize_grown_weights: float = 0,
     ):
         """Initalizes scheduler object."""
         self._logger = logging.getLogger(__file__)
@@ -191,6 +192,7 @@ class RigLScheduler:
             use_sparse_const_fan_in_for_ablation  # noqa
         )
         self.keep_first_layer_dense = keep_first_layer_dense
+        self.initialize_grown_weights = initialize_grown_weights
 
         self.W, self._linear_layers_mask = get_W(
             model, return_linear_layers_mask=True
@@ -772,16 +774,8 @@ class RigLScheduler:
             )
             mask2 = new_values.scatter(0, sorted_indices, new_values)
 
-            mask2_reshaped = torch.reshape(mask2, current_mask.shape)
-            grow_tensor = torch.zeros_like(w)
-
-            new_connections = (mask2_reshaped == 1) & (current_mask == 0)
-
-            # update new weights to be initialized as zeros and update the
-            # weight tensors
-            new_weights = torch.where(
-                new_connections.to(w.device), grow_tensor, w
-            )
+            grow_mask = torch.reshape(mask2, current_mask.shape)
+            new_weights = self._get_new_weights(w, current_mask, grow_mask)
             w.data = new_weights
 
             mask_combined = torch.reshape(
@@ -950,6 +944,40 @@ class RigLScheduler:
             },
             step=step,
         )
+
+    def _get_new_weights(
+        self,
+        w: torch.nn.parameter.Parameter,
+        current_mask: torch.Tensor,
+        grow_mask: torch.Tensor,
+    ) -> torch.Tensor:
+        """Gets new weights for grown connections.
+
+        New weights initalized to 0, otherwise previous weight value retained.
+
+        Args:
+            w (torch.nn.parameter.Parameter): Weight matrix for a given layer
+            current_mask (torch.Tensor): Current mask from last step for a given
+                layer.
+            grow_mask (torch.Tensor): New grow_mask obtained in this rigl step.
+                Where True, weights initalized to zero.
+
+        Returns:
+            torch.Tensor: New weight matrix with zeros for newly grown weights.
+        """
+        if self.initialize_grown_weights == 0:
+            grow_tensor = torch.zeros_like(w)
+        else:
+            grow_tensor = torch.ones_like(w) * self.initialize_grown_weights
+        new_connections = ~current_mask & grow_mask.to(
+            device=current_mask.device
+        )
+        new_weights = torch.where(
+            new_connections,
+            grow_tensor,  # init to initialize_grown_weights value
+            w,  # else keep existing weight
+        )
+        return new_weights
 
 
 if __name__ == "__main__":

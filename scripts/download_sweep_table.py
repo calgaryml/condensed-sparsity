@@ -34,7 +34,7 @@ def parse_wandb_results(project_results_csv: str) -> pd.DataFrame:
 if __name__ == "__main__":
     start_time = datetime.now()
     print("Downloading runs...")
-    api = wandb.Api()
+    api = wandb.Api(timeout=30)
     # Project is specified by <entity/project-name>
     runs = api.runs("condensed-sparsity/condensed-rigl")
     summary_list, config_list, name_list, state_list, id_list, tags = (

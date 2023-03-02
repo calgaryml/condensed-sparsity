@@ -4,7 +4,7 @@ defaults:
   - _self_
 
 experiment:
-  comment: ""
+  comment: "_init_weights-0.0001"
   name: ${model.name}_${dataset.name}_dense_alloc-${rigl.dense_allocation}_const_fan_in-${rigl.const_fan_in}${experiment.comment}
   resume_from_checkpoint: False
   run_id: null
@@ -63,6 +63,8 @@ rigl:
   diet: [17, 16, 17, 14, 16, 33, 31, 31, 32, 30, 65, 63, 63, 65, 63, 122, 124, 124, 114, 125, 0]  # For 99%, 50% saliency
   # keep first layer dense
   keep_first_layer_dense: False
+  # Value to initalize regrown weights to. Used for debugging. Use 0 for vanilla rigl methodology.
+  initialize_grown_weights: 0.0001
 
 training:
   # quickly check a single pass",
