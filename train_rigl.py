@@ -88,6 +88,9 @@ def initalize_main(cfg: omegaconf.DictConfig) -> None:
     if "keep_first_layer_dense" not in cfg.rigl:
         with omegaconf.open_dict(cfg):
             cfg.rigl.keep_first_layer_dense = False
+    if "initialize_grown_weights" not in cfg.rigl:
+        with omegaconf.open_dict(cfg):
+            cfg.rigl.initialize_grown_weights = 0.0
 
     if cfg.compute.distributed:
         # We initalize train and val loaders here to ensure .tar balls have
