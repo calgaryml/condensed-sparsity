@@ -2,16 +2,16 @@
 
 ## GET RESOURCES ##
 
-#SBATCH --job-name=imagenet_x2
+#SBATCH --job-name=imagenet_x1
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=48
 #SBATCH --gpus-per-node=a100:4
 #SBATCH --mem=510000M
-#SBATCH --time=7-00:00:00
+#SBATCH --time=3-00:00:00
 #SBATCH --mail-user=mklasby@ucalgary.ca
 #SBATCH --mail-type=BEGIN,END,FAIL
-#SBATCH --account=def-yani
+#SBATCH --account=def-rmsouza
 
 
 ## --- Migrate data to local node storage --- ##
@@ -23,12 +23,13 @@ cp $SCRATCH/ILSVRC2012_img_train.tar $SLURM_TMPDIR
 cp $SCRATCH/ILSVRC2012_img_val.tar $SLURM_TMPDIR
 
 ## SET ENV ##:
-module load singularity python/3.10.2 cuda/11.4 cudnn
+module load singularity python/3.8.10 cuda/11.4 cudnn
 source ${SLURM_TMPDIR}/.venv/bin/activate
 
 ## RUN SCRIPT ##
 dense_alloc=$1
 printf "Starting run with dense alloc == ${dense_alloc}\n"
+wandb offline
 
 python3 ${WORKDIR}/train_rigl.py \
 dataset=imagenet \
@@ -38,15 +39,15 @@ rigl.delta=400 \
 rigl.grad_accumulation_n=4 \
 rigl.min_salient_weights_per_neuron=0.3 \
 training.batch_size=1024 \
-training.max_steps=256000 \
+training.max_steps=128000 \
 training.weight_decay=0.0001 \
 training.label_smoothing=0.1 \
 training.seed=8746 \
 training.lr=0.4 \
-training.epochs=206 \
-training.warm_up_steps=10 \
+training.epochs=103 \
+training.warm_up_steps=5 \
 training.scheduler=step_lr_with_warm_up \
-training.step_size=[60,140,180] \
+training.step_size=[30,70,90] \
 training.gamma=0.1 \
 training.log_interval=500 \
 compute.world_size=4 \

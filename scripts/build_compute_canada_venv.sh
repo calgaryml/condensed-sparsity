@@ -1,5 +1,5 @@
 #!/bin/bash
-module load singularity python/3.10.2 cuda cudnn
+module load singularity python/3.10.2 cuda/11.4 cudnn
 rm -rf ./.venv
 virtualenv .venv
 source .venv/bin/activate
