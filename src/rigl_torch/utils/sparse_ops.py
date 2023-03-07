@@ -1,4 +1,5 @@
 import torch
+import copy
 from sparseprop.modules import SparseConv2d, SparseLinear
 
 
@@ -20,7 +21,7 @@ class SparseModelFactory:
 
     def _swap_module(self, network, module_name, new_module):
         name_parts = module_name.split(".")
-        parent = network
+        parent = copy.deepcopy(network)
         for part in name_parts[:-1]:
             if part.isdigit():
                 parent = parent[int(part)]
