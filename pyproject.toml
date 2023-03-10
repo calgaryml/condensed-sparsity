@@ -36,7 +36,7 @@ scipy="1.8.0"
 wandb="0.12.5"
 xmanager="^0.3"
 gcsfs = "^2022.11.0"
-sparseprop = "^0.1.11" # Install with pip. Build script is not PEP517 compliant. 
+# sparseprop = "^0.1.11" # Install with pip. Build script is not PEP517 compliant. 
 
 [[tool.poetry.source]]
 name="torch_repo"

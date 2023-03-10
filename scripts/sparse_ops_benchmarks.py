@@ -79,7 +79,7 @@ def main(device, cuda, num_features, dtype, num_threads):
                 sub_label=sub_label,
                 num_threads=num_threads,
                 **timer_kwargs,
-            ).timeit(10)
+            ).blocked_autorange(min_run_time=5)
         )
 
     compare = benchmark.Compare(results)
@@ -98,6 +98,6 @@ if __name__ == "__main__":
     dtype = torch.float32
     cuda = False
     dtype = torch.float32
-    num_threads = 8
+    num_threads = 1
     d = "cpu"
     results = main(d, cuda, num_features, dtype, num_threads)
