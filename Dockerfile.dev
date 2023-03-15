@@ -72,7 +72,8 @@ COPY ./pyproject.toml ./poetry.lock ./
 RUN python -m venv .venv && \ 
     source .venv/bin/activate && \
     pip install --upgrade pip && \
-    poetry install -vvv --no-root
+    poetry install -vvv --no-root && \
+    pip install sparseprop
 
 RUN echo "source ${BUILD_PATH}/.venv/bin/activate" >> /home/$USERNAME/.bashrc
 
