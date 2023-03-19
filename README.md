@@ -88,7 +88,7 @@ For development, we recommend using vscode's devcontainer functionality to build
 ## Compute Canada
 Compute Canada pre-builds many python packages into wheels that are stored in a local wheelhouse. It is best practice to use these wheels rather than use package distributions from PyPI. Therefore, the dependencies pinned in `pyproject.toml` have been carefully selected to ensure that the project enviornment can be replicated using the Compute Canada wheels that will match a local enviornment using PyPI package distributions. 
 
-For simplicity, a bash script for installing the project and dependencies is included, see: `./scripts/build_compute_canada_venv.sh`. Simply run this script from the project working directory after cloning the project from github. 
+For simplicity, a bash script for installing the project and dependencies is included, see: `./scripts/build_cc_venv.sh`. Simply run this script from the project working directory after cloning the project from github. 
 
 ## Tests
 This repository uses `pytest`.
