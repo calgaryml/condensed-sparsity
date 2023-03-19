@@ -281,8 +281,13 @@ class RigLScheduler:
             if not (
                 self.W[idx].masked_select(mask) != prior_W.masked_select(mask)
             ).all():
-                print(self.W[idx][0])
-                print(prior_W[0])
+                print(
+                    f"Found this many sparse init vars with the same value "
+                    "after reinit: "
+                    f"{(self.W[idx].masked_select(mask) == prior_W.masked_select(mask)).sum()}"  # noqa
+                )
+                # print(self.W[idx][0])
+                # print(prior_W[0])
 
             if is_dist:
                 dist.broadcast(self.W[idx].data, 0)

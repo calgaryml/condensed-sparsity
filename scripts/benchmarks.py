@@ -48,11 +48,12 @@ def main(device, cuda, num_features, dtype, num_threads):
                 dtype=dtype,
             )
             lc = LinearCondensed(**lc_params)
+            jit_lc = torch.jit.trace(lc, x)
             results.append(
                 benchmark.Timer(
                     stmt="lc_benchmark(x, lc)",
                     setup="from __main__ import lc_benchmark",
-                    globals={"x": x, "lc": lc},
+                    globals={"x": x, "lc": jit_lc},
                     label="Linear Condensed",
                     sub_label=sub_label,
                     description=f"Linear Condensed @ sparsity {s}",
@@ -83,7 +84,7 @@ def main(device, cuda, num_features, dtype, num_threads):
     compare = benchmark.Compare(results)
     f_name = "compare_gpu.pkl"
     if device == "cpu":
-        f_name = "compare_cpu.pkl"
+        f_name = "compare_cpu_jit.pkl"
     with open(f_name, "wb") as handle:
         pickle.dump(compare, handle)
     compare.colorize()
