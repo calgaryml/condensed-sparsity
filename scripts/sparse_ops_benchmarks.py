@@ -30,7 +30,9 @@ from rigl_torch.utils.sparse_ops import SparseModelFactory
 @torch.no_grad()
 def main(device, cuda, num_features, dtype, num_threads):
     sparsities = [0.0, 0.5, 0.9, 0.95, 0.99]
+    # sparsities = [0.0, 0.99]
     batch_sizes = [2**x for x in range(10, -1, -1)]
+    # batch_sizes = [2**x for x in range(2, -1, -1)]
     results = []
     counter = 0
     for batch_size, s in product(batch_sizes, sparsities):
@@ -114,16 +116,19 @@ def main(device, cuda, num_features, dtype, num_threads):
     return results
 
 
+@torch.no_grad()
 def get_model_results(device, cuda, input_shape, dtype, num_threads):
-    # sparsities = [0.0, 0.5, 0.9, 0.95, 0.99]
-    sparsities = [0.0, 0.5]
+    sparsities = [0.0, 0.5, 0.9, 0.95, 0.99]
+    # sparsities = [0.0, 0.95]
     const_fan = [True, False]
-    # batch_sizes = [2**x for x in range(10, -1, -1)]
-    batch_sizes = [2**x for x in range(1, -1, -1)]
+    batch_sizes = [2**x for x in range(10, -1, -1)]
+    # batch_sizes = [2**x for x in range(1, -1, -1)]
     results = []
     counter = 0
     for cf in const_fan:
         for s in sparsities:
+            if s == 0.0 and cf is True:
+                continue
             for batch_size in batch_sizes:
                 print(
                     f"Benchmarking batch size {batch_size} with sparsity {s}..."
@@ -137,37 +142,44 @@ def get_model_results(device, cuda, input_shape, dtype, num_threads):
                 )
                 x = x.default_tensor_constructor(x._size, x._dtype)
                 x = x.to(device=device)
-                sub_label = f"{x.shape:<6}"
-                fully_sparse_model = get_model(
+                sub_label = f"{x.shape.__str__()}"
+                fully_sparse_model, pruner = get_model(
                     s, input_shape=x.shape, const_fan=cf, partial_sparsity=False
                 )
-                if s != 0.0:
-                    partially_sparse_model = get_model(
-                        s,
-                        input_shape=x.shape,
-                        const_fan=cf,
-                        partial_sparsity=True,
+                global_ones = 0
+                global_el = 0
+                if pruner is not None:
+                    for w in pruner.W:
+                        global_ones += (w != 0).sum()
+                        global_el += w.numel()
+                    print(
+                        f"Actual weight sparsity == {1 - (global_ones / global_el)}, sparsity target == {s}"  # noqa
                     )
-                else:
-                    partially_sparse_model = None
+                # if s != 0.0:
+                #     partially_sparse_model = get_model(
+                #         s,
+                #         input_shape=x.shape,
+                #         const_fan=cf,
+                #         partial_sparsity=True,
+                #     )
+                # else:
+                #     partially_sparse_model = None
                 timer_kwargs = []
                 if s != 0.0:
                     fully_sparse_timer_kwargs = dict(
-                        label=(
-                            f"Fully Sparse ResNet50 with const_fan=={const_fan}"
-                        ),
+                        label=(f"Sparse ResNet50 with const_fan=={cf}"),
                         globals={"x": x, "layer": fully_sparse_model},
-                        description=f"Fully Sparse ResNet50 @ sparsity {s}",
+                        description=f"Sparse ResNet50 @ sparsity {s} with const_fan=={cf}",  # noqa
                     )
-                    partially_sparse_timer_kwargs = dict(
-                        label=(
-                            f"Partially Sparse ResNet50 with const_fan=={const_fan}"  # noqa
-                        ),
-                        globals={"x": x, "layer": partially_sparse_model},
-                        description=f"Partially Sparse ResNet50 @ sparsity {s}",
-                    )
+                    # partially_sparse_timer_kwargs = dict(
+                    #     label=(
+                    #         f"Partially Sparse ResNet50 with const_fan=={cf}"  # noqa
+                    #     ),
+                    #     globals={"x": x, "layer": partially_sparse_model},
+                    #     description=f"Partially Sparse ResNet50 @ sparsity {s} with const_fan=={cf}", # noqa
+                    # )
                     timer_kwargs.append(fully_sparse_timer_kwargs)
-                    timer_kwargs.append(partially_sparse_timer_kwargs)
+                    # timer_kwargs.append(partially_sparse_timer_kwargs)
                 else:
                     timer_kwargs.append(
                         dict(
@@ -186,17 +198,16 @@ def get_model_results(device, cuda, input_shape, dtype, num_threads):
                         ).blocked_autorange(min_run_time=5)
                     )
                 del fully_sparse_model
-                del partially_sparse_model
 
-        compare = benchmark.Compare(results)
-        f_name = "compare_gpu_sparseprop_resnet50.pkl"
-        if device == "cpu":
-            f_name = "compare_cpu_sparseprop_resnet50.pkl"
-        with open(f_name, "wb") as handle:
-            pickle.dump(compare, handle)
-        compare.colorize()
-        print(compare)
-        return results
+    compare = benchmark.Compare(results)
+    f_name = "compare_gpu_sparseprop_resnet50.pkl"
+    if device == "cpu":
+        f_name = "compare_cpu_sparseprop_resnet50.pkl"
+    with open(f_name, "wb") as handle:
+        pickle.dump(compare, handle)
+    compare.colorize()
+    print(compare)
+    return results
 
 
 def get_model(sparsity, input_shape, const_fan, partial_sparsity):
@@ -245,7 +256,7 @@ def get_model(sparsity, input_shape, const_fan, partial_sparsity):
         model = DistributedDataParallel(model, device_ids=[rank])
     optimizer = get_optimizer(cfg, model, state_dict=optimizer_state)
     _ = get_lr_scheduler(cfg, optimizer, state_dict=scheduler_state)
-    _ = None
+    pruner = None
     # print(f"dense alloc is: {cfg.rigl.dense_allocation}")
     # print(f"of type: {type(cfg.rigl.dense_allocation)}")
     if cfg.rigl.dense_allocation is not None:
@@ -254,7 +265,7 @@ def get_model(sparsity, input_shape, const_fan, partial_sparsity):
             rigl_scheduler = RigLConstFanScheduler
         else:
             rigl_scheduler = RigLScheduler
-        _ = rigl_scheduler(
+        pruner = rigl_scheduler(
             model,
             optimizer,
             dense_allocation=cfg.rigl.dense_allocation,
@@ -279,18 +290,19 @@ def get_model(sparsity, input_shape, const_fan, partial_sparsity):
     if cfg.rigl.dense_allocation is not None:
         if partial_sparsity:
             model = swap_modules_with_sparse(
-                model, input_shape=input_shape, inplace=True
+                model, input_shape=input_shape, inplace=False
             )
         else:
             model = SparseModelFactory().get_sparse_model(
                 model.to("cpu"), input_shape=input_shape
             )
-    return model
+        model.eval()
+    return model, pruner
 
 
 if __name__ == "__main__":
     dotenv.load_dotenv("../.env")
-    num_features = 1000
+    num_features = 2048
     dtype = torch.float32
     cuda = False
     dtype = torch.float32

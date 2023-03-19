@@ -64,7 +64,7 @@ rigl:
   # keep first layer dense
   keep_first_layer_dense: False
   # Value to initalize regrown weights to. Used for debugging. Use 0 for vanilla rigl methodology.
-  initialize_grown_weights: 0.0001
+  initialize_grown_weights: 0.0
 
 training:
   # quickly check a single pass",
