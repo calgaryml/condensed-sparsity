@@ -114,7 +114,7 @@ train_rigl = "train_rigl:main"
 
 
 [build-system]
-requires = ["poetry-core>=1.1.0"]
+requires = ["poetry-core>=1.4.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.black]

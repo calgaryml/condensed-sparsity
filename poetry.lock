@@ -3128,21 +3128,6 @@ files = [
 pyasn1 = ">=0.4.6,<0.5.0"
 
 [[package]]
-name = "pybind11"
-version = "2.10.3"
-description = "Seamless operability between C++11 and Python"
-category = "main"
-optional = false
-python-versions = ">=3.6"
-files = [
-    {file = "pybind11-2.10.3-py3-none-any.whl", hash = "sha256:123e303f39ad5de97ddfa4f1f473cb85881a0a94ee5714eb3c37e2405371fc12"},
-    {file = "pybind11-2.10.3.tar.gz", hash = "sha256:08cfe6d4f73746447cc85a400c8169a91608b8a00c5feecd8ff251a70565d12f"},
-]
-
-[package.extras]
-global = ["pybind11-global (==2.10.3)"]
-
-[[package]]
 name = "pycodestyle"
 version = "2.6.0"
 description = "Python style guide checker"
@@ -3960,22 +3945,6 @@ files = [
 ]
 
 [[package]]
-name = "sparseprop"
-version = "0.1.11"
-description = "SparseProp: Efficient Sparse Backpropagation for Faster Training of Neural Networks"
-category = "main"
-optional = false
-python-versions = "*"
-files = [
-    {file = "sparseprop-0.1.11.tar.gz", hash = "sha256:ea9ca83aa2698076e27d65423575a2e10a6c7b87a03dc829a586978a0ff8117a"},
-]
-
-[package.dependencies]
-pybind11 = ">=2.0.0"
-scipy = "*"
-setuptools = ">=59.0"
-
-[[package]]
 name = "SQLAlchemy"
 version = "1.2.19"
 description = "Database Abstraction Library"
@@ -4730,4 +4699,4 @@ termcolor-whl = "1.1.2"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10,<3.11"
-content-hash = "785fe8e4858bf4e04c3cb3dec262dad634df8b746d2e96e835aecd16084d3af7"
+content-hash = "ce9ee62eac9ee89a98c2f95ea29ddfee309acca3bb342cfd82306bb5fee651d8"
