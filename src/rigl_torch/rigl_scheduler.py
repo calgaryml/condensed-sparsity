@@ -778,6 +778,7 @@ class RigLScheduler:
                 torch.zeros_like(sorted_indices),
             )
             mask2 = new_values.scatter(0, sorted_indices, new_values)
+            mask2 = mask2.to(torch.bool)
 
             grow_mask = torch.reshape(mask2, current_mask.shape)
             new_weights = self._get_new_weights(w, current_mask, grow_mask)
@@ -971,9 +972,12 @@ class RigLScheduler:
             torch.Tensor: New weight matrix with zeros for newly grown weights.
         """
         if self.initialize_grown_weights == 0:
-            grow_tensor = torch.zeros_like(w)
+            grow_tensor = torch.zeros_like(w, dtype=torch.bool)
         else:
-            grow_tensor = torch.ones_like(w) * self.initialize_grown_weights
+            grow_tensor = (
+                torch.ones_like(w, dtype=torch.bool)
+                * self.initialize_grown_weights
+            )
         new_connections = ~current_mask & grow_mask.to(
             device=current_mask.device
         )
