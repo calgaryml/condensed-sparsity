@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.10]
+        python-version: [3.10.10]
 
     steps:
       - name: Git Checkout
@@ -25,8 +25,8 @@ jobs:
       - name: Upgrade pip
         run: pip install --upgrade pip
 
-      - name: Install poetry 1.2.0
-        run: pip install poetry==1.2.0
+      - name: Install poetry 1.4.0
+        run: pip install poetry==1.4.0
 
       # TODO: If we need SSH agent, need repo admin to add secret key
       # - name: Setup SSH Agent
