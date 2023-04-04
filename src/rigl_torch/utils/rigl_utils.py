@@ -1,19 +1,24 @@
 import torch
 import torch.nn as nn
 import torchvision
+from torch.nn.modules.linear import NonDynamicallyQuantizableLinear
 from omegaconf import DictConfig
 from math import prod
 from typing import Tuple, Union, List, Optional
 
 
-_EXCLUDED_TYPES = (torch.nn.BatchNorm2d,)
+_EXCLUDED_TYPES = (torch.nn.BatchNorm2d, torch.nn.LayerNorm)
 
 
 def get_names_and_W(
     model: torch.nn.Module,
 ) -> Tuple[List[str], List[torch.nn.parameter.Parameter]]:
     """Much simpler implementation"""
-    target_types = [torch.nn.Conv2d, torch.nn.Linear]
+    target_types = [
+        torch.nn.Conv2d,
+        torch.nn.Linear,
+        NonDynamicallyQuantizableLinear,  # From ViT
+    ]
     target_layers = []
     names = []
     for n, m in model.named_modules():
