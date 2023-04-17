@@ -1,7 +1,10 @@
 defaults:
-  - dataset: imagenet
-  - model: vit
-  - _self_
+  - _self_  # We default to values in this file if group settings below are null
+  - dataset: cifar10
+  - model: resnet18
+  - rigl: ${dataset}
+  - training: ${model}
+  - compute: ${dataset}
 
 experiment:
   comment: ""  # Start with leading `_`
@@ -59,8 +62,6 @@ rigl:
   use_sparse_initialization: True
   # Param to choose between sparse init methods -> options include "kaiming_uniform", "kaiming_normal", "sparse_torch", and "grad_flow_init"
   init_method_str: grad_flow_init
-  # Custom topology to use for SkinnyResNet
-  diet: [17, 16, 17, 14, 16, 33, 31, 31, 32, 30, 65, 63, 63, 65, 63, 122, 124, 124, 114, 125, 0]  # For 99%, 50% saliency
   # keep first layer dense
   keep_first_layer_dense: False
   # Value to initalize regrown weights to. Used for debugging. Use 0 for vanilla rigl methodology.
@@ -68,7 +69,7 @@ rigl:
 
 training:
   # quickly check a single pass",
-  dry_run: False
+  dry_run: True
   # batch size for training
   batch_size: 512  # 128 for cifar10, multiples of 256 for imagenet w/ scaled lr -> 512 with 2 v100s or 4 3090s -> 1024 with 4 v100s
   # Batch size to simulate by taking multiple steps per optimizer update (accumulate grads)
