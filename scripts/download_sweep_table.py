@@ -3,8 +3,8 @@ import wandb
 import ast
 from datetime import datetime
 
-_RAW_F_NAME = "./project_raw_data_03.csv"
-_PROC_F_NAME = "./processed_results_03.csv"
+_RAW_F_NAME = "./project_raw_data.csv"
+_PROC_F_NAME = "./processed_results.csv"
 
 
 def parse_wandb_results(project_results_csv: str) -> pd.DataFrame:
@@ -50,11 +50,7 @@ if __name__ == "__main__":
     )
     sweep_list = []
 
-    counter = 0
     for run in runs:
-        counter += 1
-        if counter > 3:
-            break
         # .summary contains the output keys/values for metrics like accuracy.
         #  We call ._json_dict to omit large files
         summary_list.append(run.summary._json_dict)

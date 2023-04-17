@@ -69,7 +69,7 @@ rigl:
 
 training:
   # quickly check a single pass",
-  dry_run: True
+  dry_run: False
   # batch size for training
   batch_size: 512  # 128 for cifar10, multiples of 256 for imagenet w/ scaled lr -> 512 with 2 v100s or 4 3090s -> 1024 with 4 v100s
   # Batch size to simulate by taking multiple steps per optimizer update (accumulate grads)
