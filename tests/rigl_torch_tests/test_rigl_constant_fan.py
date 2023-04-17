@@ -74,7 +74,7 @@ def test_random_sparsify(pruner):
 def test_train_const_fan(pruner, data_loaders):
     train_loader, test_loader = data_loaders
     log_interval = 100
-    device = pruner.model.device
+    device = next(pruner.model.parameters()).device
     epochs = 3
     losses = []
     accuracy = []

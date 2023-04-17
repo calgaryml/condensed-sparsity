@@ -22,9 +22,9 @@ device = (
 # max_iters = 50000 # Too slow on github actions
 max_iters = 1
 
-model = torch.hub.load(
-    "pytorch/vision:v0.6.0", "resnet50", pretrained=False
-).to(device)
+model = torch.hub.load("pytorch/vision:v0.6.0", "resnet50", weights=None).to(
+    device
+)
 # model = torch.nn.DataParallel(model).to(device)
 optimizer = torch.optim.SGD(model.parameters(), 0.1)
 scheduler = RigLScheduler(

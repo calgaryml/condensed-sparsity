@@ -10,8 +10,10 @@ from rigl_torch.rigl_scheduler import RigLScheduler
 from rigl_torch.utils.rigl_utils import get_W
 from utils.mocks import MNISTNet, mock_image_dataloader
 import pytest
+import dotenv
 
-
+# Load custom .env
+dotenv.load_dotenv(dotenv_path=f"{os.getcwd()}/.env", override=True)
 # set up environment
 # torch.manual_seed(1)
 device = (
@@ -82,15 +84,11 @@ def pruner(request, net, data_loaders):
 
 
 def test_lengths_of_W():
-    resnet18 = torch.hub.load(
-        "pytorch/vision:v0.6.0", "resnet18", pretrained=False
-    )
+    resnet18 = torch.hub.load("pytorch/vision:v0.6.0", "resnet18", weights=None)
     resnet18_W = get_W(resnet18)
     assert len(resnet18_W) == 21, 'resnet18 should have 21 "weight" matrices'
 
-    resnet50 = torch.hub.load(
-        "pytorch/vision:v0.6.0", "resnet50", pretrained=False
-    )
+    resnet50 = torch.hub.load("pytorch/vision:v0.6.0", "resnet50", weights=None)
     resnet50_W = get_W(resnet50)
     assert len(resnet50_W) == 54, 'resnet50 should have 54 "weight" matrices'
 
@@ -107,9 +105,9 @@ def get_new_scheduler(
     static_topo=False, use_ddp=False, state_dict=None, model=None
 ):
     if model is None:
-        model = torch.hub.load(
-            "pytorch/vision:v0.6.0", arch, pretrained=False
-        ).to(device)
+        model = torch.hub.load("pytorch/vision:v0.6.0", arch, weights=None).to(
+            device
+        )
 
     if use_ddp:
         model = torch.nn.parallel.DistributedDataParallel(model)
@@ -308,12 +306,14 @@ class TestRigLScheduler:
 
 
 # distributed testing setup
-BACKEND = "gloo"  # mpi, gloo, or nccl
+BACKEND = "nccl"  # mpi, gloo, or nccl
 WORLD_SIZE = 2
-init_method = "file://%s/distributed_test" % os.getcwd()
+# init_method = "file://%s/distributed_test" % os.getcwd()
+init_method = None
 
 
 def assert_actual_sparsity_is_valid_DISTRIBUTED(rank, static_topo=False):
+    torch.cuda.set_device(rank)
     dist.init_process_group(
         BACKEND, init_method=init_method, rank=rank, world_size=WORLD_SIZE
     )
@@ -322,6 +322,7 @@ def assert_actual_sparsity_is_valid_DISTRIBUTED(rank, static_topo=False):
 
 
 def assert_sparse_momentum_remain_zeros_DISTRIBUTED(rank, static_topo):
+    torch.cuda.set_device(rank)
     dist.init_process_group(
         BACKEND, init_method=init_method, rank=rank, world_size=WORLD_SIZE
     )
@@ -329,6 +330,7 @@ def assert_sparse_momentum_remain_zeros_DISTRIBUTED(rank, static_topo):
 
 
 def assert_sparse_elements_remain_zeros_DISTRIBUTED(rank, static_topo):
+    torch.cuda.set_device(rank)
     dist.init_process_group(
         BACKEND, init_method=init_method, rank=rank, world_size=WORLD_SIZE
     )
@@ -336,6 +338,7 @@ def assert_sparse_elements_remain_zeros_DISTRIBUTED(rank, static_topo):
 
 
 def assert_sparse_gradients_remain_zeros_DISTRIBUTED(rank, static_topo):
+    torch.cuda.set_device(rank)
     dist.init_process_group(
         BACKEND, init_method=init_method, rank=rank, world_size=WORLD_SIZE
     )

@@ -9,7 +9,7 @@ def get_imagenet_wide_resnet_22(*args, **kwargs):
     wide_resnet_22_kwargs = dict(
         width_per_group=64 * 2,
         num_classes=1000,
-        pretrained=False,
+        weights=None,
         progress=True,
         layers=[2, 2, 4, 2],
     )
