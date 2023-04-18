@@ -387,7 +387,6 @@ def train(
             or (batch_idx != 0 and batch_idx % steps_to_accumulate_grad == 0)
             else False
         )
-        step += 1
         data, target = data.to(device), target.to(device)
         logits = model(data)
         loss = F.cross_entropy(
@@ -397,7 +396,8 @@ def train(
         )
         loss.backward()
 
-        if apply_grads:
+        if apply_grads:  # If we apply grads, check for topology update and log
+            step += 1
             optimizer.step()
             if pruner is not None:
                 # pruner.__call__ returns False if rigl step taken
@@ -407,32 +407,35 @@ def train(
                     pruner.log_meters(step=step)
             optimizer.zero_grad()
 
-        if batch_idx % cfg.training.log_interval == 0 and rank == 0:
-            world_size = (
-                1
-                if cfg.compute.distributed is False
-                else cfg.compute.world_size
-            )
-            logger.info(
-                "Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
-                    epoch,
-                    batch_idx * len(data) * world_size,
-                    len(train_loader.dataset),
-                    100.0 * batch_idx / len(train_loader),
-                    loss.item(),
+            if step % cfg.training.log_interval == 0 and rank == 0:
+                world_size = (
+                    1
+                    if cfg.compute.distributed is False
+                    else cfg.compute.world_size
                 )
-            )
-            wandb_data = {
-                "Training Loss": loss.item(),
-            }
-            if pruner is not None:
-                wandb_data["ITOP Rate"] = pruner.itop_rs
-            wandb.log(wandb_data, step=step)
-        if cfg.training.dry_run:
-            logger.warning("Dry run, exiting after one training step")
-            return step
-        if cfg.training.max_steps is not None and step > cfg.training.max_steps:
-            return step
+                logger.info(
+                    "Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
+                        epoch,
+                        batch_idx * len(data) * world_size,
+                        len(train_loader.dataset),
+                        100.0 * batch_idx / len(train_loader),
+                        loss.item(),
+                    )
+                )
+                wandb_data = {
+                    "Training Loss": loss.item(),
+                }
+                if pruner is not None:
+                    wandb_data["ITOP Rate"] = pruner.itop_rs
+                wandb.log(wandb_data, step=step)
+            if cfg.training.dry_run:
+                logger.warning("Dry run, exiting after one training step")
+                return step
+            if (
+                cfg.training.max_steps is not None
+                and step > cfg.training.max_steps
+            ):
+                return step
     return step
 
 

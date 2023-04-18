@@ -7,4 +7,4 @@ grad_accumulation_n: 1  # 4096 / 512 without simulated batch size, 1 otheriwse
 # Custom topology to use for SkinnyResNet
 diet: null
 # keep first layer dense
-keep_first_layer_dense: True
+keep_first_layer_dense: False

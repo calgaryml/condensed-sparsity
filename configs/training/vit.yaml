@@ -5,7 +5,7 @@ batch_size: 512  # 128 for cifar10, multiples of 256 for imagenet w/ scaled lr -
 # Batch size to simulate by taking multiple steps per optimizer update (accumulate grads)
 simulated_batch_size: 4096
 # number of epochs to train
-epochs: 300  # For imagenet, training will finish at ~ epoch 102.31, use 250 for cifar10 || imagenet x5 -> 515  | ViT is 300
+epochs: 150  # For imagenet, training will finish at ~ epoch 102.31, use 250 for cifar10 || imagenet x5 -> 515  | ViT is 300
 # max number of steps (will override epochs) -> Based on mini-batch steps (NOT SIMULATED BATCHES!)
 max_steps: null  # 4096 * 32000 / 512 = 256000 from rigl paper || x5 -> 4096*32000/1024 = 640000
 
@@ -15,7 +15,7 @@ optimizer: adam # "sgd", "adamw"
 weight_decay: 0.3 # 5.0e-4 -> cifar10   0.0001 -> imagenet  0.3 -> Vit
 # Label smoothing for cross entropy
 label_smoothing: 0.1  # 0.1 for imagenet, 0.0 for cifar
-# Betas for adams
+# Betas for adam
 betas: [0.9, 0.999]
 
 ## Scheduler
@@ -23,6 +23,6 @@ scheduler: cosine_annealing_with_warm_up # step_lr -> cifar # cosine_annealing_w
 # Learning rate after warmup
 lr: 0.003  # 0.003 * batch size / 256 per original paper -> Use 1.6 for 4096 simulated batch size. 0.1 for ITOP
 # Learning rate for first epoch of warm up, only applies to schedulers with linear warm up
-init_lr: 1.0e-6
+init_lr: 1.0e-8
 # Number of epochs to warm up for linear warm ups
-warm_up_steps: 32 # 5 for imagenet | 0 for cifar10 | 25 for x5 imagenet | 32 for vit
+warm_up_steps: 16 # 5 for imagenet | 0 for cifar10 | 25 for x5 imagenet | 32 for vit at 300 epochs or 16 at 150 epochs
