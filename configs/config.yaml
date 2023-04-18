@@ -7,7 +7,7 @@ defaults:
   - compute: ${dataset}
 
 experiment:
-  comment: ""  # Start with leading `_`
+  comment: "_first_layer_dense"
   name: ${model.name}_${dataset.name}_dense_alloc-${rigl.dense_allocation}_const_fan_in-${rigl.const_fan_in}${experiment.comment}
   resume_from_checkpoint: False
   run_id: null
