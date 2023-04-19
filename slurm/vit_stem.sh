@@ -3,5 +3,5 @@
 dense_allocs=(0.2)
 for da in ${dense_allocs[@]}
 do
-    sbatch ./slurm/vit_main_cedar.sh $da
+    sbatch ./slurm/vit_main_narv.sh $da
 done
