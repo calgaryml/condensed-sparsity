@@ -34,4 +34,5 @@ python3 ${WORKDIR}/train_rigl.py \
 dataset=imagenet \
 model=vit \
 rigl.dense_allocation=${dense_alloc} \
-compute.world_size=2
+compute.world_size=2 \
+rigl.const_fan_in=False
