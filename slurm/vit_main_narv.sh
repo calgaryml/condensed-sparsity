@@ -3,10 +3,9 @@
 ## GET RESOURCES ##
 
 #SBATCH --job-name=imagenet_vit
-#SBATCH --nodes=1
-#SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=48
-#SBATCH --gpus-per-node=a100:4
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=24
+#SBATCH --gpus-per-node=a100:2
 #SBATCH --mem=510000M
 #SBATCH --time=7-00:00:00
 #SBATCH --mail-user=mklasby@ucalgary.ca
@@ -34,5 +33,4 @@ python3 ${WORKDIR}/train_rigl.py \
 dataset=imagenet \
 model=vit \
 rigl.dense_allocation=${dense_alloc} \
-training.batch_size=1024 \
-compute.world_size=4
+compute.world_size=2
