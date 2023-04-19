@@ -3,7 +3,7 @@
 # number of steps between rigl pruning / regrow iterations
 delta: 100 # 4096 * 100 / 512 = 800 || 100 for cifar || x5 -> No change? | Try 100 for simulated batch of 4096
 # number of gradients to accumulate before scoring for rigl
-grad_accumulation_n: 1  # 4096 / 512 without simulated batch size, 1 otheriwse
+grad_accumulation_n: 8  # accumulated batch size / actual batch size ie., 4096 / 512 = 8 
 # Custom topology to use for SkinnyResNet
 diet: null
 # keep first layer dense
