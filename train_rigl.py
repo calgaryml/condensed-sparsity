@@ -384,7 +384,9 @@ def train(
         apply_grads = (
             True
             if steps_to_accumulate_grad == 1
-            or (batch_idx != 0 and batch_idx % steps_to_accumulate_grad == 0)
+            or (
+                batch_idx != 0 and batch_idx + 1 % steps_to_accumulate_grad == 0
+            )
             else False
         )
         data, target = data.to(device), target.to(device)
@@ -394,6 +396,8 @@ def train(
             target,
             label_smoothing=cfg.training.label_smoothing,
         )
+        # Normalize loss for accumulated grad
+        loss = loss / steps_to_accumulate_grad
         loss.backward()
 
         if apply_grads:  # If we apply grads, check for topology update and log
