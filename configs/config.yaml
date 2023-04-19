@@ -1,13 +1,13 @@
 defaults:
   - _self_  # We default to values in this file if group settings below are null
-  - dataset: cifar10
-  - model: resnet18
+  - dataset: imagenet
+  - model: vit
   - rigl: ${dataset}
   - training: ${model}
   - compute: ${dataset}
 
 experiment:
-  comment: ""  # Start with leading underscore
+  comment: "_benchmark"  # Start with leading underscore
   name: ${model.name}_${dataset.name}_dense_alloc-${rigl.dense_allocation}_const_fan_in-${rigl.const_fan_in}${experiment.comment}
   resume_from_checkpoint: False
   run_id: null
