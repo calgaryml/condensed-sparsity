@@ -385,7 +385,8 @@ def train(
             True
             if steps_to_accumulate_grad == 1
             or (
-                batch_idx != 0 and batch_idx + 1 % steps_to_accumulate_grad == 0
+                batch_idx != 0
+                and (batch_idx + 1) % steps_to_accumulate_grad == 0
             )
             else False
         )
