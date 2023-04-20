@@ -2,7 +2,7 @@ defaults:
   - _self_  # We default to values in this file if group settings below are null
   - dataset: imagenet
   - model: vit
-  - rigl: ${dataset}
+  - rigl: ${model}
   - training: ${model}
   - compute: ${dataset}
 

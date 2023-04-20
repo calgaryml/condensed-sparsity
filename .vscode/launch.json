@@ -11,7 +11,11 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": "training.simulated_batch_size=256"
+            "args": [
+                "training.simulated_batch_size=1024",
+                "rigl.delta=2",
+                "rigl.grad_accumulation_n=1",
+            ]
         }
     ]
 }
