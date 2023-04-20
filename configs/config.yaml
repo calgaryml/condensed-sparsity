@@ -7,7 +7,7 @@ defaults:
   - compute: ${dataset}
 
 experiment:
-  comment: "_benchmark"  # Start with leading underscore
+  comment: ""  # Start with leading underscore
   name: ${model.name}_${dataset.name}_dense_alloc-${rigl.dense_allocation}_const_fan_in-${rigl.const_fan_in}${experiment.comment}
   resume_from_checkpoint: False
   run_id: null
@@ -29,7 +29,7 @@ paths:
 rigl: 
   # percentage of dense parameters allowed. if null, pruning will not 
   # be used. must be on the interval (0, 1]
-  dense_allocation: null
+  dense_allocation: 0.2
   # number of steps between rigl pruning / regrow iterations
   delta: 800 # 4096 * 100 / 512 = 800 || 100 for cifar || x5 -> No change?
   # number of gradients to accumulate before scoring for rigl
@@ -95,6 +95,8 @@ training:
   momentum: 0.9  # 0.9 -> rigl value
   # Label smoothing for cross entropy
   label_smoothing: 0.1  # 0.1 for imagenet, 0.0 for cifar
+  # Betas for adam
+  betas: [0.9, 0.999]
 
 
   ## Scheduler
