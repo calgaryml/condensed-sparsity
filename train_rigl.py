@@ -1,5 +1,6 @@
 import torch
 import torch.nn.functional as F
+import torch.nn as nn
 import torch.multiprocessing as mp
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel
@@ -401,6 +402,10 @@ def train(
         loss.backward()
 
         if apply_grads:  # If we apply grads, check for topology update and log
+            if cfg.training.clip_grad_norm is not None:
+                nn.utils.clip_grad_norm_(
+                    model.parameters(), max_norm=cfg.training.clip_grad_norm
+                )
             step += 1
             optimizer.step()
             if pruner is not None:

@@ -35,6 +35,7 @@ def get_optimizer(
             params=model.parameters(),
             lr=cfg.training.lr,
             weight_decay=cfg.training.weight_decay,
+            betas=cfg.training.betas,
         ),
         "adam": partial(
             torch.optim.Adam,

@@ -21,48 +21,12 @@ from absl import app
 from xmanager import xm
 from xmanager import xm_local
 
-_cifar_args = [
-    "training.dry_run=True",  # TODO
-    "dataset=cifar10",
-    "model=resnet18",
-    "rigl.dense_allocation=0.01",
-    "rigl.delta=100",
-    "rigl.grad_accumulation_n=1",
-    "rigl.min_salient_weights_per_neuron=0.3",
-    "training.batch_size=128",
-    "training.max_steps=null",
-    "training.weight_decay=5.0e-4",
-    "training.label_smoothing=0",
-    "training.lr=0.1",
-    "training.epochs=250",
-    "training.warm_up_steps=0",
-    "training.scheduler=step_lr",
-    "training.gamma=0.2",
-    "compute.distributed=False",
-    "training.step_size=77",
-]
-
-_imagenet_args = [
-    "training.dry_run=True",  # TODO
+_vit_args = [
+    "model=vit",
     "dataset=imagenet",
-    "model=resnet50",
-    "rigl.dense_allocation=0.1",
-    "rigl.delta=800",
-    "rigl.grad_accumulation_n=8",
-    "rigl.min_salient_weights_per_neuron=0.3",
-    "training.batch_size=512",
-    "training.max_steps=256000",
-    "training.weight_decay=0.0001",
-    "training.label_smoothing=0.1",
-    "training.lr=0.2",
-    "training.epochs=104",
-    "training.warm_up_steps=5",
-    "training.scheduler=step_lr_with_warm_up",
-    "training.gamma=0.1",
-    "compute.distributed=True",
-    "compute.world_size=2",
-    "rigl.use_sparse_initialization=True",
-    "rigl.init_method_str=grad_flow_init",
+    "compute.world_size=4",
+    "rigl.dense_allocation=null",
+    "training.dry_run=False",
 ]
 
 _x2_imagenet_args = [
@@ -117,7 +81,7 @@ def main(argv: Sequence[str]) -> None:
     docker_image = "mklasby/condensed-sparsity:rigl-gcs"
     # docker_image = "gcr.io/external-collab-experiment/condensed_sparsity:20230116-211607-665612"  # noqa
     with xm_local.create_experiment(
-        experiment_title="condensed-sparsity-x2"
+        experiment_title="condensed-sparsity-vit-benchmark"
     ) as experiment:
         executable_spec = xm.Dockerfile(
             path="/home/mike/condensed-sparsity/",
@@ -137,27 +101,41 @@ def main(argv: Sequence[str]) -> None:
             ]
         )
         env_vars = dotenv_values("/home/mike/condensed-sparsity/.env.gcs")
-        # args = ["python", "train_rigl.py"]
-        args = ["wandb", "agent", "condensed-sparsity/condensed-rigl/nq5g6nrr"]
+        args = ["python", "train_rigl.py"]
+        # executor = xm_local.Vertex(xm.JobRequirements(t4=1))
+
+        # args = [
+        # "wandb", "agent", "condensed-sparsity/condensed-rigl/nq5g6nrr"]
         # args.extend(_cifar_args)
 
-        executor = xm_local.Vertex(xm.JobRequirements(t4=1))
+        # executor = xm_local.Vertex(xm.JobRequirements(t4=1))
 
         # args.extend(_imagenet_args)
         # executor=xm_local.Vertex(xm.JobRequirements(a100=2))
 
-        # args.extend(_x2_imagenet_args)
-        # executor = xm_local.Vertex(xm.JobRequirements(a100=8))
-        for x in range(16):
-            experiment.add(
-                xm.Job(
-                    executable=executable,
-                    executor=executor,
-                    env_vars=env_vars,
-                    args=args,
-                )
-            )
+        args.extend(_vit_args)
+        executor = xm_local.Vertex(xm.JobRequirements(a100=4))
 
+        # # args.extend(_x2_imagenet_args)
+        # # executor = xm_local.Vertex(xm.JobRequirements(a100=8))
+        # for x in range(16):
+        #     experiment.add(
+        #         xm.Job(
+        #             executable=executable,
+        #             executor=executor,
+        #             env_vars=env_vars,
+        #             args=args,
+        #         )
+        #     )
+
+        experiment.add(
+            xm.Job(
+                executable=executable,
+                executor=executor,
+                env_vars=env_vars,
+                args=args,
+            )
+        )
         # for dense_alloc in [0.1, 0.01, 0.05, 0.2]:
         #     these_args = copy.deepcopy(args)
         #     these_args.extend([f"rigl.dense_allocation={dense_alloc}"])

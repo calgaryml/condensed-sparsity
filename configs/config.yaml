@@ -1,7 +1,7 @@
 defaults:
   - _self_  # We default to values in this file if group settings below are null
-  - dataset: imagenet
-  - model: vit
+  - dataset: cifar10
+  - model: resnet18
   - rigl: ${model}
   - training: ${model}
   - compute: ${dataset}
@@ -69,7 +69,7 @@ rigl:
 
 training:
   # quickly check a single pass",
-  dry_run: False
+  dry_run: True
   # batch size for training
   batch_size: 512  # 128 for cifar10, multiples of 256 for imagenet w/ scaled lr -> 512 with 2 v100s or 4 3090s -> 1024 with 4 v100s
   # Batch size to simulate by taking multiple steps per optimizer update (accumulate grads)
@@ -97,6 +97,8 @@ training:
   label_smoothing: 0.1  # 0.1 for imagenet, 0.0 for cifar
   # Betas for adam
   betas: [0.9, 0.999]
+  # Gradient clipping, If null, no clipping is performed. 
+  clip_grad_norm: null
 
 
   ## Scheduler
