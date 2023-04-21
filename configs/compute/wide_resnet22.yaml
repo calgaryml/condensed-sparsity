@@ -1,6 +1,0 @@
-# compute config group
-
-# If True, use data-parallelization model for distributed training
-distributed: False
-# Number of CUDA devices to use for distributed training
-world_size: 1
