@@ -50,16 +50,19 @@ class VitImageNetDataStem(_data_stem.ABCDataStem):
         return train_dataset, test_dataset
 
     def _get_transform(self):
-        aa_policy = transforms.autoaugment.AutoAugmentPolicy("IMAGENET")
+        # aa_policy = transforms.autoaugment.AutoAugmentPolicy("IMAGENET")
         transform = transforms.Compose(
             [
                 transforms.RandomResizedCrop(
                     self._IMAGE_HEIGHT, interpolation=InterpolationMode.BILINEAR
                 ),
                 transforms.RandomHorizontalFlip(p=0.5),
-                transforms.autoaugment.AutoAugment(
-                    policy=aa_policy, interpolation=InterpolationMode.BILINEAR
+                transforms.autoaugment.RandAugment(
+                    interpolation=InterpolationMode.BILINEAR, magnitude=9
                 ),
+                # transforms.autoaugment.AutoAugment(
+                #     policy=aa_policy, interpolation=InterpolationMode.BILINEAR
+                # ),
                 transforms.PILToTensor(),
                 transforms.ConvertImageDtype(torch.float),
                 transforms.Normalize(mean=self._MEAN_RGB, std=self._STDDEV_RG),
