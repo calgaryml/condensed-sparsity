@@ -65,7 +65,7 @@ class VitImageNetDataStem(_data_stem.ABCDataStem):
                 # ),
                 transforms.PILToTensor(),
                 transforms.ConvertImageDtype(torch.float),
-                transforms.Normalize(mean=self._MEAN_RGB, std=self._STDDEV_RG),
+                transforms.Normalize(mean=self._MEAN_RGB, std=self._STDDEV_RGB),
             ]
         )
         return transform
@@ -87,16 +87,19 @@ class VitImageNetDataStem(_data_stem.ABCDataStem):
         return transform
 
     def _append_mix_up_to_train_kwargs(self) -> None:
-        self.train_kwargs.update({"collate_fn": self._get_mix_up_collate_fn()})
+        self.train_kwargs.update({"collate_fn": _get_mix_up_collate_fn()})
 
-    def _get_mix_up_collate_fn(self) -> callable:
-        mixup_transforms = [
-            RandomMixup(1000, p=1.0, alpha=0.2),
-            RandomCutmix(1000, p=1.0, alpha=1.0),
-        ]
-        mixupcutmix = transforms.RandomChoice(mixup_transforms)
 
-        def collate_fn(batch):
-            return mixupcutmix(*default_collate(batch))
+def _get_mix_up_collate_fn() -> callable:
+    # Must be declared at module level (not within class) for pickling with
+    # multi processing
+    mixup_transforms = [
+        RandomMixup(1000, p=1.0, alpha=0.2),
+        RandomCutmix(1000, p=1.0, alpha=1.0),
+    ]
+    mixupcutmix = transforms.RandomChoice(mixup_transforms)
 
-        return collate_fn
+    def collate_fn(batch):
+        return mixupcutmix(*default_collate(batch))
+
+    return collate_fn

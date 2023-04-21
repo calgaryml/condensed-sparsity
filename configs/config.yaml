@@ -4,7 +4,7 @@ defaults:
   - model: vit
   - rigl: ${model}
   - training: ${model}
-  - compute: ${dataset}
+  - compute: ${model}
 
 experiment:
   comment: ""  # Start with leading underscore

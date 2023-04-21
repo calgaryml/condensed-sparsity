@@ -1,0 +1,9 @@
+# compute config group
+
+# If True, use data-parallelization model for distributed training
+distributed: True
+# Number of CUDA devices to use for distributed training
+world_size: 4
+cuda_kwargs: 
+  num_workers: 0  # Needs to be 0 for collate_fn
+  pin_memory: True
