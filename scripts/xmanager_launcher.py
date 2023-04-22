@@ -25,7 +25,8 @@ _vit_args = [
     "model=vit",
     "dataset=imagenet",
     "compute.world_size=4",
-    "rigl.dense_allocation=null",
+    "rigl.dense_allocation=0.2",
+    "rigl.const_fan_in=True",
     "training.dry_run=False",
 ]
 
