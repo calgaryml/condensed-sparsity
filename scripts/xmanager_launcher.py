@@ -28,6 +28,7 @@ _vit_args = [
     "rigl.dense_allocation=0.2",
     "rigl.const_fan_in=True",
     "training.dry_run=False",
+    "rigl.dynamic_ablation=False",
 ]
 
 _x2_imagenet_args = [
