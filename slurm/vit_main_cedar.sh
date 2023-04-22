@@ -35,4 +35,5 @@ dataset=imagenet \
 model=vit \
 rigl.dense_allocation=${dense_alloc} \
 compute.world_size=4 \
-rigl.const_fan_in=False
+rigl.const_fan_in=False \
+training.seed=5555
