@@ -155,6 +155,7 @@ class RigLScheduler:
         T_end: int = None,
         sparsity_distribution: str = "uniform",
         ignore_linear_layers: bool = False,
+        ignore_mha_layers: bool = False,
         delta: int = 100,
         alpha: float = 0.3,
         static_topo: bool = False,
@@ -194,9 +195,7 @@ class RigLScheduler:
         self.keep_first_layer_dense = keep_first_layer_dense
         self.initialize_grown_weights = initialize_grown_weights
 
-        self.W, self._linear_layers_mask = get_W(
-            model, return_linear_layers_mask=True
-        )
+        self.W, self._linear_layers_mask, self._mha_layers_mask = get_W(model)
         _create_step_wrapper(self, optimizer)
 
         self.N = [torch.numel(w) for w in self.W]
@@ -213,6 +212,7 @@ class RigLScheduler:
             self.static_topo = static_topo
             self.grad_accumulation_n = grad_accumulation_n
             self.ignore_linear_layers = ignore_linear_layers
+            self.ignore_mha_layers = ignore_mha_layers
             self.backward_masks = None
 
             # define sparsity allocation
@@ -377,8 +377,8 @@ class RigLScheduler:
             List[float]: List of floats representing sparsity per layer.
         """
         sparsity_dist = []
-        for i, (W, is_linear) in enumerate(
-            zip(self.W, self._linear_layers_mask)
+        for i, (W, is_linear, is_mha) in enumerate(
+            zip(self.W, self._linear_layers_mask, self._mha_layers_mask)
         ):
             # when using uniform sparsity, the first layer is always 100%
             # dense UNLESS there is only 1 layer
@@ -389,6 +389,8 @@ class RigLScheduler:
                 # if choosing to ignore linear layers, keep them 100% dense
                 sparsity_dist.append(0)
 
+            elif is_mha and self.ignore_mha_layers:
+                sparsity_dist.append(0)
             else:
                 sparsity_dist.append(1 - self.dense_allocation)
         return sparsity_dist
@@ -408,8 +410,17 @@ class RigLScheduler:
         eps = None
         is_eps_valid = False
         dense_layers = set()
-        if self.keep_first_layer_dense:
+
+        for i, (is_linear, is_mha) in enumerate(
+            list(zip(self._linear_layers_mask, self._mha_layers_mask))
+        ):
+            if self.ignore_linear_layers and is_linear:
+                dense_layers.add(i)
+            elif self.ignore_mha_layers and is_mha:
+                dense_layers.add(i)
+        if self.keep_first_layer_dense and 0 not in dense_layers:
             dense_layers.add(0)
+
         while not is_eps_valid:
             divisor = 0
             rhs = 0
@@ -423,9 +434,7 @@ class RigLScheduler:
                 n_zeros = int(n_params * (1 - self.dense_allocation))
                 n_ones = int(n_params * self.dense_allocation)
 
-                if layer_idx in dense_layers or (
-                    is_linear and self.ignore_linear_layers
-                ):
+                if layer_idx in dense_layers:
                     dense_layers.add(layer_idx)
                     rhs -= n_zeros
                 else:

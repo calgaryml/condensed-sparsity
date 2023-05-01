@@ -66,6 +66,8 @@ rigl:
   keep_first_layer_dense: False
   # Value to initalize regrown weights to. Used for debugging. Use 0 for vanilla rigl methodology.
   initialize_grown_weights: 0.0
+  # Ignore multi-head attention layers
+  ignore_mha_layers: False
 
 training:
   # quickly check a single pass",

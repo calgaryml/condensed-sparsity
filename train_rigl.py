@@ -240,6 +240,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             static_topo=cfg.rigl.static_topo,
             T_end=T_end,
             ignore_linear_layers=cfg.rigl.ignore_linear_layers,
+            ignore_mha_layers=cfg.rigl.ignore_mha_layers,
             grad_accumulation_n=cfg.rigl.grad_accumulation_n,
             sparsity_distribution=cfg.rigl.sparsity_distribution,
             erk_power_scale=cfg.rigl.erk_power_scale,

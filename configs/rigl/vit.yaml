@@ -8,3 +8,5 @@ grad_accumulation_n: 8  # accumulated batch size / actual batch size ie., 4096 /
 diet: null
 # keep first layer dense
 keep_first_layer_dense: False
+# Ignore multi-head attention layers
+ignore_mha_layers: True
