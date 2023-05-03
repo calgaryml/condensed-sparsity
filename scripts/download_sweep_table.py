@@ -3,6 +3,9 @@ import wandb
 import ast
 from datetime import datetime
 
+_RAW_F_NAME = "./project_raw_data.csv"
+_PROC_F_NAME = "./processed_results.csv"
+
 
 def parse_wandb_results(project_results_csv: str) -> pd.DataFrame:
     df = pd.read_csv(project_results_csv)
@@ -27,7 +30,7 @@ def parse_wandb_results(project_results_csv: str) -> pd.DataFrame:
     )
     sorted_cols = sorted(combined_df.columns)
     combined_df = combined_df[sorted_cols]
-    combined_df.to_csv("./processed_results.csv")
+    combined_df.to_csv(_PROC_F_NAME)
     return combined_df
 
 
@@ -80,12 +83,12 @@ if __name__ == "__main__":
         }
     )
 
-    runs_df.to_csv("project_raw_data.csv")
-    print("Raw data download completed and saved to project_raw_data.csv")
+    runs_df.to_csv(_RAW_F_NAME)
+    print(f"Raw data download completed and saved to {_RAW_F_NAME}")
     print("Parsing results into human readable format...")
 
-    processed_df = parse_wandb_results("./project_raw_data.csv")
-    print("Parsing complete. Results saved to processed_results.csv")
+    processed_df = parse_wandb_results(_RAW_F_NAME)
+    print(f"Parsing complete. Results saved to {_PROC_F_NAME}")
     end_time = datetime.now() - start_time
     print(f"Script completed in {end_time}")
 

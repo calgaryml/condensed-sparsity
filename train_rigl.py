@@ -1,5 +1,6 @@
 import torch
 import torch.nn.functional as F
+import torch.nn as nn
 import torch.multiprocessing as mp
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel
@@ -74,7 +75,6 @@ def init_wandb(cfg: omegaconf.DictConfig, wandb_init_kwargs: Dict[str, Any]):
 
 @hydra.main(config_path="configs/", config_name="config", version_base="1.2")
 def initalize_main(cfg: omegaconf.DictConfig) -> None:
-    print(f"steps: {cfg.training.step_size}")
     use_cuda = not cfg.compute.no_cuda and torch.cuda.is_available()
     if not use_cuda:
         raise SystemError("GPU has stopped responding...waiting to die!")
@@ -240,6 +240,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             static_topo=cfg.rigl.static_topo,
             T_end=T_end,
             ignore_linear_layers=cfg.rigl.ignore_linear_layers,
+            ignore_mha_layers=cfg.rigl.ignore_mha_layers,
             grad_accumulation_n=cfg.rigl.grad_accumulation_n,
             sparsity_distribution=cfg.rigl.sparsity_distribution,
             erk_power_scale=cfg.rigl.erk_power_scale,
@@ -384,10 +385,12 @@ def train(
         apply_grads = (
             True
             if steps_to_accumulate_grad == 1
-            or (batch_idx != 0 and batch_idx % steps_to_accumulate_grad == 0)
+            or (
+                batch_idx != 0
+                and (batch_idx + 1) % steps_to_accumulate_grad == 0
+            )
             else False
         )
-        step += 1
         data, target = data.to(device), target.to(device)
         logits = model(data)
         loss = F.cross_entropy(
@@ -395,9 +398,16 @@ def train(
             target,
             label_smoothing=cfg.training.label_smoothing,
         )
+        # Normalize loss for accumulated grad
+        loss = loss / steps_to_accumulate_grad
         loss.backward()
 
-        if apply_grads:
+        if apply_grads:  # If we apply grads, check for topology update and log
+            if cfg.training.clip_grad_norm is not None:
+                nn.utils.clip_grad_norm_(
+                    model.parameters(), max_norm=cfg.training.clip_grad_norm
+                )
+            step += 1
             optimizer.step()
             if pruner is not None:
                 # pruner.__call__ returns False if rigl step taken
@@ -407,32 +417,35 @@ def train(
                     pruner.log_meters(step=step)
             optimizer.zero_grad()
 
-        if batch_idx % cfg.training.log_interval == 0 and rank == 0:
-            world_size = (
-                1
-                if cfg.compute.distributed is False
-                else cfg.compute.world_size
-            )
-            logger.info(
-                "Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
-                    epoch,
-                    batch_idx * len(data) * world_size,
-                    len(train_loader.dataset),
-                    100.0 * batch_idx / len(train_loader),
-                    loss.item(),
+            if step % cfg.training.log_interval == 0 and rank == 0:
+                world_size = (
+                    1
+                    if cfg.compute.distributed is False
+                    else cfg.compute.world_size
                 )
-            )
-            wandb_data = {
-                "Training Loss": loss.item(),
-            }
-            if pruner is not None:
-                wandb_data["ITOP Rate"] = pruner.itop_rs
-            wandb.log(wandb_data, step=step)
-        if cfg.training.dry_run:
-            logger.warning("Dry run, exiting after one training step")
-            return step
-        if cfg.training.max_steps is not None and step > cfg.training.max_steps:
-            return step
+                logger.info(
+                    "Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
+                        epoch,
+                        batch_idx * len(data) * world_size,
+                        len(train_loader.dataset),
+                        100.0 * batch_idx / len(train_loader),
+                        loss.item(),
+                    )
+                )
+                wandb_data = {
+                    "Training Loss": loss.item(),
+                }
+                if pruner is not None:
+                    wandb_data["ITOP Rate"] = pruner.itop_rs
+                wandb.log(wandb_data, step=step)
+            if cfg.training.dry_run:
+                logger.warning("Dry run, exiting after one training step")
+                return step
+            if (
+                cfg.training.max_steps is not None
+                and step > cfg.training.max_steps
+            ):
+                return step
     return step
 
 

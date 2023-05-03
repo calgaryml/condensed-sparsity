@@ -1,0 +1,8 @@
+# rigl config group
+
+# number of steps between rigl pruning / regrow iterations
+delta: 800 # 4096 * 100 / 512 = 800 || 100 for cifar || x5 -> No change?
+# number of gradients to accumulate before scoring for rigl
+grad_accumulation_n: 8  # 4096 / 512 without simulated batch size, 1 otheriwse
+# Custom topology to use for SkinnyResNet
+diet: null

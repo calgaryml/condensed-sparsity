@@ -1,19 +1,34 @@
 import torch
 import torch.nn as nn
 import torchvision
+from torch.nn.modules.linear import NonDynamicallyQuantizableLinear
 from omegaconf import DictConfig
 from math import prod
 from typing import Tuple, Union, List, Optional
 
 
-_EXCLUDED_TYPES = (torch.nn.BatchNorm2d,)
+_EXCLUDED_TYPES = (
+    torch.nn.BatchNorm2d,
+    torch.nn.LayerNorm,
+)
 
 
 def get_names_and_W(
     model: torch.nn.Module,
+    names: list = None,
+    weights: List[torch.Tensor] = None,
+    skip_linear: bool = False,
+    skip_mha: bool = False,
 ) -> Tuple[List[str], List[torch.nn.parameter.Parameter]]:
     """Much simpler implementation"""
-    target_types = [torch.nn.Conv2d, torch.nn.Linear]
+
+    target_types = [
+        torch.nn.Conv2d,
+    ]
+    if not skip_linear:
+        target_types.append(torch.nn.Linear)
+    if not skip_mha:
+        target_types.append(NonDynamicallyQuantizableLinear)
     target_layers = []
     names = []
     for n, m in model.named_modules():
@@ -24,39 +39,49 @@ def get_names_and_W(
     return names, weights
 
 
-def get_weighted_layers(model, i=0, layers=None, linear_layers_mask=None):
+def get_weighted_layers(
+    model, i=0, layers=None, linear_layers_mask=None, mha_layer_mask=None
+):
     if layers is None:
         layers = []
     if linear_layers_mask is None:
         linear_layers_mask = []
+    if mha_layer_mask is None:
+        mha_layer_mask = []
 
     items = model._modules.items()
     if i == 0:
         items = [(None, model)]
 
     for layer_name, p in items:
-        if isinstance(p, torch.nn.Linear):
+        if type(p) is NonDynamicallyQuantizableLinear:
+            layers.append([p])
+            mha_layer_mask.append(1)
+            linear_layers_mask.append(0)
+        elif type(p) is torch.nn.Linear:
             layers.append([p])
             linear_layers_mask.append(1)
+            mha_layer_mask.append(0)
         elif hasattr(p, "weight") and type(p) not in _EXCLUDED_TYPES:
             layers.append([p])
             linear_layers_mask.append(0)
+            mha_layer_mask.append(0)
         elif isinstance(p, torchvision.models.resnet.Bottleneck) or isinstance(
             p, torchvision.models.resnet.BasicBlock
         ):
-            _, linear_layers_mask, i = get_weighted_layers(
-                p, i=i + 1, layers=layers, linear_layers_mask=linear_layers_mask
+            _, linear_layers_mask, mha_layer_mask, i = get_weighted_layers(
+                p, i + 1, layers, linear_layers_mask, mha_layer_mask
             )
         else:
-            _, linear_layers_mask, i = get_weighted_layers(
-                p, i=i + 1, layers=layers, linear_layers_mask=linear_layers_mask
+            _, linear_layers_mask, mha_layer_mask, i = get_weighted_layers(
+                p, i + 1, layers, linear_layers_mask, mha_layer_mask
             )
 
-    return layers, linear_layers_mask, i
+    return layers, linear_layers_mask, mha_layer_mask, i
 
 
-def get_W(model, return_linear_layers_mask=False):
-    layers, linear_layers_mask, _ = get_weighted_layers(model)
+def get_W(model):
+    layers, linear_layers_mask, mha_layers_mask, _ = get_weighted_layers(model)
 
     W = []
     for layer in layers:
@@ -64,10 +89,9 @@ def get_W(model, return_linear_layers_mask=False):
         W.append(layer[idx].weight)
 
     assert len(W) == len(linear_layers_mask)
+    assert len(W) == len(mha_layers_mask)
 
-    if return_linear_layers_mask:
-        return W, linear_layers_mask
-    return W
+    return W, linear_layers_mask, mha_layers_mask
 
 
 def calculate_fan_in_and_fan_out(
@@ -169,6 +193,12 @@ def get_T_end(
         T_end = int(0.75 * cfg.training.max_steps)
     if not cfg.rigl.use_t_end:
         T_end = int(1 / 0.75 * T_end)  # We use the full number of steps
+    if cfg.training.simulated_batch_size is not None:
+        # We need to correct T_end to account for sim bs / actual bs
+        T_end = int(
+            T_end
+            / (cfg.training.simulated_batch_size / cfg.training.batch_size)
+        )
     return T_end
 
 
@@ -272,8 +302,13 @@ def active_neuron_count_in_layer(
 
 
 if __name__ == "__main__":
-    t = torch.zeros(size=(16, 3, 3, 3), dtype=torch.bool)
-    w = torch.ones(size=t.size(), dtype=torch.bool)
-    active_n = 16
-    t[:active_n] = True
-    assert active_n == active_neuron_count_in_layer(None, w)
+    # t = torch.zeros(size=(16, 3, 3, 3), dtype=torch.bool)
+    # w = torch.ones(size=t.size(), dtype=torch.bool)
+    # active_n = 16
+    # t[:active_n] = True
+    # assert active_n == active_neuron_count_in_layer(None, w)
+    from rigl_torch.models import ModelFactory
+
+    vit = ModelFactory.load_model(model="vit", dataset="imagenet")
+    n, w = get_names_and_W(vit)
+    W = get_W(vit)

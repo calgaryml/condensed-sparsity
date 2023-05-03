@@ -5,7 +5,22 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Current File",
+            "name": "Python: File with args",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "training.simulated_batch_size=null",
+                "training.batch_size=32",
+                "rigl.grad_accumulation_n=1",
+                "training.dry_run=True",
+                "compute.distributed=False"
+            ]
+        },
+        {
+            "name": "Python: Current file no args",
             "type": "python",
             "request": "launch",
             "program": "${file}",

@@ -1,0 +1,27 @@
+# Training config group
+
+# batch size for training
+batch_size: 128  # 128 for cifar10, multiples of 256 for imagenet w/ scaled lr -> 512 with 2 v100s or 4 3090s -> 1024 with 4 v100s
+# number of epochs to train
+epochs: 250  # For imagenet, training will finish at ~ epoch 102.31, use 250 for cifar10 || imagenet x5 -> 515
+# max number of steps (will override epochs) -> Based on mini-batch steps (NOT SIMULATED BATCHES!)
+max_steps: null  # 4096 * 32000 / 512 = 256000 from rigl paper || x5 -> 4096*32000/1024 = 640000
+
+## Optimization
+optimizer: sgd # "sgd", "adamw"
+# L2 Regularization for optimizer
+weight_decay: 5.0e-4 # 5.0e-4 -> cifar10   0.0001 -> imagenet
+# Label smoothing for cross entropy
+label_smoothing: 0.0  # 0.1 for imagenet, 0.0 for cifar
+
+
+## Scheduler
+scheduler: cosine_annealing_with_warm_up # step_lr -> cifar # cosine_annealing_with_warm_up, step_lr_with_warm_up -> imagenet
+# Learning rate after warmup
+lr: 0.1  # 0.1 * batch size / 256 per original paper -> Use 1.6 for 4096 simulated batch size. 0.1 for ITOP
+# Number of epochs to warm up for linear warm ups
+warm_up_steps: 0 # 5 for imagenet | 0 for cifar10 | 25 for x5 imagenet
+# Learning rate step gamma
+gamma: 0.2  # 0.1 for imagenet, 0.2 for cifar
+# Step size to use in learning rate scheduler if StepLR is used. List[int] || int
+step_size: 77  # Imagenet -> [30,70,90] For cifar 10 -> every 30,000 mini-batch steps ~= 77 epochs | [150, 350, 450] for x5 | [60, 140, 180] for x2

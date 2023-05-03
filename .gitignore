@@ -196,3 +196,5 @@ artifacts/
 .env.gcs
 .gcloud_auth
 python_subproc_tests.py
+*.pdf
+*.ps

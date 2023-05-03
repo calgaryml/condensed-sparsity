@@ -35,6 +35,14 @@ def get_optimizer(
             params=model.parameters(),
             lr=cfg.training.lr,
             weight_decay=cfg.training.weight_decay,
+            betas=cfg.training.betas,
+        ),
+        "adam": partial(
+            torch.optim.Adam,
+            params=model.parameters(),
+            lr=cfg.training.lr,
+            betas=cfg.training.betas,
+            weight_decay=cfg.training.weight_decay,
         ),
     }
     if cfg.training.optimizer.lower() not in optimizers:
@@ -81,7 +89,7 @@ def get_lr_scheduler(
         "cosine_annealing_with_warm_up": partial(
             CosineAnnealingWithLinearWarmUp,
             optimizer=optim,
-            T_max=cfg.training.epochs * cfg.dataset.train_len,
+            T_max=cfg.training.epochs,
             eta_min=0,
             lr=cfg.training.lr,
             warm_up_steps=cfg.training.warm_up_steps,
