@@ -400,6 +400,9 @@ def train(
         )
         # Normalize loss for accumulated grad
         loss = loss / steps_to_accumulate_grad
+
+        # Will call backwards hooks on model and accumulate dense grads if
+        # within cfg.rigl.grad_accumulation_n mini-batch steps from update
         loss.backward()
 
         if apply_grads:  # If we apply grads, check for topology update and log

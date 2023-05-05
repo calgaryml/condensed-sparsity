@@ -377,22 +377,40 @@ class RigLScheduler:
             List[float]: List of floats representing sparsity per layer.
         """
         sparsity_dist = []
+        n_dense_el, n_sparse_el, n_total_el = 0, 0, 0
+        keep_dense = []
+
         for i, (W, is_linear, is_mha) in enumerate(
             zip(self.W, self._linear_layers_mask, self._mha_layers_mask)
         ):
-            # when using uniform sparsity, the first layer is always 100%
-            # dense UNLESS there is only 1 layer
-            if i == 0 and len(self.W) > 1:
-                sparsity_dist.append(0)
-
+            if i == 0 and self.keep_first_layer_dense and len(self.W) > 1:
+                keep_dense.append(True)
+                # n_ones += self.W[i]
+                # sparsity_dist.append(0)
             elif is_linear and self.ignore_linear_layers:
                 # if choosing to ignore linear layers, keep them 100% dense
-                sparsity_dist.append(0)
-
+                keep_dense.append(True)
+                # sparsity_dist.append(0)
             elif is_mha and self.ignore_mha_layers:
-                sparsity_dist.append(0)
+                keep_dense.append(True)
+                # sparsity_dist.append(0)
             else:
-                sparsity_dist.append(1 - self.dense_allocation)
+                keep_dense.append(False)
+                # sparsity_dist.append(1 - self.dense_allocation)
+            layer_el = torch.numel(self.W[i])
+            if keep_dense[-1]:
+                n_dense_el += layer_el
+            else:
+                n_sparse_el += layer_el
+            n_total_el += layer_el
+
+        adjusted_uniform_sparsity = 1 - (
+            (n_total_el * self.dense_allocation - n_dense_el) / n_sparse_el
+        )
+        sparsity_dist = [
+            adjusted_uniform_sparsity if not dense else 0
+            for dense in keep_dense
+        ]
         return sparsity_dist
 
     def _erk_sparsity_dist(self) -> List[float]:

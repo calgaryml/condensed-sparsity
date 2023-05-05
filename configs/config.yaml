@@ -7,7 +7,7 @@ defaults:
   - compute: ${dataset}
 
 experiment:
-  comment: "_dense_mha"  # Start with leading underscore
+  comment: "_uniform_spar"  # Start with leading underscore
   name: ${model.name}_${dataset.name}_dense_alloc-${rigl.dense_allocation}_const_fan_in-${rigl.const_fan_in}${experiment.comment}
   resume_from_checkpoint: False
   run_id: null
@@ -86,7 +86,7 @@ training:
   log_interval: 100
   # For Saving the current Model
   save_model: True
-  # max number of steps (will override epochs) -> Based on mini-batch steps (NOT SIMULATED BATCHES!)
+  # max number of steps (will override epochs) -> Based on number of optimizer steps (ie., dataset len * epochs * simulated batch size)
   max_steps: 256000  # 4096 * 32000 / 512 = 256000 from rigl paper || x5 -> 4096*32000/1024 = 640000
 
   ## Optimization
