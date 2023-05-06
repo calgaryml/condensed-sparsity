@@ -1,5 +1,4 @@
 import os
-from copy import deepcopy
 
 import torch
 import torch.multiprocessing as mp
@@ -9,15 +8,24 @@ from torch import optim
 from rigl_torch.rigl_scheduler import RigLScheduler
 from rigl_torch.utils.rigl_utils import get_W
 from utils.mocks import MNISTNet, mock_image_dataloader
+from rigl_torch.utils.checkpoint import Checkpoint
+from .test_utils import get_test_cfg
+from rigl_torch.optim import get_lr_scheduler, get_optimizer
 import pytest
 import dotenv
+from rigl_torch.models import ModelFactory
+import pathlib
 
 # Load custom .env
+_CUDA_RANK = 1
+_CUDA_RANKS = [1, 2]
 dotenv.load_dotenv(dotenv_path=f"{os.getcwd()}/.env", override=True)
 # set up environment
 # torch.manual_seed(1)
 device = (
-    torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    torch.device(f"cuda:{_CUDA_RANK}")
+    if torch.cuda.is_available()
+    else torch.device("cpu")
 )
 
 # hyperparameters
@@ -49,7 +57,9 @@ def data_loaders(request):
     del dataloader
 
 
-@pytest.fixture(scope="function", params=["cuda", "cpu"], ids=["cuda", "cpu"])
+@pytest.fixture(
+    scope="function", params=["cuda", "cpu"], ids=[f"cuda:{_CUDA_RANK}", "cpu"]
+)
 def pruner(request, net, data_loaders):
     if request.param == "cuda" and not torch.cuda.is_available():
         pytest.skip("cuda not available!")
@@ -110,9 +120,12 @@ def get_new_scheduler(
         )
 
     if use_ddp:
-        model = torch.nn.parallel.DistributedDataParallel(model)
-    elif torch.cuda.is_available() and torch.cuda.device_count() > 1:
-        model = torch.nn.DataParallel(model)
+        model = torch.nn.parallel.DistributedDataParallel(
+            model, device_ids=_CUDA_RANKS
+        )
+    # # TODO: Decomission the data parallel code
+    # elif torch.cuda.is_available() and torch.cuda.device_count() > 1:
+    #     model = torch.nn.DataParallel(model, device_ids=_CUDA_RANKS)
     optimizer = torch.optim.SGD(model.parameters(), 0.1, momentum=0.9)
     scheduler = RigLScheduler(
         model,
@@ -251,6 +264,7 @@ def assert_sparse_gradients_remain_zeros(static_topo, use_ddp=False):
 
 
 checkpoint_fn = "test_checkpoint"
+_CKPT_MODEL = None
 
 
 class TestRigLScheduler:
@@ -259,27 +273,63 @@ class TestRigLScheduler:
         assert_actual_sparsity_is_valid(scheduler)
 
     def test_checkpoint_saving(self):
-        scheduler = get_new_scheduler()
-        torch.save(
-            {"scheduler": scheduler.state_dict(), "model": scheduler.model},
-            checkpoint_fn,
+        cfg_args = [
+            "paths.checkpoints=test_ckp",
+        ]
+        cfg = get_test_cfg(cfg_args)
+        model = ModelFactory.load_model(
+            model=cfg.model.name,
+            dataset=cfg.dataset.name,
         )
+        model.to(device)
+        pruner = get_new_scheduler(model=model)
+        optimizer = get_optimizer(cfg, pruner.model, state_dict=None)
+        scheduler = get_lr_scheduler(cfg, optimizer, state_dict=None)
+
+        ckpt = Checkpoint(
+            run_id="test_ckpt_id",
+            cfg=cfg,
+            model=pruner.model,
+            optimizer=optimizer,
+            scheduler=scheduler,
+            pruner=pruner,
+            checkpoint_dir="test_ckpt",
+        )
+        ckpt.save_checkpoint()
+        global _CKPT_MODEL
+        _CKPT_MODEL = model
+        assert pathlib.Path("test_ckpt/checkpoint.pt.tar").exists()
 
     def test_checkpoint_loading(self):
-        ckpt = torch.load(checkpoint_fn)
-        scheduler_state_dict = ckpt["scheduler"]
-        model = ckpt["model"]
-        original_model = deepcopy(model)
-        scheduler = get_new_scheduler(
-            state_dict=scheduler_state_dict, model=model
+        global _CKPT_MODEL
+        cfg_args = [
+            "paths.checkpoints=test_ckp",
+        ]
+        cfg = get_test_cfg(cfg_args)
+
+        ckpt = Checkpoint.load_last_checkpoint(
+            checkpoint_dir="test_ckpt", rank=_CUDA_RANK
         )
-        os.remove(checkpoint_fn)
+        pruner_state = ckpt.pruner
+        model_state = ckpt.model
+        model = ModelFactory.load_model(
+            model=cfg.model.name,
+            dataset=cfg.dataset.name,
+        ).to(device)
+
+        pruner = get_new_scheduler(state_dict=pruner_state, model=model)
+        model = pruner.model
+        model.load_state_dict(model_state)
+        # os.remove(checkpoint_fn)
 
         # first make sure the original model is the same as the loaded one
-        original_W, _, _ = get_W(original_model)
-        assert len(original_W) == len(scheduler.W)
-        for oW, nW in zip(original_W, scheduler.W):
+        original_W, _, _ = get_W(_CKPT_MODEL)
+        assert len(original_W) == len(pruner.W)
+        for oW, nW in zip(original_W, pruner.W):
             assert torch.equal(oW, nW)
+        import shutil
+
+        shutil.rmtree("test_ckpt")
 
         # assert_sparse_elements_remain_zeros(False, scheduler=scheduler)
 

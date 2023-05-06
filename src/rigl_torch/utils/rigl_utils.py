@@ -302,13 +302,13 @@ def active_neuron_count_in_layer(
 
 
 if __name__ == "__main__":
-    # t = torch.zeros(size=(16, 3, 3, 3), dtype=torch.bool)
-    # w = torch.ones(size=t.size(), dtype=torch.bool)
-    # active_n = 16
-    # t[:active_n] = True
-    # assert active_n == active_neuron_count_in_layer(None, w)
-    from rigl_torch.models import ModelFactory
+    t = torch.zeros(size=(16, 3, 3, 3), dtype=torch.bool)
+    w = torch.ones(size=t.size(), dtype=torch.bool)
+    active_n = 16
+    t[:active_n] = True
+    assert active_n == active_neuron_count_in_layer(None, w)
+    # from rigl_torch.models import ModelFactory
 
-    vit = ModelFactory.load_model(model="vit", dataset="imagenet")
-    n, w = get_names_and_W(vit)
-    W = get_W(vit)
+    # vit = ModelFactory.load_model(model="vit", dataset="imagenet")
+    # n, w = get_names_and_W(vit)
+    # W = get_W(vit)

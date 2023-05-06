@@ -24,10 +24,10 @@ packages= [
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.11"
-torch={version="1.13.1+cu116", source="torch_repo"}
-torchvision={version="^0.14.1+cu116", source="torch_repo"}
-# torch = "1.13.1"
-# torchvision = "^0.14.1"
+torch={version="2.0.1+cu118", source="torch_repo"}
+torchvision={version="^0.15.2+cu118", source="torch_repo"}
+# torch = "2.0.1"
+# torchvision = "^0.15.2"
 tensorboard = "^2.10.0"
 hydra-core = "^1.2.0"
 python-dotenv="0.20.0"
@@ -40,7 +40,7 @@ gcsfs = "^2022.11.0"
 
 [[tool.poetry.source]]
 name="torch_repo"
-url = "https://download.pytorch.org/whl/cu116"
+url = "https://download.pytorch.org/whl/cu118"
 secondary = true
 default = false
 
@@ -134,7 +134,8 @@ exclude ='''
 pythonpath = [
     ".", "./src", "./tests"
 ]
-addopts = "--cov src --cov-report html --cov-branch --import-mode importlib"
+# addopts = "--cov src --cov-report html --cov-branch --import-mode importlib"
+addopts = "--import-mode importlib"
 markers = [
     "integration",
     "slow",

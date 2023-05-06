@@ -2,6 +2,9 @@ import pytest
 from rigl_torch.utils import rigl_utils
 import torch
 from utils.mocks import MNISTNet
+from hydra import compose, initialize
+import os
+import dotenv
 
 
 @pytest.fixture(scope="module")
@@ -120,3 +123,24 @@ def test_validate_constant_fan_in(net):
     assert rigl_utils.validate_constant_fan_in(fan_in_tensor)
     fan_in_tensor = rigl_utils.get_fan_in_tensor(net.conv1.weight)
     assert rigl_utils.validate_constant_fan_in(fan_in_tensor)
+
+
+def get_test_cfg(cfg_args):
+    overrides = [
+        "dataset=cifar10",
+        "compute.distributed=False",
+        "model=resnet18",
+        # # "model=skinny_resnet18",
+        # "rigl.dense_allocation=0.01",
+        # "rigl.delta=2",
+        # "rigl.grad_accumulation_n=1"
+    ]
+    overrides.extend(cfg_args)
+    with initialize("../../configs", version_base="1.2.0"):
+        cfg = compose(
+            "config.yaml",
+            overrides=overrides,
+        )
+        dotenv.load_dotenv("../.env")
+        os.environ["IMAGE_NET_PATH"]
+    return cfg
