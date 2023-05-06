@@ -16,6 +16,7 @@ git clone git@github.com:calgaryml/condensed-sparsity.git
 cd condensed-sparsity
 
 # Build venv
+export PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring
 rm -rf ./.venv
 python -m venv .venv
 source .venv/bin/activate
