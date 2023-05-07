@@ -1,0 +1,20 @@
+program: train_rigl.py
+method: grid
+project: condensed-rigl
+name: vit_min_weights
+metric:
+  goal: maximize
+  name: accuracy
+parameters:
+  rigl.dense_allocation: 
+    values: [0.1, 0.2]
+      # percentage of dense parameters allowed. if None, pruning will not 
+      # be used. must be on the interval (0, 1]
+  rigl.min_salient_weights_per_neuron:
+    values: [0.5, 0.75, 0.9, 1]
+
+command:
+  - ${env}
+  - python
+  - ${program}
+  - ${args_no_hyphens}
