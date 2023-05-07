@@ -208,7 +208,7 @@ class RigLConstFanScheduler(RigLScheduler):
                     #     get_fan_in_tensor(mask[active_filters]).unique().item()
                     # )
                     const_fan_ins.append(
-                        get_fan_in_tensor(mask[active_filters]).unique()
+                        get_fan_in_tensor(mask[active_filters]).unique().item()
                     )
 
                 except ValueError:
