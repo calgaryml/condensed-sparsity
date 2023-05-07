@@ -103,7 +103,12 @@ def main(argv: Sequence[str]) -> None:
             ]
         )
         env_vars = dotenv_values("/home/mike/condensed-sparsity/.env.gcs")
-        args = ["python", "train_rigl.py"]
+        # args = ["python", "train_rigl.py"]
+        args = [
+            "wandb",
+            "agent",
+            "condensed-sparsity/condensed-rigl/s1zdgznlpython",
+        ]
         # executor = xm_local.Vertex(xm.JobRequirements(t4=1))
 
         # args = [
@@ -115,7 +120,7 @@ def main(argv: Sequence[str]) -> None:
         # args.extend(_imagenet_args)
         # executor=xm_local.Vertex(xm.JobRequirements(a100=2))
 
-        args.extend(_vit_args)
+        # args.extend(_vit_args)
         executor = xm_local.Vertex(xm.JobRequirements(a100=4))
 
         # # args.extend(_x2_imagenet_args)
