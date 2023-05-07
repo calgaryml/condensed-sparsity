@@ -250,6 +250,11 @@ def get_fan_in_after_ablation(
             weight_tensor.numel() * (1 - sparsity)
         )
         fan_in_after_ablation = remaining_non_zero_elements // active_neurons
+        if fan_in_after_ablation == 0:
+            raise ValueError(
+                "Fan in after ablation is 0! "
+                "Reduce sparsity or increase layer width"
+            )
         return fan_in_after_ablation
 
 

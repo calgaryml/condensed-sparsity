@@ -17,8 +17,8 @@ from rigl_torch.models import ModelFactory
 import pathlib
 
 # Load custom .env
-_CUDA_RANK = 1
-_CUDA_RANKS = [1, 2]
+_CUDA_RANK = 0
+_CUDA_RANKS = [0]
 dotenv.load_dotenv(dotenv_path=f"{os.getcwd()}/.env", override=True)
 # set up environment
 # torch.manual_seed(1)
