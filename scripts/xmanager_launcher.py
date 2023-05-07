@@ -107,7 +107,7 @@ def main(argv: Sequence[str]) -> None:
         args = [
             "wandb",
             "agent",
-            "condensed-sparsity/condensed-rigl/s1zdgznlpython",
+            "condensed-sparsity/condensed-rigl/4yr8bhcg",
         ]
         # executor = xm_local.Vertex(xm.JobRequirements(t4=1))
 
@@ -134,15 +134,15 @@ def main(argv: Sequence[str]) -> None:
         #             args=args,
         #         )
         #     )
-
-        experiment.add(
-            xm.Job(
-                executable=executable,
-                executor=executor,
-                env_vars=env_vars,
-                args=args,
+        for _ in range(4):
+            experiment.add(
+                xm.Job(
+                    executable=executable,
+                    executor=executor,
+                    env_vars=env_vars,
+                    args=args,
+                )
             )
-        )
         # for dense_alloc in [0.1, 0.01, 0.05, 0.2]:
         #     these_args = copy.deepcopy(args)
         #     these_args.extend([f"rigl.dense_allocation={dense_alloc}"])
