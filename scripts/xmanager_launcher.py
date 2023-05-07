@@ -24,11 +24,7 @@ from xmanager import xm_local
 _vit_args = [
     "model=vit",
     "dataset=imagenet",
-    "compute.world_size=4",
-    "rigl.dense_allocation=0.2",
-    "rigl.const_fan_in=False",
-    "training.dry_run=False",
-    "rigl.dynamic_ablation=True",
+    "experiment.comment=_uniform_spar-min_sal_${rigl.min_salient_weights_per_neuron}",  # noqa
 ]
 
 _x2_imagenet_args = [
@@ -103,12 +99,12 @@ def main(argv: Sequence[str]) -> None:
             ]
         )
         env_vars = dotenv_values("/home/mike/condensed-sparsity/.env.gcs")
-        # args = ["python", "train_rigl.py"]
-        args = [
-            "wandb",
-            "agent",
-            "condensed-sparsity/condensed-rigl/4yr8bhcg",
-        ]
+        args = ["python", "train_rigl.py"]
+        # args = [
+        #     "wandb",
+        #     "agent",
+        #     "condensed-sparsity/condensed-rigl/4yr8bhcg",
+        # ]
         # executor = xm_local.Vertex(xm.JobRequirements(t4=1))
 
         # args = [
@@ -120,7 +116,7 @@ def main(argv: Sequence[str]) -> None:
         # args.extend(_imagenet_args)
         # executor=xm_local.Vertex(xm.JobRequirements(a100=2))
 
-        # args.extend(_vit_args)
+        args.extend(_vit_args)
         executor = xm_local.Vertex(xm.JobRequirements(a100=4))
 
         # # args.extend(_x2_imagenet_args)
@@ -134,7 +130,8 @@ def main(argv: Sequence[str]) -> None:
         #             args=args,
         #         )
         #     )
-        for _ in range(4):
+        for min_sal in [0.95, 0.99]:
+            args.extend([f"rigl.min_salient_weights_per_neuron={min_sal}"])
             experiment.add(
                 xm.Job(
                     executable=executable,
