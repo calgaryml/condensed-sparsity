@@ -24,7 +24,6 @@ from xmanager import xm_local
 _vit_args = [
     "model=vit",
     "dataset=imagenet",
-    "experiment.comment=_uniform_spar-min_sal_${rigl.min_salient_weights_per_neuron}",  # noqa
 ]
 
 _x2_imagenet_args = [
@@ -131,7 +130,12 @@ def main(argv: Sequence[str]) -> None:
         #         )
         #     )
         for min_sal in [0.95, 0.99]:
-            args.extend([f"rigl.min_salient_weights_per_neuron={min_sal}"])
+            args.extend(
+                [
+                    f"rigl.min_salient_weights_per_neuron={min_sal}",
+                    f"experiment.comment=_uniform_spar-min_sal_${min_sal}",
+                ]
+            )
             experiment.add(
                 xm.Job(
                     executable=executable,
