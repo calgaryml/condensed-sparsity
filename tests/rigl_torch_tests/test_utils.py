@@ -3,8 +3,6 @@ from rigl_torch.utils import rigl_utils
 import torch
 from utils.mocks import MNISTNet
 from hydra import compose, initialize
-import os
-import dotenv
 
 
 @pytest.fixture(scope="module")
@@ -141,6 +139,4 @@ def get_test_cfg(cfg_args):
             "config.yaml",
             overrides=overrides,
         )
-        dotenv.load_dotenv("../.env")
-        os.environ["IMAGE_NET_PATH"]
     return cfg
