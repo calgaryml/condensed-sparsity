@@ -50,8 +50,8 @@ class Checkpoint(object):
             )
         if type(checkpoint_dir) == str:
             checkpoint_dir = pathlib.Path(checkpoint_dir)
-        # if not checkpoint_dir.is_dir():
-        #     checkpoint_dir.mkdir(parents=True, exist_ok=False)
+        if not checkpoint_dir.is_dir():
+            checkpoint_dir.mkdir(parents=True, exist_ok=False)
         return checkpoint_dir
 
     def save_checkpoint(self) -> None:
