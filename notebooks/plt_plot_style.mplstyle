@@ -10,10 +10,10 @@ font.sans-serif : "DejaVu Sans"
 
 # Axes properties
 axes.linewidth: 2  # edge linewidth
-axes.labelpad: 8   # space between label and axis
+axes.labelpad: 6   # space between label and axis
 axes.prop_cycle: cycler(color=['00a5bb','f79141','499585', 'd81e52', '6cb2c5' , '6c77c5', 'c5ba6c', '56ce93', 'd88fBf', 'ffd505']) # color cycle for plot lines
 axes.titlepad: 20.0    # pad between axes and title in points
-axes.labelsize: 26     # Axes labels size
+axes.labelsize: 18     # Axes labels size
 axes.titlesize: 30     # Plot title size
 axes.labelweight: 500  # Axel Labels weight
 axes.titleweight: 500  # Axel Titleweight
@@ -30,7 +30,7 @@ xtick.minor.size: 0 # minor tick size in points
 xtick.minor.width: 0 # minor tick width in points
 xtick.major.pad : 5
 xtick.minor.pad: 5
-xtick.labelsize : 20
+xtick.labelsize : 14
 
 # y-axis
 ytick.direction: inout # direction: in, out, or inout
@@ -40,15 +40,15 @@ ytick.minor.size: 0 # minor tick size in points
 ytick.minor.width: 0 # minor tick width in points
 ytick.major.pad : 5
 ytick.minor.pad: 5
-ytick.labelsize : 20
+ytick.labelsize : 14
 
 # Line properties
-lines.linewidth: 1.0
+lines.linewidth: 3.0
 
 # Legend properties
 legend.framealpha: 1.0  # opacity of legend frame
 legend.frameon: False   # whether or not to draw a frame around legend
-legend.fontsize: 20     # Font size of the legend
+legend.fontsize: 14     # Font size of the legend
 legend.borderpad : 0
 #legend.borderaxespad: 1.5
 
