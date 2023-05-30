@@ -178,27 +178,28 @@ def get_T_end(
         int: Step number at which to terminate pruning / regrowth.
     """
     if cfg.training.max_steps is None or cfg.training.max_steps == 0:
-        if cfg.compute.distributed:
-            # In distributed mode, len(train_loader) will be reduced by
-            # 1/world_size compared to single device
+        # if cfg.compute.distributed:
+        #     # In distributed mode, len(train_loader) will be reduced by
+        #     # 1/world_size compared to single device
+        #     T_end = int(
+        #         0.75
+        #         * cfg.training.epochs
+        #         * len(train_loader)  # Dataset length // batch_size
+        #         * cfg.compute.world_size
+        #     )
+        # else:
+        T_end = int(0.75 * cfg.training.epochs * len(train_loader))
+        if cfg.training.simulated_batch_size is not None:
+            # We need to correct T_end to account for sim bs / actual bs
             T_end = int(
-                0.75
-                * cfg.training.epochs
-                * len(train_loader)  # Dataset length // batch_size
-                * cfg.compute.world_size
+                T_end
+                / (cfg.training.simulated_batch_size / cfg.training.batch_size)
             )
-        else:
-            T_end = int(0.75 * cfg.training.epochs * len(train_loader))
     else:
         T_end = int(0.75 * cfg.training.max_steps)
     if not cfg.rigl.use_t_end:
         T_end = int(1 / 0.75 * T_end)  # We use the full number of steps
-    if cfg.training.simulated_batch_size is not None:
-        # We need to correct T_end to account for sim bs / actual bs
-        T_end = int(
-            T_end
-            / (cfg.training.simulated_batch_size / cfg.training.batch_size)
-        )
+
     return T_end
 
 

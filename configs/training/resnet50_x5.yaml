@@ -6,8 +6,8 @@ batch_size: 1024  # 128 for cifar10, multiples of 256 for imagenet w/ scaled lr 
 epochs: 515  # For imagenet, training will finish at ~ epoch 102.31, use 250 for cifar10 || imagenet x5 -> 515
 # Batch size to simulate by taking multiple steps per optimizer update (accumulate grads)
 simulated_batch_size: 4096
-# max number of steps (will override epochs) -> Based on mini-batch steps (NOT SIMULATED BATCHES!)
-max_steps: null  # 4096 * 32000 / 512 = 256000 from rigl paper || x5 -> 4096*32000/1024 = 640000
+# max number of steps (will override epochs)
+max_steps: 160000  # 4096 * 32000 / 512 = 256000 from rigl paper || x5 -> 4096*32000/1024 = 640000
 
 ## Optimization
 optimizer: sgd # "sgd", "adamw"

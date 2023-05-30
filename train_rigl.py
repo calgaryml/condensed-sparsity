@@ -414,10 +414,7 @@ def train(
             optimizer.step()
             if pruner is not None:
                 # pruner.__call__ returns False if rigl step taken
-                if not pruner() and cfg.wandb.log_filter_stats and rank == 0:
-                    # If we update the pruner
-                    # log filter-wise statistics to wandb
-                    pruner.log_meters(step=step)
+                pruner_called = not pruner()
             optimizer.zero_grad()
 
             if step % cfg.training.log_interval == 0 and rank == 0:
@@ -440,6 +437,14 @@ def train(
                 }
                 if pruner is not None:
                     wandb_data["ITOP Rate"] = pruner.itop_rs
+                    if (
+                        cfg.wandb.log_filter_stats
+                        and rank == 0
+                        and pruner_called
+                    ):
+                        # If we updated the pruner
+                        # log filter-wise statistics to wandb
+                        pruner.log_meters(step=step)
                 wandb.log(wandb_data, step=step)
             if cfg.training.dry_run:
                 logger.warning("Dry run, exiting after one training step")

@@ -29,6 +29,35 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-        }
+        },
+        {
+            "name": "Resnet50x5",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "model=resnet50",
+                "rigl=resnet50_x5",
+                "training=resnet50_x5",
+                "dataset=imagenet",
+                "training.max_steps=160000"
+            ]
+        },
+        {
+            "name": "ViT",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "model=vit",
+                "rigl=vit",
+                "training=vit",
+                "dataset=imagenet",
+            ]
+        },
     ]
 }
