@@ -7,7 +7,7 @@ defaults:
   - compute: ${dataset}
 
 experiment:
-  comment: "_x5"  # Start with leading underscore
+  comment: "_fixed_t_end"  # Start with leading underscore
   name: ${model.name}_${dataset.name}_dense_alloc-${rigl.dense_allocation}_const_fan_in-${rigl.const_fan_in}${experiment.comment}
   resume_from_checkpoint: False
   run_id: null

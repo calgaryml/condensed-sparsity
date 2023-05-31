@@ -12,3 +12,5 @@ keep_first_layer_dense: False
 ignore_mha_layers: False
 # Define layer-wise sparsity distribution. Options include `uniform` & `erk`
 sparsity_distribution: uniform
+# Param for minimum number of salient weights per neuron. If < this value, the neuron will be dynamically ablated. 
+min_salient_weights_per_neuron: 0.95
