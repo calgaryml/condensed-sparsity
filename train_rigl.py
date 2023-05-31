@@ -415,7 +415,7 @@ def train(
             if pruner is not None:
                 # pruner.__call__ returns False if rigl step taken
                 pruner_called = not pruner()
-            optimizer.zero_grad()
+            # optimizer.zero_grad()
 
             if step % cfg.training.log_interval == 0 and rank == 0:
                 world_size = (
@@ -446,6 +446,9 @@ def train(
                         # log filter-wise statistics to wandb
                         pruner.log_meters(step=step)
                 wandb.log(wandb_data, step=step)
+
+            # We zero grads after logging pruner filter meters
+            optimizer.zero_grad()
             if cfg.training.dry_run:
                 logger.warning("Dry run, exiting after one training step")
                 return step
