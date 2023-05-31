@@ -424,7 +424,8 @@ def train(
                     else cfg.compute.world_size
                 )
                 logger.info(
-                    "Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
+                    "Step: {} Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
+                        step,
                         epoch,
                         batch_idx * len(data) * world_size,
                         len(train_loader.dataset),
