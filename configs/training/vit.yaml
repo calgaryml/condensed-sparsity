@@ -4,10 +4,10 @@
 batch_size: 512  # 128 for cifar10, multiples of 256 for imagenet w/ scaled lr -> 512 with 2 v100s or 4 3090s -> 1024 with 4 v100s
 # Batch size to simulate by taking multiple steps per optimizer update (accumulate grads)
 simulated_batch_size: 4096
-test_batch_size: 500
+test_batch_size: 2500
 # number of epochs to train
 epochs: 160  # For imagenet, training will finish at ~ epoch 102.31, use 250 for cifar10 || imagenet x5 -> 515  | ViT is 300
-# max number of steps (will override epochs) -> Based on mini-batch steps (NOT SIMULATED BATCHES!)
+# max number of steps (will override epochs) -> Based on number of optimizer steps (ie., dataset len * epochs * simulated batch size)
 max_steps: 46918  # 150 epochs * 1281167 / 4096 == 46917.74
 
 ## Optimization

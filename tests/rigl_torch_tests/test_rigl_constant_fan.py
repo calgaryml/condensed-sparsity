@@ -39,7 +39,7 @@ def pruner(request, net, data_loaders):
     lr = 0.001
     alpha = 0.3
     static_topo = 0
-    dense_allocation = 0.1
+    dense_allocation = 0.2
     grad_accumulation_n = 1
     delta = 100
     epochs = 3

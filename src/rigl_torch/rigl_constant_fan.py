@@ -204,6 +204,9 @@ class RigLConstFanScheduler(RigLScheduler):
             else:
                 try:
                     active_filters = self.active_neurons[idx]
+                    # const_fan_ins.append(
+                    #     get_fan_in_tensor(mask[active_filters]).unique().item()
+                    # )
                     const_fan_ins.append(
                         get_fan_in_tensor(mask[active_filters]).unique().item()
                     )

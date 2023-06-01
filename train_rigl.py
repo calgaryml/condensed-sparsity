@@ -400,6 +400,9 @@ def train(
         )
         # Normalize loss for accumulated grad
         loss = loss / steps_to_accumulate_grad
+
+        # Will call backwards hooks on model and accumulate dense grads if
+        # within cfg.rigl.grad_accumulation_n mini-batch steps from update
         loss.backward()
 
         if apply_grads:  # If we apply grads, check for topology update and log
@@ -411,11 +414,8 @@ def train(
             optimizer.step()
             if pruner is not None:
                 # pruner.__call__ returns False if rigl step taken
-                if not pruner() and cfg.wandb.log_filter_stats and rank == 0:
-                    # If we update the pruner
-                    # log filter-wise statistics to wandb
-                    pruner.log_meters(step=step)
-            optimizer.zero_grad()
+                pruner_called = not pruner()
+            # optimizer.zero_grad()
 
             if step % cfg.training.log_interval == 0 and rank == 0:
                 world_size = (
@@ -424,7 +424,8 @@ def train(
                     else cfg.compute.world_size
                 )
                 logger.info(
-                    "Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
+                    "Step: {} Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
+                        step,
                         epoch,
                         batch_idx * len(data) * world_size,
                         len(train_loader.dataset),
@@ -437,7 +438,18 @@ def train(
                 }
                 if pruner is not None:
                     wandb_data["ITOP Rate"] = pruner.itop_rs
+                    if (
+                        cfg.wandb.log_filter_stats
+                        and rank == 0
+                        and pruner_called
+                    ):
+                        # If we updated the pruner
+                        # log filter-wise statistics to wandb
+                        pruner.log_meters(step=step)
                 wandb.log(wandb_data, step=step)
+
+            # We zero grads after logging pruner filter meters
+            optimizer.zero_grad()
             if cfg.training.dry_run:
                 logger.warning("Dry run, exiting after one training step")
                 return step

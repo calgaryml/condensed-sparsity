@@ -42,7 +42,7 @@ def mock_image_dataloader(
 class MNISTNet(nn.Module):
     def __init__(self):
         super(MNISTNet, self).__init__()
-        self.conv1 = nn.Conv2d(1, 32, 3, 1)
+        self.conv1 = nn.Conv2d(1, 64, 3, 1)
         self.conv2 = nn.Conv2d(32, 64, 3, 1)
         self.dropout1 = nn.Dropout(0.25)
         self.dropout2 = nn.Dropout(0.5)

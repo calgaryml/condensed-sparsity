@@ -24,11 +24,8 @@ from xmanager import xm_local
 _vit_args = [
     "model=vit",
     "dataset=imagenet",
-    "compute.world_size=4",
-    "rigl.dense_allocation=0.2",
     "rigl.const_fan_in=False",
-    "training.dry_run=False",
-    "rigl.dynamic_ablation=True",
+    "experiment.comment=_uniform_spar",
 ]
 
 _x2_imagenet_args = [
@@ -103,7 +100,13 @@ def main(argv: Sequence[str]) -> None:
             ]
         )
         env_vars = dotenv_values("/home/mike/condensed-sparsity/.env.gcs")
-        args = ["python", "train_rigl.py"]
+        args = ["wandb", "agent", "condensed-sparsity/condensed-rigl/89ygfttf"]
+        # args = ["python", "train_rigl.py"]
+        # args = [
+        #     "wandb",
+        #     "agent",
+        #     "condensed-sparsity/condensed-rigl/4yr8bhcg",
+        # ]
         # executor = xm_local.Vertex(xm.JobRequirements(t4=1))
 
         # args = [
@@ -115,8 +118,17 @@ def main(argv: Sequence[str]) -> None:
         # args.extend(_imagenet_args)
         # executor=xm_local.Vertex(xm.JobRequirements(a100=2))
 
-        args.extend(_vit_args)
+        # args.extend(_vit_args)
         executor = xm_local.Vertex(xm.JobRequirements(a100=4))
+        for _ in range(8):
+            experiment.add(
+                xm.Job(
+                    executable=executable,
+                    executor=executor,
+                    env_vars=env_vars,
+                    args=args,
+                )
+            )
 
         # # args.extend(_x2_imagenet_args)
         # # executor = xm_local.Vertex(xm.JobRequirements(a100=8))
@@ -129,15 +141,20 @@ def main(argv: Sequence[str]) -> None:
         #             args=args,
         #         )
         #     )
-
-        experiment.add(
-            xm.Job(
-                executable=executable,
-                executor=executor,
-                env_vars=env_vars,
-                args=args,
-            )
-        )
+        # for da in [0.2]:  # , 0.1]:
+        #     args.extend(
+        #         [
+        #             f"rigl.dense_allocation={da}",
+        #         ]
+        #     )
+        #     experiment.add(
+        #         xm.Job(
+        #             executable=executable,
+        #             executor=executor,
+        #             env_vars=env_vars,
+        #             args=args,
+        #         )
+        #     )
         # for dense_alloc in [0.1, 0.01, 0.05, 0.2]:
         #     these_args = copy.deepcopy(args)
         #     these_args.extend([f"rigl.dense_allocation={dense_alloc}"])

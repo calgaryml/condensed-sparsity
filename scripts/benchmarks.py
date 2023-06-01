@@ -18,8 +18,9 @@ def linear_benchmark(x, linear):
 
 @torch.no_grad()
 def main(device, cuda, num_features, dtype, num_threads):
-    sparsities = [0.0, 0.5, 0.9, 0.95, 0.99]
-    batch_sizes = [2**x for x in range(9, -1, -1)]
+    # sparsities = [0.0, 0.5, 0.9, 0.95, 0.99]
+    sparsities = [0.0, 0.5, 0.99]
+    batch_sizes = [2**x for x in range(8, -1, -1)]
     results = []
     counter = 0
     for batch_size, s in product(batch_sizes, sparsities):
@@ -97,7 +98,7 @@ if __name__ == "__main__":
     for d in ["cpu"]:
         cuda = True
         # num_features = 65536
-        num_features = 20000
+        num_features = 1024
         dtype = torch.float32
         num_threads = 1
         if d == "cpu":
