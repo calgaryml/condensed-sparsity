@@ -80,7 +80,7 @@ def main(argv: Sequence[str]) -> None:
     docker_image = "mklasby/condensed-sparsity:rigl-gcs"
     # docker_image = "gcr.io/external-collab-experiment/condensed_sparsity:20230116-211607-665612"  # noqa
     with xm_local.create_experiment(
-        experiment_title="condensed-sparsity-vit-benchmark"
+        experiment_title="condensed-sparsity-vit-cedar-runs"
     ) as experiment:
         executable_spec = xm.Dockerfile(
             path="/home/mike/condensed-sparsity/",
@@ -100,8 +100,16 @@ def main(argv: Sequence[str]) -> None:
             ]
         )
         env_vars = dotenv_values("/home/mike/condensed-sparsity/.env.gcs")
-        args = ["wandb", "agent", "condensed-sparsity/condensed-rigl/89ygfttf"]
-        # args = ["python", "train_rigl.py"]
+        # args = [
+        #     "wandb", "agent", "condensed-sparsity/condensed-rigl/89ygfttf"
+        # ]
+        args = ["python", "train_rigl.py"]
+        # args = [
+        #     "python",
+        #     "train_rigl.py",
+        #     "experiment.resume_from_checkpoint=True",
+        #     "experiment.run_id=dwlyqdgj",
+        # ]
         # args = [
         #     "wandb",
         #     "agent",
@@ -120,15 +128,26 @@ def main(argv: Sequence[str]) -> None:
 
         # args.extend(_vit_args)
         executor = xm_local.Vertex(xm.JobRequirements(a100=4))
-        for _ in range(8):
+        for ms in [0.99, 0.9, 0.95]:
+            these_args = copy.deepcopy(args)
+            these_args.extend([f"rigl.min_salient_weights_per_neuron={ms}"])
             experiment.add(
                 xm.Job(
                     executable=executable,
                     executor=executor,
                     env_vars=env_vars,
-                    args=args,
-                )
+                    args=these_args,
+                ),
             )
+        # for _ in range(8):
+        #     experiment.add(
+        #         xm.Job(
+        #             executable=executable,
+        #             executor=executor,
+        #             env_vars=env_vars,
+        #             args=args,
+        #         )
+        #     )
 
         # # args.extend(_x2_imagenet_args)
         # # executor = xm_local.Vertex(xm.JobRequirements(a100=8))
