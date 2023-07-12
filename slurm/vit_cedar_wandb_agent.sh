@@ -5,7 +5,7 @@
 #SBATCH --job-name=imagenet_vit
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=16
+#SBATCH --cpus-per-task=32
 #SBATCH --gres=gpu:v100l:4
 #SBATCH --mem=125G    
 #SBATCH --time=7-00:00:00
