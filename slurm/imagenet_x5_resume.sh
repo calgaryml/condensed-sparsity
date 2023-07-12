@@ -7,11 +7,11 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=32
 #SBATCH --gpus-per-node=v100l:4
-#SBATCH --mem=125G
-#SBATCH --time=3-00:00:00
+#SBATCH --mem=187G
+#SBATCH --time=7-00:00:00
 #SBATCH --mail-user=mklasby@ucalgary.ca
 #SBATCH --mail-type=BEGIN,END,FAIL
-#SBATCH --account=def-rmsouza
+#SBATCH --account=def-yani
 
 ## --- Migrate venv / data to local node storage --- ##
 export SCRATCH=/scratch/mklasby/ILSVRC/

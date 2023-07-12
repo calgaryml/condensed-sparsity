@@ -35,5 +35,5 @@ dataset=imagenet \
 model=vit \
 rigl.dense_allocation=${dense_alloc} \
 compute.world_size=4 \
-rigl.const_fan_in=False \
+rigl.min_salient_weights_per_neuron=0.99 \
 training.seed=5555
