@@ -10,8 +10,8 @@ from typing import Tuple, Union, List, Optional
 _EXCLUDED_TYPES = (
     torch.nn.BatchNorm2d,
     torch.nn.LayerNorm,
-    torchvision.models.detection.transform.GeneralizedRCNNTransform,
-    torchvision.models._utils.IntermediateLayerGetter,
+    # torchvision.models.detection.transform.GeneralizedRCNNTransform,
+    # torchvision.models._utils.IntermediateLayerGetter,
 )
 
 _EXCLUDED_MODULE_NAMES = ("cls_logits", "bbox_pred", "mask_fcn_logits")
@@ -26,9 +26,7 @@ def get_names_and_W(
 ) -> Tuple[List[str], List[torch.nn.parameter.Parameter]]:
     """Much simpler implementation"""
 
-    target_types = [
-        torch.nn.Conv2d,
-    ]
+    target_types = [torch.nn.Conv2d, torch.nn.ConvTranspose2d]
     if not skip_linear:
         target_types.append(torch.nn.Linear)
     if not skip_mha:
@@ -36,7 +34,7 @@ def get_names_and_W(
     target_layers = []
     names = []
     for n, m in model.named_modules():
-        if type(m) in target_types and n not in _EXCLUDED_MODULE_NAMES:
+        if type(m) in target_types:
             target_layers.append(m)
             names.append(n)
     weights = [layer.weight for layer in target_layers]
