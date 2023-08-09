@@ -254,6 +254,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             use_sparse_const_fan_in_for_ablation=cfg.rigl.use_sparse_const_fan_in_for_ablation,  # noqa
             keep_first_layer_dense=cfg.rigl.keep_first_layer_dense,
             initialize_grown_weights=cfg.rigl.initialize_grown_weights,
+            no_ablation_module_names=cfg.model.no_ablation_module_names,
         )
     else:
         logger.warning(
