@@ -5,6 +5,7 @@ from rigl_torch.datasets._mnist import MNISTDataStem
 from rigl_torch.datasets._cifar import CIFAR10DataStem
 from rigl_torch.datasets._imagenet import ImageNetDataStem
 from rigl_torch.datasets._vit_imagenet import VitImageNetDataStem
+from rigl_torch.datasets._coco import CocoSegmentationDataStem
 
 
 def get_dataloaders(cfg: DictConfig) -> torch.utils.data.DataLoader:
@@ -16,6 +17,10 @@ def get_dataloaders(cfg: DictConfig) -> torch.utils.data.DataLoader:
         data_stem = ImageNetDataStem(cfg, data_path_override=cfg.dataset.root)
     elif cfg.dataset.name.lower() == "imagenet" and cfg.model.name == "vit":
         data_stem = VitImageNetDataStem(
+            cfg, data_path_override=cfg.dataset.root
+        )
+    elif cfg.dataset.name.lower() == "coco":
+        data_stem = CocoSegmentationDataStem(
             cfg, data_path_override=cfg.dataset.root
         )
     else:
