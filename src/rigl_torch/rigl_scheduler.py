@@ -140,6 +140,10 @@ class RigLScheduler:
             union of regrowth and pruning masks (ie., weight is consider salient
             if either criterion is satsified). Defaults to 0.
         keep_first_layer_dense: bool
+        no_ablation_module_names: Optional[List[str]]
+            List of module names for which no neuron ablation is conducted.
+            Useful for networks with multiple heads (i.e., MaskRCNN).
+            Defaults to None.
     Raises:
         Exception: If attempting to register scheduler to a model that already
             has IndexMaskHooks registered.
@@ -171,6 +175,7 @@ class RigLScheduler:
         use_sparse_const_fan_in_for_ablation: bool = False,
         keep_first_layer_dense: bool = False,
         initialize_grown_weights: float = 0,
+        no_ablation_module_names: Optional[List[str]] = None,
     ):
         """Initalizes scheduler object."""
         self._logger = logging.getLogger(__file__)
@@ -194,8 +199,17 @@ class RigLScheduler:
         )
         self.keep_first_layer_dense = keep_first_layer_dense
         self.initialize_grown_weights = initialize_grown_weights
+        if no_ablation_module_names is None:
+            no_ablation_module_names = []
+        self.no_ablation_module_names = no_ablation_module_names
 
-        self.W, self._linear_layers_mask, self._mha_layers_mask = get_W(model)
+        (
+            self.W,
+            self._linear_layers_mask,
+            self._mha_layers_mask,
+            self.module_names,
+        ) = get_W(model)
+        self._logger.debug(f"Module Names Registered: {self.module_names}")
         _create_step_wrapper(self, optimizer)
 
         self.N = [torch.numel(w) for w in self.W]

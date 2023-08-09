@@ -10,7 +10,11 @@ from typing import Tuple, Union, List, Optional
 _EXCLUDED_TYPES = (
     torch.nn.BatchNorm2d,
     torch.nn.LayerNorm,
+    torchvision.models.detection.transform.GeneralizedRCNNTransform,
+    torchvision.models._utils.IntermediateLayerGetter,
 )
+
+_EXCLUDED_MODULE_NAMES = ("cls_logits", "bbox_pred", "mask_fcn_logits")
 
 
 def get_names_and_W(
@@ -32,7 +36,7 @@ def get_names_and_W(
     target_layers = []
     names = []
     for n, m in model.named_modules():
-        if type(m) in target_types:
+        if type(m) in target_types and n not in _EXCLUDED_MODULE_NAMES:
             target_layers.append(m)
             names.append(n)
     weights = [layer.weight for layer in target_layers]
@@ -40,7 +44,12 @@ def get_names_and_W(
 
 
 def get_weighted_layers(
-    model, i=0, layers=None, linear_layers_mask=None, mha_layer_mask=None
+    model,
+    i=0,
+    layers=None,
+    linear_layers_mask=None,
+    mha_layer_mask=None,
+    layer_names=None,
 ):
     if layers is None:
         layers = []
@@ -48,40 +57,73 @@ def get_weighted_layers(
         linear_layers_mask = []
     if mha_layer_mask is None:
         mha_layer_mask = []
+    if layer_names is None:
+        layer_names = []
 
     items = model._modules.items()
     if i == 0:
         items = [(None, model)]
 
-    for layer_name, p in items:
+    for name, p in items:
         if type(p) is NonDynamicallyQuantizableLinear:
+            layer_names.append(name)
             layers.append([p])
             mha_layer_mask.append(1)
             linear_layers_mask.append(0)
         elif type(p) is torch.nn.Linear:
+            layer_names.append(name)
             layers.append([p])
             linear_layers_mask.append(1)
             mha_layer_mask.append(0)
         elif hasattr(p, "weight") and type(p) not in _EXCLUDED_TYPES:
+            layer_names.append(name)
             layers.append([p])
             linear_layers_mask.append(0)
             mha_layer_mask.append(0)
         elif isinstance(p, torchvision.models.resnet.Bottleneck) or isinstance(
             p, torchvision.models.resnet.BasicBlock
         ):
-            _, linear_layers_mask, mha_layer_mask, i = get_weighted_layers(
-                p, i + 1, layers, linear_layers_mask, mha_layer_mask
+            (
+                _,
+                linear_layers_mask,
+                mha_layer_mask,
+                i,
+                layer_names,
+            ) = get_weighted_layers(
+                p,
+                i + 1,
+                layers,
+                linear_layers_mask,
+                mha_layer_mask,
+                layer_names,
             )
         else:
-            _, linear_layers_mask, mha_layer_mask, i = get_weighted_layers(
-                p, i + 1, layers, linear_layers_mask, mha_layer_mask
+            (
+                _,
+                linear_layers_mask,
+                mha_layer_mask,
+                i,
+                layer_names,
+            ) = get_weighted_layers(
+                p,
+                i + 1,
+                layers,
+                linear_layers_mask,
+                mha_layer_mask,
+                layer_names,
             )
 
-    return layers, linear_layers_mask, mha_layer_mask, i
+    return layers, linear_layers_mask, mha_layer_mask, i, layer_names
 
 
 def get_W(model):
-    layers, linear_layers_mask, mha_layers_mask, _ = get_weighted_layers(model)
+    (
+        layers,
+        linear_layers_mask,
+        mha_layers_mask,
+        _,
+        layer_names,
+    ) = get_weighted_layers(model)
 
     W = []
     for layer in layers:
@@ -90,8 +132,9 @@ def get_W(model):
 
     assert len(W) == len(linear_layers_mask)
     assert len(W) == len(mha_layers_mask)
+    assert len(W) == len(layer_names)
 
-    return W, linear_layers_mask, mha_layers_mask
+    return W, linear_layers_mask, mha_layers_mask, layer_names
 
 
 def calculate_fan_in_and_fan_out(

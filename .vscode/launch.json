@@ -19,7 +19,9 @@
                 "compute.distributed=False",
                 "rigl.sparsity_distribution=uniform",
                 "rigl.keep_first_layer_dense=True",
-                "rigl.const_fan_in=False"
+                "rigl.const_fan_in=True",
+                "model=maskrcnn",
+                "dataset=coco"
             ]
         },
         {

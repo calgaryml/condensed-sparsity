@@ -118,7 +118,7 @@ def _get_logger(rank, cfg: omegaconf.DictConfig) -> logging.Logger:
     if not log_path.is_dir():
         log_path.mkdir()
     logger = logging.getLogger(__file__)
-    logger.setLevel(level=logging.INFO)
+    logger.setLevel(level=logging.DEBUG)
     current_date = date.today().strftime("%Y-%m-%d")
     # logformat = "[%(levelname)s] %(asctime)s G- %(name)s -%(rank)s -
     # %(funcName)s (%(lineno)d) : %(message)s"
@@ -128,7 +128,7 @@ def _get_logger(rank, cfg: omegaconf.DictConfig) -> logging.Logger:
     )
     logging.root.handlers = []
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.DEBUG,
         format=logformat,
         handlers=[
             logging.FileHandler(log_path / f"processor_{current_date}.log"),

@@ -307,7 +307,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
         epoch_start = checkpoint.epoch + 1
         step = checkpoint.step
         # NOTE: we will use acc for checkpointing but this will hold mask_mAP
-        segmentation_meter._max_mask_mAP = checkpoint.best_acc  
+        segmentation_meter._max_mask_mAP = checkpoint.best_acc
 
     for epoch in range(epoch_start, cfg.training.epochs + 1):
         if pruner is not None and rank == 0:
@@ -364,6 +364,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
         wandb.log_artifact(art)
     if rank == 0 and cfg.wandb.log_to_wandb:
         run.finish()
+
 
 # TODO
 def train(

@@ -1,2 +1,6 @@
 name: maskrcnn
 activation_function: relu
+no_ablation_module_names:
+  - cls_logits
+  - bbox_pred
+  - mask_fcn_logits
