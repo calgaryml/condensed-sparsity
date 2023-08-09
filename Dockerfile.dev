@@ -68,13 +68,16 @@ RUN curl -sSL https://install.python-poetry.org | python3 - && exec bash
 # Install project requirements 
 RUN mkdir ${BUILD_PATH}
 WORKDIR ${BUILD_PATH}
-COPY ./pyproject.toml ./poetry.lock ./
+COPY ./ ./
 RUN python -m venv .venv && \ 
     source .venv/bin/activate && \
     pip install --upgrade pip && \
     poetry install -vvv --no-root && \
-    pip install sparseprop
+    pip install sparseprop && \
+    echo "source ${BUILD_PATH}/.venv/bin/activate" >> /home/$USERNAME/.bashrc
 
-RUN echo "source ${BUILD_PATH}/.venv/bin/activate" >> /home/$USERNAME/.bashrc
+# Build 
+WORKDIR ${BUILD_PATH}/src/cocoapi/PythonAPI
+RUN make && make install
 
 WORKDIR $WORKSPACE_DIR
