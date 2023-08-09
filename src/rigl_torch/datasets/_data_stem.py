@@ -47,6 +47,7 @@ class ABCDataStem(ABC):
             self.data_path = self._data_path_override
         else:
             self.data_path = self.cfg.paths.data_folder
+        self.data_path = pathlib.Path(self.data_path)
 
     def get_train_test_loaders(self):
         train_dataset, test_dataset = self._get_datasets()
