@@ -8,3 +8,4 @@ from .imagenet_models import (  # noqa
     get_imagenet_resnet18,  # noqa
     get_imagenet_wide_resnet_22,  # noqa
 )
+from .maskrcnn import get_maskrcnn  # noqa
