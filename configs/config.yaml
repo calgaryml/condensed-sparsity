@@ -142,3 +142,6 @@ wandb:
 hydra:  
   run:
     dir: ${paths.logs}
+
+model:
+  no_ablation_module_names: null

@@ -1,2 +1,4 @@
 name: vit
 activation_function: gelu
+no_ablation_module_names:
+  - head

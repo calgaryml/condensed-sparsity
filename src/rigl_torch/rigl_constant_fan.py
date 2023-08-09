@@ -65,6 +65,10 @@ class RigLConstFanScheduler(RigLScheduler):
             be salient to remain active. Defaults to 0. Saliency in this case is
             the union of regrowth and pruning masks (ie., weight is consider
             salient if either criterion is satsified)
+        no_ablation_module_names: Optional[List[str]]
+            List of module names for which no neuron ablation is conducted.
+            Useful for networks with multiple heads (i.e., MaskRCNN).
+            Defaults to None.
 
     Raises:
         Exception: If attempting to register scheduler to a model that already
@@ -95,6 +99,7 @@ class RigLConstFanScheduler(RigLScheduler):
         use_sparse_const_fan_in_for_ablation: bool = False,
         keep_first_layer_dense: bool = False,
         initialize_grown_weights: float = 0,
+        no_ablation_module_names: Optional[List[str]] = None,
     ):
 
         super().__init__(
@@ -120,6 +125,7 @@ class RigLConstFanScheduler(RigLScheduler):
             use_sparse_const_fan_in_for_ablation,
             keep_first_layer_dense,
             initialize_grown_weights,
+            no_ablation_module_names,
         )
         if not hasattr(self, "dynamically_ablated_neuron_idx"):
             # Only init if not loaded by checkpoint
@@ -243,7 +249,7 @@ class RigLConstFanScheduler(RigLScheduler):
         self.dynamically_ablated_neuron_idx = []
         last_layer_idx = len(self.W) - 1
         self._min_sal_per_layer = []
-        for idx, w in enumerate(self.W):
+        for idx, (w, name) in enumerate(list(zip(self.W, self.module_names))):
             # if sparsity is 0%, skip
             if self.S[idx] <= 0:
                 self.dynamically_ablated_neuron_idx.append([])
@@ -292,7 +298,12 @@ class RigLConstFanScheduler(RigLScheduler):
                 n_prune = n_ones - n_keep
 
             # Get neurons to ablate
-            if idx == last_layer_idx:  # Do not ablate last layer!
+            if (
+                self.no_ablation_module_names is None
+                and idx == last_layer_idx
+                or name in self.no_ablation_module_names
+            ):  # Do not ablate last layer if no modules explicitly provided!
+                self._logger.debug(f"Skipping neuron ablation of module {name}")
                 neurons_to_ablate = []
             else:
                 neurons_to_ablate = self._get_neurons_to_ablate(

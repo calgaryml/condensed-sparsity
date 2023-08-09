@@ -1,2 +1,4 @@
 name: resnet50
 activation_function: relu
+no_ablation_module_names:
+  - fc
