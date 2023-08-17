@@ -33,7 +33,7 @@ class CocoSegmentationDataStem(_data_stem.ABCDataStem):
             transforms=test_transformer,
         )
         # NOTE: We need to wrap datasets for v2 transformers.
-        # See: https://pytorch.org/vision/0.15/auto_examples/plot_transforms_v2_e2e.html
+        # See: https://pytorch.org/vision/0.15/auto_examples/plot_transforms_v2_e2e.html  # noqa
         train_dataset = datasets.wrap_dataset_for_transforms_v2(train_dataset)
         test_dataset = datasets.wrap_dataset_for_transforms_v2(test_dataset)
         self._append_collate_fn_to_dataloader_kwargs()
@@ -48,11 +48,11 @@ class CocoSegmentationDataStem(_data_stem.ABCDataStem):
                         lambda: 0, {PIL.Image.Image: (123, 117, 104)}
                     )
                 ),
-                # transforms.RandomIoUCrop(),  # Seems to be deleting lots of bboxes
+                # transforms.RandomIoUCrop(),  # Deleting lots of bboxes
                 transforms.RandomHorizontalFlip(),
                 transforms.ToImageTensor(),
                 transforms.ConvertImageDtype(torch.float32),
-                transforms.SanitizeBoundingBox(),
+                # transforms.SanitizeBoundingBox(),  # Throwing exceptions
             ]
         )
         return train_transform

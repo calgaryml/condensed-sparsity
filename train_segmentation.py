@@ -367,7 +367,6 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
         run.finish()
 
 
-# TODO
 def train(
     cfg,
     model,
@@ -384,7 +383,7 @@ def train(
     steps_to_accumulate_grad = _get_steps_to_accumulate_grad(
         cfg.training.simulated_batch_size, cfg.training.batch_size
     )
-    for batch_idx, (data, target) in enumerate(train_loader):
+    for batch_idx, (images, targets) in enumerate(train_loader):
         apply_grads = (
             True
             if steps_to_accumulate_grad == 1
@@ -394,13 +393,17 @@ def train(
             )
             else False
         )
-        data, target = data.to(device), target.to(device)
-        logits = model(data)
-        loss = F.cross_entropy(
-            logits,
-            target,
-            label_smoothing=cfg.training.label_smoothing,
-        )
+        images = list(image.to(device) for image in images)
+        targets = [
+            {
+                k: v.to(device) if isinstance(v, torch.Tensor) else v
+                for k, v in t.items()
+            }
+            for t in targets
+        ]
+        loss_dict = model(images, targets)
+        loss = sum(loss for loss in loss_dict.values())
+
         # Normalize loss for accumulated grad
         loss = loss / steps_to_accumulate_grad
 
@@ -427,10 +430,10 @@ def train(
                     else cfg.compute.world_size
                 )
                 logger.info(
-                    "Step: {} Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
+                    "Step: {} Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(  # noqa
                         step,
                         epoch,
-                        batch_idx * len(data) * world_size,
+                        batch_idx * len(images) * world_size,
                         len(train_loader.dataset),
                         100.0 * batch_idx / len(train_loader),
                         loss.item(),
