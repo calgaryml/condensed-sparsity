@@ -204,6 +204,9 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
     model.to(device)
     if cfg.compute.distributed:
         model = DistributedDataParallel(model, device_ids=[rank])
+        model = torch.nn.SyncBatchNormd.convert_sync_batchnorm(
+            model
+        )  # TODO: experiment with this line
     if model_state is not None:
         model.load_state_dict(model_state)
     optimizer = get_optimizer(cfg, model, state_dict=optimizer_state)
@@ -425,7 +428,7 @@ def train(
                     else cfg.compute.world_size
                 )
                 logger.info(
-                    "Step: {} Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
+                    "Step: {} Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(  # noqa
                         step,
                         epoch,
                         batch_idx * len(data) * world_size,
