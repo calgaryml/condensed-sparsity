@@ -145,3 +145,6 @@ hydra:
 
 model:
   no_ablation_module_names: null
+
+logging:
+  level: info
