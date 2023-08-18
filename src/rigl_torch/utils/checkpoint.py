@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from omegaconf import DictConfig
 import datetime
 import logging
+import omegaconf
 import glob
 
 from rigl_torch.rigl_scheduler import RigLScheduler
@@ -184,3 +185,19 @@ class Checkpoint(object):
                 trained model for loading in single process.
         """
         return {".".join(k.split(".")[1:]): v for k, v in self.model.items()}
+
+
+def get_checkpoint(cfg: omegaconf.DictConfig, rank: int, logger) -> Checkpoint:
+    run_id = cfg.experiment.run_id
+    if run_id is None:
+        raise ValueError(
+            "Must provide wandb run_id when "
+            "cfg.training.resume_from_checkpoint is True"
+        )
+    checkpoint = Checkpoint.load_last_checkpoint(
+        run_id=run_id,
+        parent_dir=cfg.paths.checkpoints,
+        rank=rank,
+    )
+    logger.info(f"Resuming training with run_id: {cfg.experiment.run_id}")
+    return checkpoint

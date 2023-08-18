@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
@@ -13,9 +14,8 @@ from datetime import datetime
 import hydra
 import logging
 import wandb
-from datetime import date
 import pathlib
-from typing import Dict, Any, Optional
+from typing import Optional
 from copy import deepcopy
 
 from rigl_torch.models.model_factory import ModelFactory
@@ -26,51 +26,12 @@ from rigl_torch.optim import (
     get_optimizer,
     get_lr_scheduler,
 )
-from rigl_torch.utils.checkpoint import Checkpoint
+from rigl_torch.utils.checkpoint import Checkpoint, get_checkpoint
 from rigl_torch.utils.rigl_utils import get_T_end
 from rigl_torch.meters import SegmentationMeter
-from rigl_torch.utils.wandb_utils import WandbRunName, wandb_log_check
-
-
-def _get_checkpoint(cfg: omegaconf.DictConfig, rank: int, logger) -> Checkpoint:
-    run_id = cfg.experiment.run_id
-    if run_id is None:
-        raise ValueError(
-            "Must provide wandb run_id when "
-            "cfg.training.resume_from_checkpoint is True"
-        )
-    checkpoint = Checkpoint.load_last_checkpoint(
-        run_id=run_id,
-        parent_dir=cfg.paths.checkpoints,
-        rank=rank,
-    )
-    logger.info(f"Resuming training with run_id: {cfg.experiment.run_id}")
-    return checkpoint
-
-
-def init_wandb(cfg: omegaconf.DictConfig, wandb_init_kwargs: Dict[str, Any]):
-    # We override logging functions now to avoid any calls
-    if not cfg.wandb.log_to_wandb:
-        print("No logging to WANDB! See cfg.wandb.log_to_wandb")
-        wandb.log = wandb_log_check(wandb.log, cfg.wandb.log_to_wandb)
-        wandb.log_artifact = wandb_log_check(
-            wandb.log_artifact, cfg.wandb.log_to_wandb
-        )
-        wandb.watch = wandb_log_check(wandb.watch, cfg.wandb.log_to_wandb)
-        return None
-    _ = WandbRunName(name=cfg.experiment.name)  # Verify name is OK
-    run = wandb.init(
-        name=cfg.experiment.name,
-        entity=cfg.wandb.entity,
-        project=cfg.wandb.project,
-        config=omegaconf.OmegaConf.to_container(
-            cfg=cfg, resolve=True, throw_on_missing=True
-        ),
-        settings=wandb.Settings(start_method=cfg.wandb.start_method),
-        dir=cfg.paths.logs,
-        **wandb_init_kwargs,
-    )
-    return run
+from rigl_torch.utils.wandb_utils import init_wandb
+from rigl_torch.utils.dist_utils import get_steps_to_accumulate_grad
+from rigl_torch.utils.logging import get_logger
 
 
 @hydra.main(config_path="configs/", config_name="config", version_base="1.2")
@@ -113,37 +74,10 @@ def initalize_main(cfg: omegaconf.DictConfig) -> None:
         main(0, cfg)  # Single GPU
 
 
-def _get_logger(rank, cfg: omegaconf.DictConfig) -> logging.Logger:
-    log_path = pathlib.Path(cfg.paths.logs)
-    if not log_path.is_dir():
-        log_path.mkdir()
-    logger = logging.getLogger(__file__)
-    logger.setLevel(level=logging.INFO)
-    current_date = date.today().strftime("%Y-%m-%d")
-    # logformat = "[%(levelname)s] %(asctime)s G- %(name)s -%(rank)s -
-    # %(funcName)s (%(lineno)d) : %(message)s"
-    logformat = (
-        "[%(levelname)s] %(asctime)s G- %(name)s - %(funcName)s "
-        "(%(lineno)d) : %(message)s"
-    )
-    logging.root.handlers = []
-    logging.basicConfig(
-        level=logging.INFO,
-        format=logformat,
-        handlers=[
-            logging.FileHandler(log_path / f"processor_{current_date}.log"),
-            logging.StreamHandler(),
-        ],
-    )
-    # logger = logging.LoggerAdapter(logger, {"rank": f"rank: {rank}"})
-    # logger.info("hell world")
-    return logger
-
-
 def main(rank: int, cfg: omegaconf.DictConfig) -> None:
-    logger = _get_logger(rank, cfg)
+    logger = get_logger(cfg, __name__, rank)
     if cfg.experiment.resume_from_checkpoint:
-        checkpoint = _get_checkpoint(cfg, rank, logger)
+        checkpoint = get_checkpoint(cfg, rank, logger)
         wandb_init_resume = "must"
         run_id = checkpoint.run_id
         cfg = checkpoint.cfg
@@ -204,6 +138,8 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
     model.to(device)
     if cfg.compute.distributed:
         model = DistributedDataParallel(model, device_ids=[rank])
+        # TODO: experiment with this line
+        model = torch.nn.SyncBatchNormd.convert_sync_batchnorm(model)
     if model_state is not None:
         model.load_state_dict(model_state)
     optimizer = get_optimizer(cfg, model, state_dict=optimizer_state)
@@ -380,7 +316,7 @@ def train(
     rank,
 ):
     model.train()
-    steps_to_accumulate_grad = _get_steps_to_accumulate_grad(
+    steps_to_accumulate_grad = get_steps_to_accumulate_grad(
         cfg.training.simulated_batch_size, cfg.training.batch_size
     )
     for batch_idx, (images, targets) in enumerate(train_loader):
@@ -590,22 +526,7 @@ def _validate_distributed_cfg(cfg: omegaconf.DictConfig) -> None:
     return
 
 
-def _get_steps_to_accumulate_grad(
-    simulated_batch_size: int, batch_size: int
-) -> int:
-    if simulated_batch_size is None:
-        return 1
-    if simulated_batch_size % batch_size != 0:
-        raise ValueError(
-            "Effective batch size must be a multiple of batch size! "
-            f"{simulated_batch_size} % {batch_size} !=0"
-        )
-    return int(simulated_batch_size / batch_size)
-
-
 if __name__ == "__main__":
-    import os
-
     dotenv.load_dotenv(dotenv_path=".env", override=True)
     print(f"Base Path: {os.environ['BASE_PATH']}")
     initalize_main()
