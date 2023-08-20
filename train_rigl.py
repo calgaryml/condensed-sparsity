@@ -17,7 +17,6 @@ import wandb
 import pathlib
 from typing import Optional
 from copy import deepcopy
-
 from rigl_torch.models.model_factory import ModelFactory
 from rigl_torch.rigl_scheduler import RigLScheduler
 from rigl_torch.rigl_constant_fan import RigLConstFanScheduler
@@ -137,7 +136,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
     if cfg.compute.distributed:
         model = DistributedDataParallel(model, device_ids=[rank])
         # TODO: experiment with this line
-        model = torch.nn.SyncBatchNormd.convert_sync_batchnorm(model)
+        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
     if model_state is not None:
         model.load_state_dict(model_state)
     optimizer = get_optimizer(cfg, model, state_dict=optimizer_state)

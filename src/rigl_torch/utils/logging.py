@@ -12,7 +12,7 @@ def get_logger(
     if not log_path.is_dir():
         log_path.mkdir()
     logger = logging.getLogger(name)
-    logger.setLevel(level=logging.DEBUG)
+    logger.setLevel(level=logging.INFO)
     current_date = date.today().strftime("%Y-%m-%d")
     # logformat = "[%(levelname)s] %(asctime)s G- %(name)s -%(rank)s -
     # %(funcName)s (%(lineno)d) : %(message)s"
@@ -22,7 +22,7 @@ def get_logger(
     )
     logging.root.handlers = []
     logging.basicConfig(
-        level=logging.DEBUG,
+        level=logging.INFO,
         format=logformat,
         handlers=[
             logging.FileHandler(log_path / f"processor_{current_date}.log"),

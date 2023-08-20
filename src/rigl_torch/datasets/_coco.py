@@ -1,12 +1,17 @@
 from typing import Dict, Any, Optional, Union
 import torch
-from torchvision import datasets
 import pathlib
 from collections import defaultdict
-import torchvision.transforms.v2 as transforms
 import PIL.Image
 
 from rigl_torch.datasets import _data_stem
+
+import torchvision
+
+# We disable the beta transforms warning as it will print many times
+torchvision.disable_beta_transforms_warning()
+from torchvision import datasets  # noqa: E402
+import torchvision.transforms.v2 as transforms  # noqa: E402
 
 
 class CocoSegmentationDataStem(_data_stem.ABCDataStem):
@@ -18,7 +23,6 @@ class CocoSegmentationDataStem(_data_stem.ABCDataStem):
         super().__init__(cfg, data_path_override)
 
     def _get_datasets(self):
-
         train_transformer = self._get_transform()
         test_transformer = self._get_test_transform()
 
