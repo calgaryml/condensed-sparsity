@@ -3,14 +3,13 @@ import torch
 
 class SegmentationMeter(object):
     def __init__(self):
-        self._max_box_mAP = -torch.inf
-        self._box_mAP = -torch.inf
-        self.box_mAPs = []
+        self._max_bbox_mAP = -torch.inf
+        self._bbox_mAP = -torch.inf
+        self.bbox_mAPs = []
         self._max_mask_mAP = -torch.inf
         self._mask_mAP = -torch.inf
         self.mask_mAPs = []
-        
-    
+
     @property
     def mask_mAP(self) -> float:
         return self._mask_mAP
@@ -27,19 +26,19 @@ class SegmentationMeter(object):
         return self._max_mask_mAP
 
     @property
-    def box_mAP(self) -> float:
-        return self._box_mAP
+    def bbox_mAP(self) -> float:
+        return self._bbox_mAP
 
-    @mask_mAP.setter
-    def box_mAP(self, box_mAP: float) -> None:
-        self._box_mAP = box_mAP
-        self.box_mAPs.append(self._box_mAP)
-        if self._box_mAP >= self._max_box_mAP:
-            self._max_box_mAP = self._box_mAP
+    @bbox_mAP.setter
+    def bbox_mAP(self, bbox_mAP: float) -> None:
+        self._bbox_mAP = bbox_mAP
+        self.bbox_mAPs.append(self._bbox_mAP)
+        if self._bbox_mAP >= self._max_bbox_mAP:
+            self._max_bbox_mAP = self._bbox_mAP
 
     @property
-    def max_box_mAP(self) -> float:
-        return self._max_box_mAP
+    def max_bbox_mAP(self) -> float:
+        return self._max_bbox_mAP
 
 
 if __name__ == "__main__":
