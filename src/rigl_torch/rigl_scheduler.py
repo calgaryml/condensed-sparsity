@@ -11,7 +11,6 @@ import wandb
 from rigl_torch.utils.rigl_utils import (
     get_W,
     get_static_filters_to_ablate,
-    get_names_and_W,
 )
 from rigl_torch.utils.sparse_init import sparse_init
 from rigl_torch.meters.layer_meter import LayerMeter
@@ -948,7 +947,7 @@ class RigLScheduler:
         max inactive grads, etc.
         """
         self.meters = []
-        names, weights = get_names_and_W(self.model)
+        names, weights = self.module_names, self.W
         # for idx, _ in enumerate(weights):
         #     assert (weights[idx] == self.W[idx]).all()
         for idx, _ in enumerate(self.backward_masks):

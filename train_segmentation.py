@@ -5,7 +5,6 @@ import torch.nn as nn
 import torch.multiprocessing as mp
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel
-from torch.utils.tensorboard import SummaryWriter
 import pytorch_lightning as pl
 import random
 import dotenv
@@ -15,7 +14,6 @@ import hydra
 import logging
 import wandb
 import pathlib
-from typing import Optional
 from copy import deepcopy
 
 from rigl_torch.models.model_factory import ModelFactory
@@ -32,6 +30,8 @@ from rigl_torch.meters import SegmentationMeter
 from rigl_torch.utils.wandb_utils import init_wandb
 from rigl_torch.utils.dist_utils import get_steps_to_accumulate_grad
 from rigl_torch.utils.logging import get_logger
+from rigl_torch.utils.coco_eval import CocoEvaluator
+from rigl_torch.utils.coco_utils import show_gt_vs_dt
 
 
 @hydra.main(config_path="configs/", config_name="config", version_base="1.2")
@@ -139,7 +139,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
     if cfg.compute.distributed:
         model = DistributedDataParallel(model, device_ids=[rank])
         # TODO: experiment with this line
-        model = torch.nn.SyncBatchNormd.convert_sync_batchnorm(model)
+        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
     if model_state is not None:
         model.load_state_dict(model_state)
     optimizer = get_optimizer(cfg, model, state_dict=optimizer_state)
@@ -198,7 +198,6 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             "network..."
         )
 
-    writer = SummaryWriter(log_dir=cfg.paths.graphs)
     if rank == 0:
         if cfg.wandb.watch_model_grad_and_weights:
             log = "all"
@@ -263,7 +262,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             logger=logger,
             rank=rank,
         )
-        loss, box_mAP, mask_mAP = test(
+        _, mask_mAP = test(
             cfg,
             model,
             device,
@@ -275,8 +274,6 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             segmentation_meter,
         )
         if rank == 0:
-            writer.add_scalar("loss", loss, epoch)
-            writer.add_scalar("mask_mAP", mask_mAP, epoch)
             wandb.log({"Learning Rate": scheduler.get_last_lr()[0]}, step=step)
             logger.info(f"Learning Rate: {scheduler.get_last_lr()[0]}")
             checkpoint.current_acc = mask_mAP
@@ -338,16 +335,19 @@ def train(
             for t in targets
         ]
         loss_dict = model(images, targets)
-        loss = sum(loss for loss in loss_dict.values())
+        # loss_dict includes losses for classification, bbox regression, masks,
+        # objectness, rpn_box regression
+        losses = sum(loss for loss in loss_dict.values())
 
-        # Normalize loss for accumulated grad
-        loss = loss / steps_to_accumulate_grad
+        # Normalize loss for accumulated grad!
+        losses = losses / steps_to_accumulate_grad
 
         # Will call backwards hooks on model and accumulate dense grads if
         # within cfg.rigl.grad_accumulation_n mini-batch steps from update
-        loss.backward()
+        losses.backward()
 
         if apply_grads:  # If we apply grads, check for topology update and log
+            logger.info("Applying grads...")
             if cfg.training.clip_grad_norm is not None:
                 nn.utils.clip_grad_norm_(
                     model.parameters(), max_norm=cfg.training.clip_grad_norm
@@ -372,11 +372,11 @@ def train(
                         batch_idx * len(images) * world_size,
                         len(train_loader.dataset),
                         100.0 * batch_idx / len(train_loader),
-                        loss.item(),
+                        losses.item(),
                     )
                 )
                 wandb_data = {
-                    "Training Loss": loss.item(),
+                    "Training Losses": losses.item(),
                 }
                 if pruner is not None:
                     wandb_data["ITOP Rate"] = pruner.itop_rs
@@ -403,98 +403,85 @@ def train(
     return step
 
 
-def test(  # TODO
+def test(
     cfg, model, device, test_loader, epoch, step, rank, logger, training_meter
 ):
     model.eval()
-    test_loss = 0
-    correct = 0
-    top_k_correct = 0
+    cpu_device = torch.device("cpu")
+    iou_types = ["bbox", "segm"]
+    evaluator = CocoEvaluator(test_loader.dataset.coco, iou_types=iou_types)
     with torch.no_grad():
-        for data, target in test_loader:
-            data, target = data.to(device), target.to(device)
-            logits = model(data)
-            test_loss += F.cross_entropy(
-                logits,
-                target,
-                label_smoothing=cfg.training.label_smoothing,
-                reduction="mean",
-            )
-            pred = logits.argmax(
-                dim=1, keepdim=True
-            )  # get the index of the max log-probability
-            correct += pred.eq(target.view_as(pred)).sum()
-            if cfg.dataset.name == "imagenet":
-                _, top_5_indices = torch.topk(logits, k=5, dim=1, largest=True)
-                top_5_pred = (
-                    target.reshape(-1, 1).expand_as(top_5_indices)
-                    == top_5_indices
-                ).any(dim=1)
-                top_k_correct += top_5_pred.sum()
-            else:
-                top_k_correct = None
+        for images, targets in test_loader:
+            images = list(image.to(device) for image in images)
+            targets = [
+                {
+                    k: v.to(device) if isinstance(v, torch.Tensor) else v
+                    for k, v in t.items()
+                }
+                for t in targets
+            ]
+            outputs = model(images)
+            outputs = [
+                {k: v.to(cpu_device) for k, v in t.items()} for t in outputs
+            ]
+            res = {
+                target["image_id"]: output
+                for target, output in zip(targets, outputs)
+            }
+            evaluator.update(res)
+            break
     if cfg.compute.distributed:
-        dist.all_reduce(test_loss, dist.ReduceOp.AVG, async_op=False)
-        dist.all_reduce(correct, dist.ReduceOp.SUM, async_op=False)
-        if cfg.dataset.name == "imagenet":
-            dist.all_reduce(top_k_correct, dist.ReduceOp.SUM, async_op=False)
-            top_k_correct = top_k_correct / len(test_loader.dataset)
-    training_meter.accuracy = (correct / len(test_loader.dataset)).item()
+        evaluator.synchronize_between_processes()
+    evaluator.accumulate()
+    if rank == 0:
+        logger.info(f"\nTest set summary: \n{evaluator.summarize()}\n")
+    # Extract relevant metrics
+    bbox_mAP = evaluator.coco_eval["bbox"].stats[0]
+    mask_mAP = evaluator.coco_eval["segm"].stats[0]
+    training_meter.bbox_mAP = bbox_mAP
+    training_meter.mask_mAP = mask_mAP
     if rank == 0:
         wandb_log(
             epoch,
-            test_loss,
-            training_meter.accuracy,
-            top_k_correct,
-            data,
-            logits,
-            target,
-            pred,
             step,
-            training_meter.max_accuracy,
+            images,
+            targets,
+            outputs,
+            training_meter.bbox_mAP,
+            training_meter.max_bbox_mAP,
+            training_meter.mask_mAP,
+            training_meter.max_mask_mAP,
             cfg.wandb.log_images,
         )
-        logger.info(
-            (
-                "\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n"
-            ).format(
-                test_loss,
-                correct,
-                len(test_loader.dataset),
-                100.0 * correct / len(test_loader.dataset),
-            )
-        )
-    return test_loss, correct / len(test_loader.dataset)
+    return bbox_mAP, mask_mAP
 
 
 def wandb_log(
     epoch,
-    loss,
-    accuracy,
-    top_k_accuracy: Optional[torch.Tensor],
-    inputs,
-    logits,
-    captions,
-    pred,
     step,
-    best_accuracy: float,
+    images,
+    targets,
+    outputs,
+    bbox_mAP,
+    max_bbox_mAP,
+    mask_mAP,
+    max_mask_mAP,
     log_images,
 ):
     log_data = {
         "epoch": epoch,
-        "loss": loss.item(),
-        "accuracy": accuracy,
-        "logits": wandb.Histogram(logits.cpu()),
-        "best_accuracy": best_accuracy,
+        "bbox_mAP": bbox_mAP,
+        "max_bbox_mAP": max_bbox_mAP,
+        "mask_mAP": mask_mAP,
+        "max_mask_mAP": max_mask_mAP,
     }
-    if top_k_accuracy is not None:
-        log_data.update({"top_5_accuracy": top_k_accuracy.item()})
     if log_images:
+        annotated_images = []
+        for image, output, target in list(zip(images, outputs, targets)):
+            annotated_images.append(show_gt_vs_dt(image, target, output))
         log_data.update(
             {
-                "inputs": wandb.Image(inputs),
-                "captions": wandb.Html(captions.cpu().numpy().__str__()),
-                "predictions": wandb.Html(pred.cpu().numpy().__str__()),
+                "Annotated Predictions": wandb.Image(annotated_images),
             }
         )
     wandb.log(log_data, step=step)

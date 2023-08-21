@@ -135,7 +135,7 @@ wandb:
   project: condensed-rigl
   entity: condensed-sparsity
   start_method: thread
-  log_images: False
+  log_images: True
   watch_model_grad_and_weights: False
   log_filter_stats: True
 
