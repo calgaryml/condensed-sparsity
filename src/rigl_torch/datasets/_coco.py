@@ -1,8 +1,9 @@
 from typing import Dict, Any, Optional, Union
 import torch
 import pathlib
-from collections import defaultdict
-import PIL.Image
+
+# from collections import defaultdict
+# import PIL.Image
 
 from rigl_torch.datasets import _data_stem
 
@@ -59,17 +60,18 @@ class CocoSegmentationDataStem(_data_stem.ABCDataStem):
     def _get_transform(self):
         train_transform = transforms.Compose(
             [
-                transforms.RandomPhotometricDistort(),
-                transforms.RandomZoomOut(
-                    fill=defaultdict(
-                        lambda: 0, {PIL.Image.Image: (123, 117, 104)}
-                    )
-                ),
+                # transforms.RandomPhotometricDistort(),
+                # transforms.RandomZoomOut(
+                #     fill=defaultdict(
+                #         lambda: 0, {PIL.Image.Image: (123, 117, 104)}
+                #     )
+                # ),
                 # transforms.RandomIoUCrop(),  # Deleting lots of bboxes
                 transforms.RandomHorizontalFlip(),
                 transforms.ToImageTensor(),
                 transforms.ConvertImageDtype(torch.float32),
-                # transforms.SanitizeBoundingBox(),  # Throwing exceptions
+                # transforms.ClampBoundingBox(),
+                # transforms.SanitizeBoundingBox(labels_getter=None),
             ]
         )
         return train_transform
@@ -90,3 +92,6 @@ class CocoSegmentationDataStem(_data_stem.ABCDataStem):
 
 def collate_fn(batch):
     return tuple(zip(*batch))
+
+
+# def labels_getter(x,y)
