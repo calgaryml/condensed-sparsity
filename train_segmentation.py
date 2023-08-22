@@ -448,7 +448,6 @@ def test(
                 for target, output in zip(targets, outputs)
             }
             evaluator.update(res)
-            break  # TODO Remove
     if cfg.compute.distributed:
         evaluator.synchronize_between_processes()
     evaluator.accumulate()
