@@ -342,9 +342,15 @@ def train(
                 f"Found {len(index_to_pop)} target(s) missing 'boxes' key in "
                 f"batch_idx == {batch_idx}"
             )
-            for idx in index_to_pop:
-                images.pop(idx)
-                targets.pop(idx)
+            _images, _targets = [], []
+            for idx, (ii, tt) in enumerate(list(zip(images, targets))):
+                if idx in index_to_pop:
+                    continue
+                else:
+                    _images.append(ii)
+                    _targets.append(tt)
+            images = _images
+            targets = _targets
         if len(images) == 0:
             continue
 
@@ -442,7 +448,7 @@ def test(
                 for target, output in zip(targets, outputs)
             }
             evaluator.update(res)
-            break  # TODO Remove 
+            break  # TODO Remove
     if cfg.compute.distributed:
         evaluator.synchronize_between_processes()
     evaluator.accumulate()
