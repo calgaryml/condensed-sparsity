@@ -10,8 +10,9 @@ import torchvision
 
 # We disable the beta transforms warning as it will print many times
 torchvision.disable_beta_transforms_warning()
-from torchvision import datasets  # noqa: E402
+# from torchvision import datasets  # noqa: E402
 import torchvision.transforms.v2 as transforms  # noqa: E402
+from ._coco_detection_v2 import CocoDetectionV2  # noqa: E402
 
 
 class CocoSegmentationDataStem(_data_stem.ABCDataStem):
@@ -26,20 +27,32 @@ class CocoSegmentationDataStem(_data_stem.ABCDataStem):
         train_transformer = self._get_transform()
         test_transformer = self._get_test_transform()
 
-        train_dataset = datasets.CocoDetection(
+        # train_dataset = datasets.CocoDetection(
+        #     root=self.data_path / "train2014",
+        #     annFile=self.data_path / "annotations" / "instances_train2014.json",  # noqa
+        #     transforms=train_transformer,
+        # )
+        # test_dataset = datasets.CocoDetection(
+        #     root=self.data_path / "val2014",
+        #     annFile=self.data_path / "annotations" / "instances_val2014.json",
+        #     transforms=test_transformer,
+        # )
+        train_dataset = CocoDetectionV2(
             root=self.data_path / "train2014",
             annFile=self.data_path / "annotations" / "instances_train2014.json",
             transforms=train_transformer,
         )
-        test_dataset = datasets.CocoDetection(
+        test_dataset = CocoDetectionV2(
             root=self.data_path / "val2014",
             annFile=self.data_path / "annotations" / "instances_val2014.json",
             transforms=test_transformer,
         )
         # NOTE: We need to wrap datasets for v2 transformers.
         # See: https://pytorch.org/vision/0.15/auto_examples/plot_transforms_v2_e2e.html  # noqa
-        train_dataset = datasets.wrap_dataset_for_transforms_v2(train_dataset)
-        test_dataset = datasets.wrap_dataset_for_transforms_v2(test_dataset)
+        # NOTE: Not while we are using the v2 dataset.
+        # See ./_coco_detection_v2.py
+        # train_dataset = datasets.wrap_dataset_for_transforms_v2(train_dataset)
+        # test_dataset = datasets.wrap_dataset_for_transforms_v2(test_dataset)
         self._append_collate_fn_to_dataloader_kwargs()
         return train_dataset, test_dataset
 
@@ -71,8 +84,9 @@ class CocoSegmentationDataStem(_data_stem.ABCDataStem):
         return test_transform
 
     def _append_collate_fn_to_dataloader_kwargs(self) -> None:
-        def collate_fn(batch):
-            return tuple(zip(*batch))
-
         self.train_kwargs.update({"collate_fn": collate_fn})
         self.test_kwargs.update({"collate_fn": collate_fn})
+
+
+def collate_fn(batch):
+    return tuple(zip(*batch))

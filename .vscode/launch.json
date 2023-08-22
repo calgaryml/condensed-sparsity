@@ -5,6 +5,20 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Segmentation w/ args",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args": [
+                "rigl.const_fan_in=True",
+                "model=maskrcnn",
+                "dataset=coco",
+                "training.max_steps=1"
+            ]
+        },
+        {
             "name": "Python: File with args",
             "type": "python",
             "request": "launch",
