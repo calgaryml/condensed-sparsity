@@ -452,6 +452,7 @@ def test(
     # Extract relevant metrics
     if len(evaluator.coco_eval["bbox"].stats) == 0:
         bbox_mAP, mask_mAP = 0, 0
+        logger.warn("No stats recovered from this test loop, setting mAPs to 0")
     else:
         bbox_mAP = evaluator.coco_eval["bbox"].stats[0]
         mask_mAP = evaluator.coco_eval["segm"].stats[0]
