@@ -10,6 +10,7 @@ from typing import Tuple, Union, List, Optional
 _EXCLUDED_TYPES = (
     torch.nn.BatchNorm2d,
     torch.nn.LayerNorm,
+    torch.nn.SyncBatchNorm
     # torchvision.models.detection.transform.GeneralizedRCNNTransform,
     # torchvision.models._utils.IntermediateLayerGetter,
 )

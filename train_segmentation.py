@@ -334,6 +334,20 @@ def train(
             }
             for t in targets
         ]
+        index_to_pop = [
+            idx for idx, t in enumerate(targets) if "boxes" not in t
+        ]
+        if len(index_to_pop) >= 1:
+            logger.warning(
+                f"Found {len(index_to_pop)} target(s) missing 'boxes' key in "
+                f"batch_idx == {batch_idx}"
+            )
+            for idx in index_to_pop:
+                images.pop(idx)
+                targets.pop(idx)
+        if len(images) == 0:
+            continue
+
         loss_dict = model(images, targets)
         # loss_dict includes losses for classification, bbox regression, masks,
         # objectness, rpn_box regression
@@ -347,7 +361,6 @@ def train(
         losses.backward()
 
         if apply_grads:  # If we apply grads, check for topology update and log
-            logger.info("Applying grads...")
             if cfg.training.clip_grad_norm is not None:
                 nn.utils.clip_grad_norm_(
                     model.parameters(), max_norm=cfg.training.clip_grad_norm
@@ -429,15 +442,19 @@ def test(
                 for target, output in zip(targets, outputs)
             }
             evaluator.update(res)
-            break
+            break  # TODO Remove 
     if cfg.compute.distributed:
         evaluator.synchronize_between_processes()
     evaluator.accumulate()
     if rank == 0:
-        logger.info(f"\nTest set summary: \n{evaluator.summarize()}\n")
+        logger.info("\nTest set summary:")
+        evaluator.summarize()
     # Extract relevant metrics
-    bbox_mAP = evaluator.coco_eval["bbox"].stats[0]
-    mask_mAP = evaluator.coco_eval["segm"].stats[0]
+    if len(evaluator.coco_eval["bbox"].stats) == 0:
+        bbox_mAP, mask_mAP = 0, 0
+    else:
+        bbox_mAP = evaluator.coco_eval["bbox"].stats[0]
+        mask_mAP = evaluator.coco_eval["segm"].stats[0]
     training_meter.bbox_mAP = bbox_mAP
     training_meter.mask_mAP = mask_mAP
     if rank == 0:
@@ -446,7 +463,7 @@ def test(
             step,
             images,
             targets,
-            outputs,
+            res,
             training_meter.bbox_mAP,
             training_meter.max_bbox_mAP,
             training_meter.mask_mAP,
@@ -477,13 +494,14 @@ def wandb_log(
     }
     if log_images:
         annotated_images = []
-        for image, output, target in list(zip(images, outputs, targets)):
+        for image, output, target in list(
+            zip(images, outputs.values(), targets)
+        ):
             annotated_images.append(show_gt_vs_dt(image, target, output))
-        log_data.update(
-            {
-                "Annotated Predictions": wandb.Image(annotated_images),
-            }
-        )
+        for idx, ann_image in enumerate(annotated_images):
+            log_data.update(
+                {f"Annotated Predictions {idx}": wandb.Image(ann_image)}
+            )
     wandb.log(log_data, step=step)
 
 

@@ -197,11 +197,10 @@ class RigLConstFanScheduler(RigLScheduler):
         s = super().__str__()
         s = s[:-1]  # Remove trailing ')'
         const_fan_ins = []
-        for idx, (mask, w, neurons_ablated) in enumerate(
+        for idx, (mask, w) in enumerate(
             zip(
                 self.backward_masks,
                 self.W,
-                self.dynamically_ablated_neuron_idx,
             )
         ):
             if mask is None:

@@ -228,37 +228,20 @@ def show(sample):
 
 
 def show_gt_vs_dt(image, gt, dt):
-    # Yellows & greens
-    _GT_MASK_COLORS = [
-        "#77a832",
-        "#64a832",
-        "#32a848",
-        "#32a864",
-        "#9ea832",
-        "#a88932",
-    ]
-    # Blues and purples
-    _DT_MASK_COLORS = [
-        "#3291a8",
-        "#3254a8",
-        "#3632a8",
-        "#4e32a8",
-        "#6032a8",
-        "#8f32a8",
-    ]
     if isinstance(image, PIL.Image.Image):
         image = F.to_image(image)
     image = F.convert_image_dtype(image, torch.uint8)
     gt_image = draw_bounding_boxes(image, gt["boxes"], colors="green", width=3)
     gt_image = draw_segmentation_masks(
-        gt_image, gt["masks"].to(torch.bool), alpha=0.6, colors=_GT_MASK_COLORS
+        gt_image, gt["masks"].to(torch.bool), alpha=0.6
     )
     dt_image = draw_bounding_boxes(image, dt["boxes"], colors="blue", width=3)
     dt_image = draw_segmentation_masks(
-        gt_image, dt["masks"].to(torch.bool), alpha=0.6, colors=_DT_MASK_COLORS
+        dt_image, dt["masks"].squeeze().to(torch.bool), alpha=0.6
     )
 
     fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2)
+    dt_image = dt_image.cpu()
     ax1.imshow(gt_image.permute(1, 2, 0).numpy())
     ax2.imshow(dt_image.permute(1, 2, 0).numpy())
     ax1.set(xticklabels=[], yticklabels=[], xticks=[], yticks=[])
