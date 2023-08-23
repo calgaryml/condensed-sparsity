@@ -82,7 +82,8 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
         run_id = None
         wandb_init_resume = None
         checkpoint = None
-    logger.info(f"Running train_rigl.py with config:\n{cfg}")
+    if rank == 0:
+        logger.info(f"Running train_rigl.py with config:\n{cfg}")
 
     if cfg.compute.distributed:
         dist.init_process_group(
@@ -104,8 +105,9 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
         scheduler_state = checkpoint.scheduler
         pruner_state = checkpoint.pruner
         model_state = checkpoint.model
-        logger.info(f"Resuming training with run_id: {run_id}")
         cfg = checkpoint.cfg
+        if rank == 0:
+            logger.info(f"Resuming training with run_id: {run_id}")
 
     if rank == 0:
         wandb_init_kwargs = dict(resume=wandb_init_resume, id=run_id)
@@ -134,7 +136,8 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
     if cfg.compute.distributed:
         model = DistributedDataParallel(model, device_ids=[rank])
         # TODO: experiment with this line
-        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+        pass
+        # model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
     if model_state is not None:
         model.load_state_dict(model_state)
     optimizer = get_optimizer(cfg, model, state_dict=optimizer_state)
@@ -204,7 +207,8 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             log=log,
             log_freq=cfg.training.log_interval,
         )
-    logger.info(f"Model Summary: {model}")
+    if rank == 0:
+        logger.info(f"Model Summary: {model}")
     segmentation_meter = SegmentationMeter()
     if not cfg.experiment.resume_from_checkpoint:
         step = 0
@@ -535,5 +539,8 @@ def _validate_distributed_cfg(cfg: omegaconf.DictConfig) -> None:
 
 if __name__ == "__main__":
     dotenv.load_dotenv(dotenv_path=".env", override=True)
+    # os.environ[
+    #     "TORCH_DISTRIBUTED_DEBUG"
+    # ] = "DETAIL"  # set to DETAIL for runtime logging.
     print(f"Base Path: {os.environ['BASE_PATH']}")
     initalize_main()

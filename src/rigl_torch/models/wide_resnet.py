@@ -264,8 +264,5 @@ def get_wide_resnet_22(*args, **kwargs):
 
 
 if __name__ == "__main__":
-    import logging
-
-    logging.basicConfig(level=logging.INFO)
     model = ModelFactory.load_model(model="wide_resnet22", dataset="cifar10")
     print(model)
