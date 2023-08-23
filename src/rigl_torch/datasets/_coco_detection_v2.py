@@ -2,11 +2,12 @@
 https://github.com/pytorch/vision/issues/6753#:~:text=The%20transforms%20v2%20API%20looks%20very%20nice
 https://github.com/pytorch/vision/pull/7860
 """
-from typing import Any, Tuple, Callable
+from typing import Any, Tuple, Callable, Optional, List
 
 import torch
 from pycocotools import mask
 from torchvision import datapoints
+import logging
 from torchvision.datapoints._dataset_wrapper import (
     list_of_dicts_to_dict_of_lists,
 )
@@ -20,9 +21,20 @@ class CocoDetectionV2(CocoDetection):
         root: str,
         annFile: str,
         transforms: Callable[..., Any] | None = None,
+        no_add_ids: Optional[List[int]] = None,
     ) -> None:
+        self.__logger = logging.getLogger(__name__)
         super().__init__(root, annFile)
         self.v2_transforms = transforms
+        self.__logger.info(
+            f"COCO dataset size before removal of missing anns {len(self.ids)}"
+        )
+        valid_ids = [id for id in self.ids if id not in no_add_ids]
+        self.ids = valid_ids
+        self.__logger.info(
+            f"COCO dataset size after removal of missing anns: {len(self.ids)}"
+        )
+        self.no_add_ids = no_add_ids
 
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
         sample = super().__getitem__(index)

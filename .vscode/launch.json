@@ -15,7 +15,9 @@
                 "rigl.const_fan_in=True",
                 "model=maskrcnn",
                 "dataset=coco",
-                "training.max_steps=1"
+                "compute.distributed=False",
+                "training.batch_size=2"
+                // "training.max_steps=1"
             ]
         },
         {
