@@ -14,7 +14,6 @@ import hydra
 import logging
 import wandb
 import pathlib
-from copy import deepcopy
 
 from rigl_torch.models.model_factory import ModelFactory
 from rigl_torch.rigl_scheduler import RigLScheduler
@@ -29,7 +28,7 @@ from rigl_torch.utils.rigl_utils import get_T_end
 from rigl_torch.meters import SegmentationMeter
 from rigl_torch.utils.wandb_utils import init_wandb
 from rigl_torch.utils.dist_utils import get_steps_to_accumulate_grad
-from rigl_torch.utils.logging import get_logger
+from rigl_torch.utils.logging_utils import get_logger
 from rigl_torch.utils.coco_eval import CocoEvaluator
 from rigl_torch.utils.coco_utils import show_gt_vs_dt
 
@@ -54,17 +53,9 @@ def initalize_main(cfg: omegaconf.DictConfig) -> None:
             cfg.rigl.initialize_grown_weights = 0.0
 
     if cfg.compute.distributed:
-        # We initalize train and val loaders here to ensure .tar balls have
-        # been decompressed before parallel workers try and write the same
-        # directories!
-        single_proc_cfg = deepcopy(cfg)
-        single_proc_cfg.compute.distributed = False
-        train_loader, test_loader = get_dataloaders(single_proc_cfg)
-        del train_loader
-        del test_loader
-        del single_proc_cfg
         wandb.setup()
         _validate_distributed_cfg(cfg)
+        mp.set_start_method("spawn")
         mp.spawn(
             main,
             args=(cfg,),
@@ -75,7 +66,11 @@ def initalize_main(cfg: omegaconf.DictConfig) -> None:
 
 
 def main(rank: int, cfg: omegaconf.DictConfig) -> None:
-    logger = get_logger(cfg, __name__, rank)
+    logger = get_logger(cfg.paths.logs, __name__, rank)
+    import sys
+
+    logger.info(f"Running main on exec: {sys.executable}")
+    print(f"Running main on exec: {sys.executable}")
     if cfg.experiment.resume_from_checkpoint:
         checkpoint = get_checkpoint(cfg, rank, logger)
         wandb_init_resume = "must"
@@ -338,10 +333,11 @@ def train(
             idx for idx, t in enumerate(targets) if "boxes" not in t
         ]
         if len(index_to_pop) >= 1:
-            logger.warning(
-                f"Found {len(index_to_pop)} target(s) missing 'boxes' key in "
-                f"batch_idx == {batch_idx}"
-            )
+            if rank == 0:
+                logger.warning(
+                    f"Found {len(index_to_pop)} target(s) missing 'boxes' key "
+                    f" in batch_idx == {batch_idx}"
+                )
             _images, _targets = [], []
             for idx, (ii, tt) in enumerate(list(zip(images, targets))):
                 if idx in index_to_pop:

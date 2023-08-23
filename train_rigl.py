@@ -30,7 +30,7 @@ from rigl_torch.utils.rigl_utils import get_T_end
 from rigl_torch.meters import TrainingMeter
 from rigl_torch.utils.wandb_utils import init_wandb
 from rigl_torch.utils.dist_utils import get_steps_to_accumulate_grad
-from rigl_torch.utils.logging import get_logger
+from rigl_torch.utils.logging_utils import get_logger
 
 
 @hydra.main(config_path="configs/", config_name="config", version_base="1.2")
@@ -74,7 +74,7 @@ def initalize_main(cfg: omegaconf.DictConfig) -> None:
 
 
 def main(rank: int, cfg: omegaconf.DictConfig) -> None:
-    logger = get_logger(cfg, __name__, rank)
+    logger = get_logger(cfg.paths.logs, __name__, rank)
     if cfg.experiment.resume_from_checkpoint:
         checkpoint = get_checkpoint(cfg, rank, logger)
         wandb_init_resume = "must"
