@@ -1,21 +1,19 @@
-import omegaconf
 import logging
 import pathlib
-from typing import Optional
 from datetime import date
 
 
-def get_logger(
-    cfg: omegaconf.DictConfig, name: str, rank: Optional[int] = None
-) -> logging.Logger:
-    log_path = pathlib.Path(cfg.paths.logs)
+def get_logger(log_path: str, name: str, rank: int = -1) -> logging.Logger:
+    log_path = pathlib.Path(log_path)
     if not log_path.is_dir():
         log_path.mkdir()
     logger = logging.getLogger(name)
     logger.setLevel(level=logging.INFO)
     current_date = date.today().strftime("%Y-%m-%d")
-    # logformat = "[%(levelname)s] %(asctime)s G- %(name)s -%(rank)s -
-    # %(funcName)s (%(lineno)d) : %(message)s"
+    # logformat = (
+    #     "[%(levelname)s] %(asctime)s %(name)s %(rank)s "
+    #     "%(funcName)s (%(lineno)d) : %(message)s"
+    # )
     logformat = (
         "[%(levelname)s] %(asctime)s G- %(name)s - %(funcName)s "
         "(%(lineno)d) : %(message)s"
@@ -30,5 +28,9 @@ def get_logger(
         ],
     )
     # logger = logging.LoggerAdapter(logger, {"rank": f"rank: {rank}"})
-    # logger.info("hell world")
     return logger
+
+
+if __name__ == "__main__":
+    logger = get_logger("./test_logging/", __name__, rank=0)
+    logger.info("Hello world!")
