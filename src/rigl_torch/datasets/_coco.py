@@ -77,7 +77,7 @@ class CocoSegmentationDataStem(_data_stem.ABCDataStem):
                 transforms.ConvertImageDtype(torch.float32),
                 # transforms.ClampBoundingBox(),
                 # Doesn't work without all samples containing annotations
-                # transforms.SanitizeBoundingBox(labels_getter=None),
+                transforms.SanitizeBoundingBox(),
             ]
         )
         return train_transform
