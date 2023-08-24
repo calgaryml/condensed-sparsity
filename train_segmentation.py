@@ -376,7 +376,6 @@ def train(
             if pruner is not None:
                 # pruner.__call__ returns False if rigl step taken
                 pruner_called = not pruner()
-            # optimizer.zero_grad()
 
             if step % cfg.training.log_interval == 0 and rank == 0:
                 world_size = (
@@ -539,8 +538,9 @@ def _validate_distributed_cfg(cfg: omegaconf.DictConfig) -> None:
 
 if __name__ == "__main__":
     dotenv.load_dotenv(dotenv_path=".env", override=True)
-    # os.environ[
-    #     "TORCH_DISTRIBUTED_DEBUG"
-    # ] = "DETAIL"  # set to DETAIL for runtime logging.
+    os.environ[
+        "TORCH_DISTRIBUTED_DEBUG"
+    ] = "DETAIL"  # set to DETAIL for runtime logging.
+    os.environ["NCCL_DEBUG"] = "INFO"
     print(f"Base Path: {os.environ['BASE_PATH']}")
     initalize_main()
