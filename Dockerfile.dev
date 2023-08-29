@@ -49,7 +49,7 @@ FROM dev-container-base AS poetry-base
 # https://python-poetry.org/docs/configuration/#using-environment-variables
 ARG USERNAME
 ARG WORKSPACE_DIR
-USER user
+USER ${USERNAME}
 ENV POETRY_VERSION="1.4.0" \
     POETRY_HOME="/home/${USERNAME}/poetry" \
     POETRY_NO_INTERACTION=1 \
@@ -76,8 +76,8 @@ RUN python -m venv .venv && \
     pip install sparseprop && \
     echo "source ${BUILD_PATH}/.venv/bin/activate" >> /home/$USERNAME/.bashrc
 
-# Build 
+# Build coco API  TODO: Figure out why this wont build! 
 WORKDIR ${BUILD_PATH}/src/cocoapi/PythonAPI
-RUN make && make install
+# RUN sudo ln -s ${VENV_PATH}/bin/python python && sudo make && sudo make install
 
 WORKDIR $WORKSPACE_DIR
