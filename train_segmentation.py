@@ -424,6 +424,11 @@ def train(
 def test(
     cfg, model, device, test_loader, epoch, step, rank, logger, training_meter
 ):
+    # We set to single threaded execution since paste_masks_in_image does not
+    # run on the GPU
+    n_threads = torch.get_num_threads()
+    torch.set_num_threads(1)
+
     model.eval()
     cpu_device = torch.device("cpu")
     iou_types = ["bbox", "segm"]
@@ -475,6 +480,7 @@ def test(
             training_meter.max_mask_mAP,
             cfg.wandb.log_images,
         )
+    torch.set_num_threads(n_threads)
     return bbox_mAP, mask_mAP
 
 
