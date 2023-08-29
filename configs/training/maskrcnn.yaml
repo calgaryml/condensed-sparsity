@@ -1,14 +1,17 @@
 # Training config group
 # TODO: Use original hyperparams from paper
 # batch size for training
-batch_size: 8 # 128 for cifar10, multiples of 256 for imagenet w/ scaled lr -> 512 with 2 v100s or 4 3090s -> 1024 with 4 v100s
+batch_size: 2 # 128 for cifar10, multiples of 256 for imagenet w/ scaled lr -> 512 with 2 v100s or 4 3090s -> 1024 with 4 v100s
 # test batch size
-test_batch_size: 8 # TODO: Move up to 100
+test_batch_size: 2 # TODO: Move up to 100
 simulated_batch_size: 16
 # number of epochs to train
 epochs: 12 # For imagenet, training will finish at ~ epoch 102.31, use 250 for cifar10 || imagenet x5 -> 515
 # max number of steps (will override epochs) -> Based on mini-batch steps (NOT SIMULATED BATCHES!)
 max_steps: null # 4096 * 32000 / 512 = 256000 from rigl paper || x5 -> 4096*32000/1024 = 640000
+
+# Gradient clipping, If null, no clipping is performed.
+clip_grad_norm: null
 
 ## Optimization
 optimizer: sgd # "sgd", "adamw"
