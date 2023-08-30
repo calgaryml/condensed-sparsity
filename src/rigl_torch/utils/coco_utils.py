@@ -8,6 +8,9 @@ from torchvision.utils import draw_bounding_boxes, draw_segmentation_masks
 import torch.distributed as dist
 import PIL
 import matplotlib.pyplot as plt
+import logging
+
+__logger = logging.getLogger(__name__)
 
 
 def convert_coco_poly_to_mask(segmentations, height, width):
@@ -227,7 +230,7 @@ def show(sample):
     fig.show()
 
 
-def show_gt_vs_dt(image, gt, dt, threshold: float = 0.5):
+def show_gt_vs_dt(image, gt, dt, threshold: float = 0.6):
     if isinstance(image, PIL.Image.Image):
         image = F.to_image(image)
     image = F.convert_image_dtype(image, torch.uint8)
@@ -235,7 +238,20 @@ def show_gt_vs_dt(image, gt, dt, threshold: float = 0.5):
     gt_image = draw_segmentation_masks(
         gt_image, gt["masks"].to(torch.bool), alpha=0.6
     )
-    dt_image = draw_bounding_boxes(image, dt["boxes"], width=3)
+    boxes_above_threshold = [
+        box
+        for box, score in list(zip(dt["boxes"], dt["scores"]))
+        if score >= threshold
+    ]
+    if len(boxes_above_threshold) > 0:
+        boxes_above_threshold = torch.stack(boxes_above_threshold)
+    else:
+        __logger.warn(
+            "No boxes found for this inference sample at threshold "
+            f"{threshold}. Painting all boxes!"
+        )
+        boxes_above_threshold = dt["boxes"]
+    dt_image = draw_bounding_boxes(image, boxes_above_threshold, width=3)
     dt_image = draw_segmentation_masks(
         dt_image, (dt["masks"] >= threshold).squeeze().to(torch.bool), alpha=0.6
     )
