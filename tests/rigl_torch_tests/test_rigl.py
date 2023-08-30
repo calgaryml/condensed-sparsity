@@ -95,11 +95,11 @@ def pruner(request, net, data_loaders):
 
 def test_lengths_of_W():
     resnet18 = torch.hub.load("pytorch/vision:v0.6.0", "resnet18", weights=None)
-    resnet18_W, _, _ = get_W(resnet18)
+    resnet18_W, *_ = get_W(resnet18)
     assert len(resnet18_W) == 21, 'resnet18 should have 21 "weight" matrices'
 
     resnet50 = torch.hub.load("pytorch/vision:v0.6.0", "resnet50", weights=None)
-    resnet50_W, _, _ = get_W(resnet50)
+    resnet50_W, *_ = get_W(resnet50)
     assert len(resnet50_W) == 54, 'resnet50 should have 54 "weight" matrices'
 
 
@@ -323,7 +323,7 @@ class TestRigLScheduler:
         # os.remove(checkpoint_fn)
 
         # first make sure the original model is the same as the loaded one
-        original_W, _, _ = get_W(_CKPT_MODEL)
+        original_W, *_ = get_W(_CKPT_MODEL)
         assert len(original_W) == len(pruner.W)
         for oW, nW in zip(original_W, pruner.W):
             assert torch.equal(oW, nW)
