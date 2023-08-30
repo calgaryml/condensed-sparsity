@@ -227,17 +227,17 @@ def show(sample):
     fig.show()
 
 
-def show_gt_vs_dt(image, gt, dt):
+def show_gt_vs_dt(image, gt, dt, threshold: float = 0.5):
     if isinstance(image, PIL.Image.Image):
         image = F.to_image(image)
     image = F.convert_image_dtype(image, torch.uint8)
-    gt_image = draw_bounding_boxes(image, gt["boxes"], colors="green", width=3)
+    gt_image = draw_bounding_boxes(image, gt["boxes"], width=3)
     gt_image = draw_segmentation_masks(
         gt_image, gt["masks"].to(torch.bool), alpha=0.6
     )
-    dt_image = draw_bounding_boxes(image, dt["boxes"], colors="blue", width=3)
+    dt_image = draw_bounding_boxes(image, dt["boxes"], width=3)
     dt_image = draw_segmentation_masks(
-        dt_image, dt["masks"].squeeze().to(torch.bool), alpha=0.6
+        dt_image, (dt["masks"] >= threshold).squeeze().to(torch.bool), alpha=0.6
     )
 
     fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2)
