@@ -66,6 +66,7 @@ def initalize_main(cfg: omegaconf.DictConfig) -> None:
 
 
 def main(rank: int, cfg: omegaconf.DictConfig) -> None:
+    torch.cuda.set_device(rank)
     logger = get_logger(cfg.paths.logs, __name__, rank)
     import sys
 
@@ -426,10 +427,12 @@ def test(
 ):
     # We set to single threaded execution since paste_masks_in_image does not
     # run on the GPU
+    # # TODO: Experiment with leaving threads alone
     n_threads = torch.get_num_threads()
     torch.set_num_threads(1)
 
     model.eval()
+    # TODO: Experiment with no cpu moving!
     cpu_device = torch.device("cpu")
     iou_types = ["bbox", "segm"]
     evaluator = CocoEvaluator(test_loader.dataset.coco, iou_types=iou_types)
@@ -452,8 +455,11 @@ def test(
                 for target, output in zip(targets, outputs)
             }
             evaluator.update(res)
+    logger.debug("Completed evaluation loop. Running sync b/w in rank...")
+    # NOTE: Set cuda device to current rank. See doc strings here: https://pytorch.org/docs/stable/distributed.html#torch.distributed.all_gather_object  # noqa
     if cfg.compute.distributed:
         evaluator.synchronize_between_processes()
+    logger.debug("...Completed sync.")
     evaluator.accumulate()
     if rank == 0:
         logger.info("\nTest set summary:")
