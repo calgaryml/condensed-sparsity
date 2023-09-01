@@ -14,6 +14,7 @@ import hydra
 import logging
 import wandb
 import pathlib
+from typing import Union, Dict, List, Any, Tuple
 
 from rigl_torch.models.model_factory import ModelFactory
 from rigl_torch.rigl_scheduler import RigLScheduler
@@ -136,9 +137,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
     model.to(device)
     if cfg.compute.distributed:
         model = DistributedDataParallel(model, device_ids=[rank])
-        # TODO: experiment with this line
-        pass
-        # model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
     if model_state is not None:
         model.load_state_dict(model_state)
     optimizer = get_optimizer(cfg, model, state_dict=optimizer_state)
@@ -316,6 +315,7 @@ def train(
     steps_to_accumulate_grad = get_steps_to_accumulate_grad(
         cfg.training.simulated_batch_size, cfg.training.batch_size
     )
+    print(f"Steps to accumulate: {steps_to_accumulate_grad}")
     for batch_idx, (images, targets) in enumerate(train_loader):
         apply_grads = (
             True
@@ -334,24 +334,9 @@ def train(
             }
             for t in targets
         ]
-        index_to_pop = [
-            idx for idx, t in enumerate(targets) if "boxes" not in t
-        ]
-        if len(index_to_pop) >= 1:
-            if rank == 0:
-                logger.warning(
-                    f"Found {len(index_to_pop)} target(s) missing 'boxes' key "
-                    f" in batch_idx == {batch_idx}"
-                )
-            _images, _targets = [], []
-            for idx, (ii, tt) in enumerate(list(zip(images, targets))):
-                if idx in index_to_pop:
-                    continue
-                else:
-                    _images.append(ii)
-                    _targets.append(tt)
-            images = _images
-            targets = _targets
+        images, targets = _validate_targets(
+            images, targets, logger, rank, batch_idx
+        )
         if len(images) == 0:
             continue
 
@@ -457,10 +442,16 @@ def test(
             evaluator.update(res)
     logger.debug("Completed evaluation loop. Running sync b/w in rank...")
     # NOTE: Set cuda device to current rank. See doc strings here: https://pytorch.org/docs/stable/distributed.html#torch.distributed.all_gather_object  # noqa
+    logger.info(
+        f"Length of img_id in evalutor in rank {rank} before sync: {len(evaluator.img_ids)}"
+    )
     if cfg.compute.distributed:
         evaluator.synchronize_between_processes()
     logger.debug("...Completed sync.")
     evaluator.accumulate()
+    logger.info(
+        f"Length of img_id in evalutor in rank {rank} after sync: {len(evaluator.img_ids)}"
+    )
     if rank == 0:
         logger.info("\nTest set summary:")
         evaluator.summarize()
@@ -546,6 +537,32 @@ def _validate_distributed_cfg(cfg: omegaconf.DictConfig) -> None:
             f" but I only see {torch.cuda.device_count()} cuda devices!"
         )
     return
+
+
+def _validate_targets(
+    images: List[torch.Tensor],
+    targets: List[Dict[str, Union[torch.Tensor, Any]]],
+    logger: logging.Logger,
+    rank: int,
+    batch_idx: int,
+) -> Tuple[List[torch.Tensor], List[Dict[str, Union[torch.Tensor, Any]]]]:
+    index_to_pop = [idx for idx, t in enumerate(targets) if "boxes" not in t]
+    if len(index_to_pop) >= 1:
+        if rank == 0:
+            logger.warning(
+                f"Found {len(index_to_pop)} target(s) missing 'boxes' key "
+                f" in batch_idx == {batch_idx}"
+            )
+        _images, _targets = [], []
+        for idx, (ii, tt) in enumerate(list(zip(images, targets))):
+            if idx in index_to_pop:
+                continue
+            else:
+                _images.append(ii)
+                _targets.append(tt)
+        images = _images
+        targets = _targets
+    return images, targets
 
 
 if __name__ == "__main__":
