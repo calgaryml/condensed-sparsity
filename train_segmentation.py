@@ -15,6 +15,7 @@ import logging
 import wandb
 import pathlib
 from typing import Union, Dict, List, Any, Tuple
+import matplotlib.pyplot as plt
 
 from rigl_torch.models.model_factory import ModelFactory
 from rigl_torch.rigl_scheduler import RigLScheduler
@@ -442,15 +443,16 @@ def test(
             evaluator.update(res)
     logger.debug("Completed evaluation loop. Running sync b/w in rank...")
     # NOTE: Set cuda device to current rank. See doc strings here: https://pytorch.org/docs/stable/distributed.html#torch.distributed.all_gather_object  # noqa
+    logger.info(f"evalImgs keys: {evaluator.coco_eval['bbox'].evalImgs.keys()}")
     logger.info(
-        f"Length of img_id in evalutor in rank {rank} before sync: {len(evaluator.img_ids)}"
+        f"Length of evalImgs in evalutor in rank {rank} before sync: {len(evaluator.coco_eval['bbox'].evalImgs)}"
     )
     if cfg.compute.distributed:
         evaluator.synchronize_between_processes()
     logger.debug("...Completed sync.")
     evaluator.accumulate()
     logger.info(
-        f"Length of img_id in evalutor in rank {rank} after sync: {len(evaluator.img_ids)}"
+        f"Length of evalImgs in evalutor in rank {rank} after sync: {len(evaluator.coco_eval['bbox'].evalImgs)}"
     )
     if rank == 0:
         logger.info("\nTest set summary:")
@@ -511,6 +513,10 @@ def wandb_log(
                 {f"Annotated Predictions {idx}": wandb.Image(ann_image)}
             )
     wandb.log(log_data, step=step)
+
+    # garbage collect plt figures
+    for fig in annotated_images:
+        plt.close(fig)
 
 
 def set_seed(cfg: omegaconf.DictConfig) -> omegaconf.DictConfig:
