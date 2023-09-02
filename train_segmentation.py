@@ -443,9 +443,15 @@ def test(
             evaluator.update(res)
     logger.debug("Completed evaluation loop. Running sync b/w in rank...")
     # NOTE: Set cuda device to current rank. See doc strings here: https://pytorch.org/docs/stable/distributed.html#torch.distributed.all_gather_object  # noqa
-    logger.info(f"evalImgs keys: {evaluator.coco_eval['bbox'].evalImgs.keys()}")
+    if rank == 0:
+        logger.info(
+            f"evalImgs contents in first 10 indices: {evaluator.coco_eval['bbox'].evalImgs[:10]}"
+        )
     logger.info(
         f"Length of evalImgs in evalutor in rank {rank} before sync: {len(evaluator.coco_eval['bbox'].evalImgs)}"
+    )
+    logger.info(
+        f"Length of coco_eval.params.imgIds in evalutor in rank {rank} before sync: {len(evaluator.coco_eval['bbox'].params.imgIds)}"
     )
     if cfg.compute.distributed:
         evaluator.synchronize_between_processes()
@@ -453,6 +459,9 @@ def test(
     evaluator.accumulate()
     logger.info(
         f"Length of evalImgs in evalutor in rank {rank} after sync: {len(evaluator.coco_eval['bbox'].evalImgs)}"
+    )
+    logger.info(
+        f"Length of coco_eval.params.imgIds in evalutor in rank {rank} after sync: {len(evaluator.coco_eval['bbox'].params.imgIds)}"
     )
     if rank == 0:
         logger.info("\nTest set summary:")
