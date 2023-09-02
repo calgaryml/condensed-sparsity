@@ -317,6 +317,7 @@ def train(
         cfg.training.simulated_batch_size, cfg.training.batch_size
     )
     print(f"Steps to accumulate: {steps_to_accumulate_grad}")
+    batch_loss = torch.Tensor([0]).to(device)
     for batch_idx, (images, targets) in enumerate(train_loader):
         apply_grads = (
             True
@@ -348,6 +349,7 @@ def train(
 
         # Normalize loss for accumulated grad!
         losses = losses / steps_to_accumulate_grad
+        batch_loss += losses  # For logging across different DDP layouts
 
         # Will call backwards hooks on model and accumulate dense grads if
         # within cfg.rigl.grad_accumulation_n mini-batch steps from update
@@ -377,7 +379,7 @@ def train(
                         batch_idx * len(images) * world_size,
                         len(train_loader.dataset),
                         100.0 * batch_idx / len(train_loader),
-                        losses.item(),
+                        batch_loss.item(),
                     )
                 )
                 wandb_data = {
@@ -394,6 +396,7 @@ def train(
                         # log filter-wise statistics to wandb
                         pruner.log_meters(step=step)
                 wandb.log(wandb_data, step=step)
+            batch_loss = torch.Tensor([0]).to(device)
 
             # We zero grads after logging pruner filter meters
             optimizer.zero_grad()
@@ -443,25 +446,24 @@ def test(
             evaluator.update(res)
     logger.debug("Completed evaluation loop. Running sync b/w in rank...")
     # NOTE: Set cuda device to current rank. See doc strings here: https://pytorch.org/docs/stable/distributed.html#torch.distributed.all_gather_object  # noqa
-    if rank == 0:
-        logger.info(
-            f"evalImgs contents in first 10 indices: {evaluator.coco_eval['bbox'].evalImgs[:10]}"
-        )
-    logger.info(
-        f"Length of evalImgs in evalutor in rank {rank} before sync: {len(evaluator.coco_eval['bbox'].evalImgs)}"
+    logger.debug(
+        f"Length of evalImgs in evalutor in rank {rank} before sync: "
+        f"{len(evaluator.coco_eval['bbox'].evalImgs)}"
     )
-    logger.info(
-        f"Length of coco_eval.params.imgIds in evalutor in rank {rank} before sync: {len(evaluator.coco_eval['bbox'].params.imgIds)}"
+    logger.debug(
+        f"Length of coco_eval.params.imgIds in evalutor in rank {rank} before "
+        f"sync: {len(evaluator.coco_eval['bbox'].params.imgIds)}"
     )
-    if cfg.compute.distributed:
-        evaluator.synchronize_between_processes()
+    evaluator.synchronize_between_processes()
     logger.debug("...Completed sync.")
     evaluator.accumulate()
-    logger.info(
-        f"Length of evalImgs in evalutor in rank {rank} after sync: {len(evaluator.coco_eval['bbox'].evalImgs)}"
+    logger.debug(
+        f"Length of evalImgs in evalutor in rank {rank} after sync: "
+        f"{len(evaluator.coco_eval['bbox'].evalImgs)}"
     )
-    logger.info(
-        f"Length of coco_eval.params.imgIds in evalutor in rank {rank} after sync: {len(evaluator.coco_eval['bbox'].params.imgIds)}"
+    logger.debug(
+        f"Length of coco_eval.params.imgIds in evalutor in rank {rank} after "
+        f"sync: {len(evaluator.coco_eval['bbox'].params.imgIds)}"
     )
     if rank == 0:
         logger.info("\nTest set summary:")
