@@ -9,6 +9,7 @@ import datetime
 import logging
 import omegaconf
 import glob
+import os
 
 from rigl_torch.rigl_scheduler import RigLScheduler
 
@@ -29,12 +30,14 @@ class Checkpoint(object):
     checkpoint_dir: Optional[Union[pathlib.Path, str]] = None
     f_name: str = "checkpoint.pt.tar"
     best_file_name: Optional[str] = f"best-{f_name}"
-    parent_dir: pathlib.Path = pathlib.Path.cwd()
+    # parent_dir: pathlib.Path = pathlib.Path.cwd()
+    parent_dir: pathlib.Path = pathlib.Path(os.getenv("BASE_PATH"))
     _logger = logging.getLogger(__name__)
     _RUN_ID_DELIMITER: str = "_"
 
     def __post_init__(self) -> None:
-        self.checkpoint_dir = self._format_checkpoint_dir(self.checkpoint_dir)
+        # self.checkpoint_dir = self._format_checkpoint_dir(self.checkpoint_dir)
+        pass
 
     def _format_checkpoint_dir(
         self, checkpoint_dir: Optional[Union[pathlib.Path, str]]
