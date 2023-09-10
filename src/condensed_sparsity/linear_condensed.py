@@ -112,6 +112,7 @@ class LinearCondensed(nn.Module):
         self.in_features = in_features
         self.out_features = out_features
         self.fan_in = fan_in
+        self.fan_out_const = fan_out_const
         self.weight = Parameter(
             torch.empty((out_features, fan_in), **factory_kwargs)
         )
@@ -140,11 +141,10 @@ class LinearCondensed(nn.Module):
             nn.init.uniform_(self.bias, -bound, bound)
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        output = (
+        return (
             torch.sum(self.weight * input[:, self.indx_seqs], axis=2)
             + self.bias
         )
-        return output
 
     def extra_repr(self) -> str:
         return (
