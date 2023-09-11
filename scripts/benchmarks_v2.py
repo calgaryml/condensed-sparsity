@@ -35,6 +35,7 @@ def main(
     counter = 0
     for mod, sparsity in zip(mods, sparsities):
         mod.eval()
+        label = f"Condensed Linear @ {sparsity}"
         for batch_size in batch_sizes:
             print(
                 f"Benchmarking batch size {batch_size} with sparsity {sparsity}"
@@ -67,7 +68,7 @@ def main(
                     stmt="structured_cl(x)",
                     setup="",
                     globals={"x": x, "structured_cl": structured_cl},
-                    label="Condensed Linear",
+                    label=label,
                     sub_label=sub_label,
                     description=f"Structured sparsity @ {sparsity}",
                     num_threads=num_threads,
@@ -79,7 +80,7 @@ def main(
                     stmt="fine_grained_cl(x)",
                     setup="",
                     globals={"x": x, "fine_grained_cl": fine_grained_cl},
-                    label="Condensed Linear",
+                    label=label,
                     sub_label=sub_label,
                     description=(
                         f"Fine-grained + structured sparsity @ {sparsity}"
@@ -93,7 +94,7 @@ def main(
                     stmt="cl_sparse_op(x)",
                     setup="",
                     globals={"x": x, "cl_sparse_op": cl_sparse_op},
-                    label="Condensed Linear",
+                    label=label,
                     sub_label=sub_label,
                     description=(
                         f"structured sparsity + sparse op @ {sparsity}"
@@ -107,7 +108,7 @@ def main(
                     stmt="mod(x)",
                     setup="",
                     globals={"x": x, "mod": mod},
-                    label="Condensed Linear",
+                    label=label,
                     sub_label=sub_label,
                     description="Dense benchmark",
                     num_threads=num_threads,
@@ -159,11 +160,9 @@ def get_mod(run_id: str, device):
 if __name__ == "__main__":
     # for d in ["cuda:0", "cpu"]:
     __RUN_IDS = {90: "nrblbn15"}
-    # __RUN_IDS = {90: "nrblbn15", 80: "0p0wrlb0"}
-    # for num_threads in [1, 2, 4, 8, 16, 32]:
-    for num_threads in [1]:
-        # for d in ["cpu", "gpu"]:
-        for d in ["cpu"]:
+    __RUN_IDS = {90: "nrblbn15", 80: "0p0wrlb0"}
+    for num_threads in [1, 2, 4, 8, 16, 32]:
+        for d in ["cpu", "gpu"]:
             if d == "cpu":
                 device = torch.device("cpu")
                 cuda = True
