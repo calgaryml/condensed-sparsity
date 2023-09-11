@@ -9,9 +9,12 @@ import datetime
 import logging
 import omegaconf
 import glob
+import dotenv
 import os
 
 from rigl_torch.rigl_scheduler import RigLScheduler
+
+dotenv.load_dotenv(pathlib.Path.cwd() / ".env", override=True)
 
 
 @dataclass(init=True)
