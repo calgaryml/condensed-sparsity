@@ -39,7 +39,8 @@ class Checkpoint(object):
     _RUN_ID_DELIMITER: str = "_"
 
     def __post_init__(self) -> None:
-        self.checkpoint_dir = self._format_checkpoint_dir(self.checkpoint_dir)
+        # TODO: Move this to explicit call only if creating a new ckpt
+        # self.checkpoint_dir = self._format_checkpoint_dir(self.checkpoint_dir)
         pass
 
     def _format_checkpoint_dir(
