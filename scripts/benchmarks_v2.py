@@ -11,7 +11,11 @@ import dotenv
 import os
 import pathlib
 
-from condensed_sparsity.v2.condensed_linear import CondensedLinear
+from condensed_sparsity.v2.condensed_linear import (
+    CondensedLinearStructured,
+    CondensedLinearFineGrained,
+    CondensedLinearFineGrainedSparseOp,
+)
 
 __MIN_RUN_TIME = 10
 
@@ -26,13 +30,15 @@ def main(
     dtype,
     num_threads,
 ):
-    batch_sizes = [2**x for x in range(8, -1, -1)]
+    batch_sizes = [2**x for x in range(10, -1, -1)]
     results = []
     counter = 0
     for mod, sparsity in zip(mods, sparsities):
+        mod.eval()
         for batch_size in batch_sizes:
             print(
                 f"Benchmarking batch size {batch_size} with sparsity {sparsity}"
+                f" and num_threads {num_threads}"
             )
             counter += 1
             sub_label = f"{batch_size:<6} x {num_features:<4}"
@@ -41,46 +47,67 @@ def main(
                 size=(batch_size, num_features),
                 cuda=cuda,
                 dtype=dtype,
+                probability_contiguous=1.0,  # TRY contig.
             )
             x = x.default_tensor_constructor(x._size, x._dtype)
             x = x.to(device=device)
-            cl = CondensedLinear(deepcopy(mod))
-            structured_cl = torch.jit.trace_module(  # TODO: debug starting here
-                cl, x
+            cl_struc = CondensedLinearStructured(deepcopy(mod))
+            cl_fine = CondensedLinearFineGrained(deepcopy(mod))
+            cl_sparse_op = CondensedLinearFineGrainedSparseOp(deepcopy(mod))
+            structured_cl = torch.jit.trace(  # TODO: debug starting here
+                cl_struc.forward, x
             )  # TODO: Try script here instead
-            fine_grained_cl = torch.jit.trace_module(cl.fine_grained_forward, x)
+            fine_grained_cl = torch.jit.trace(cl_fine.forward, x)
+            cl_sparse_op = torch.jit.trace(cl_sparse_op.forward, x)
 
             # Benchmarking begins...
+            _ = structured_cl(x)  # Warmup
             results.append(
                 benchmark.Timer(
                     stmt="structured_cl(x)",
-                    setup=None,
+                    setup="",
                     globals={"x": x, "structured_cl": structured_cl},
-                    label="Structured sparsity",
+                    label="Condensed Linear",
                     sub_label=sub_label,
                     description=f"Structured sparsity @ {sparsity}",
                     num_threads=num_threads,
                 ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
             )
+            _ = fine_grained_cl(x)
             results.append(
                 benchmark.Timer(
-                    stmt="fine_grained_cl.fine_grained_forward(x)",
-                    setup=None,
+                    stmt="fine_grained_cl(x)",
+                    setup="",
                     globals={"x": x, "fine_grained_cl": fine_grained_cl},
-                    label="Fine grained + structured sparsity",
+                    label="Condensed Linear",
                     sub_label=sub_label,
                     description=(
-                        "Fine-grained + structured sparsity @ " f"{sparsity}"
+                        f"Fine-grained + structured sparsity @ {sparsity}"
                     ),
                     num_threads=num_threads,
                 ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
             )
+            _ = cl_sparse_op(x)
+            results.append(
+                benchmark.Timer(
+                    stmt="cl_sparse_op(x)",
+                    setup="",
+                    globals={"x": x, "cl_sparse_op": cl_sparse_op},
+                    label="Condensed Linear",
+                    sub_label=sub_label,
+                    description=(
+                        f"structured sparsity + sparse op @ {sparsity}"
+                    ),
+                    num_threads=num_threads,
+                ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
+            )
+            _ = mod(x)
             results.append(
                 benchmark.Timer(
                     stmt="mod(x)",
-                    setup=None,
+                    setup="",
                     globals={"x": x, "mod": mod},
-                    label="Dense benchmark",
+                    label="Condensed Linear",
                     sub_label=sub_label,
                     description="Dense benchmark",
                     num_threads=num_threads,
@@ -88,9 +115,9 @@ def main(
             )
 
     compare = benchmark.Compare(results)
-    f_name = "benchmark_v2_gpu.pkl"
+    f_name = f"benchmark_v2_gpu_threads_{num_threads}.pkl"
     if device == "cpu":
-        f_name = "benchmark_v2_gpu.pkl"
+        f_name = f"benchmark_v2_cpu_threads_{num_threads}.pkl"
     with open(f_name, "wb") as handle:
         pickle.dump(compare, handle)
     compare.colorize()
@@ -132,96 +159,27 @@ def get_mod(run_id: str, device):
 if __name__ == "__main__":
     # for d in ["cuda:0", "cpu"]:
     __RUN_IDS = {90: "nrblbn15"}
+    # __RUN_IDS = {90: "nrblbn15", 80: "0p0wrlb0"}
+    # for num_threads in [1, 2, 4, 8, 16, 32]:
+    for num_threads in [1]:
+        # for d in ["cpu", "gpu"]:
+        for d in ["cpu"]:
+            if d == "cpu":
+                device = torch.device("cpu")
+                cuda = True
+            else:
+                device = torch.device("cuda")
+                cuda = False
+            mods, sparsities = [], []
 
-    for d in ["cpu", "gpu"]:
-        if d == "cpu":
-            device = torch.device("cpu")
-            cuda = True
-        else:
-            device = torch.device("cuda")
-            cuda = False
-        mods, sparsities, = (
-            [],
-            [],
-        )
-
-        for sparsity, run_id in __RUN_IDS.items():
-            mod = get_mod(run_id, device)
-            mods.append(mod)
-            sparsities.append(sparsity)
-            num_features = mod.weight.shape[1]
-            dtype = torch.float32
-            num_threads = 1
-        results = main(
-            mods, sparsities, device, cuda, num_features, dtype, num_threads
-        )
-
-
-# NOTE: May play with the fuzzer again, so leaving this commented out as ref.
-# fuzzer = benchmark.Fuzzer(
-#     parameters=[
-#         benchmark.FuzzedParameter("batch", distribution=batch_dist),
-#         # benchmark.FuzzedParameter(
-#         #     "k0", minval=64, maxval=10000, distribution="loguniform"
-#         # ),
-#         benchmark.FuzzedParameter(
-#             "k0", minval=1024, maxval=1024, distribution="loguniform"
-#         ),
-#     ],
-#     tensors=[
-#         benchmark.FuzzedTensor(
-#             "x",
-#             size=("batch", "k0"),
-#             min_elements=128,
-#             max_elements=10000000,
-#             cuda=cuda,
-#             dtype=dtype,
-#         )
-#     ],
-#     seed=42,
-# )
-
-# NOTE: May play with the fuzzer again, so leaving this commented out as ref
-# for tensors, tensor_params, params in fuzzer.take(50):
-# sub_label = f"{params['batch']:<6} x {params['k0']:<4}"
-# for s in sparsities:
-#     lc_params = dict(
-#         in_features=int((1 - s) * tensors["x"].shape[1]),
-#         out_features=10,
-#         bias=True,
-#         input_len=tensors["x"].shape[1],
-#         fan_out_const=True,
-#         device=torch.device(device),
-#         dtype=dtype,
-#     )
-#     lc = LinearCondensed(**lc_params)
-#     results.append(
-#         benchmark.Timer(
-#             stmt="lc_benchmark(x, lc)",
-#             setup="from __main__ import lc_benchmark",
-#             globals={"x": tensors["x"], "lc": lc},
-#             label="Linear Condensed",
-#             sub_label=sub_label,
-#             description=f"Linear Condensed @ sparsity {s}",
-#             num_threads=num_threads,
-#         ).blocked_autorange(min_run_time=1)
-#     )
-# linear_params = dict(
-#     in_features=tensors["x"].shape[1],
-#     out_features=10,
-#     bias=True,
-#     device=torch.device(device),
-#     dtype=dtype,
-# )
-# linear = torch.nn.Linear(**linear_params)
-# results.append(
-#     benchmark.Timer(
-#         stmt="linear_benchmark(x, linear)",
-#         setup="from __main__ import linear_benchmark",
-#         globals={"x": tensors["x"], "linear": linear},
-#         label="Linear",
-#         sub_label=sub_label,
-#         description="Linear",
-#         num_threads=num_threads,
-#     ).blocked_autorange(min_run_time=1)
-# )
+            for sparsity, run_id in __RUN_IDS.items():
+                mod = get_mod(run_id, device)
+                mod.to(device)
+                mods.append(mod)
+                sparsities.append(sparsity)
+                num_features = mod.weight.shape[1]
+                dtype = torch.float32
+                num_threads = num_threads
+            results = main(
+                mods, sparsities, device, cuda, num_features, dtype, num_threads
+            )
