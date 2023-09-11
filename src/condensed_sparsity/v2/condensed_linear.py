@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from torch.nn.modules.linear import NonDynamicallyQuantizableLinear  # noqa
 
 
-class CondensedLinear(nn.Module):
+class CondensedLinearStructured(nn.Module):
     # __TARGET_TYPES = [nn.Linear, NonDynamicallyQuantizableLinear]
     __TARGET_TYPES = [nn.Linear]
     # __constants__ = ["active_neuron_idx", "fine_grained_idx"]
@@ -18,12 +18,15 @@ class CondensedLinear(nn.Module):
         super().__init__()
         self._register_idx(module)
         with torch.no_grad():
-            self.weight = module.weight[self.active_neuron_idx]
-            self.condensed_weight = self.weight[self.fine_grained_idx].reshape(
-                shape=(self.weight.shape[0], -1)
+            self.weight = nn.Parameter(module.weight[self.active_neuron_idx])
+            self.condensed_weight = nn.Parameter(
+                self.weight[self.fine_grained_idx].reshape(
+                    shape=(self.weight.shape[0], -1)
+                )
             )
+            self.sparse_weight = nn.Parameter(self.weight.to_sparse_csr())
             if hasattr(module, "bias"):
-                self.bias = module.bias[self.active_neuron_idx]
+                self.bias = nn.Parameter(module.bias[self.active_neuron_idx])
             else:
                 self.register_parameter("bias", None)
         # self.in_features = module.in_features
@@ -60,10 +63,30 @@ class CondensedLinear(nn.Module):
         # Based on convert_sync_batchnorm
         module_output = module
         if type(module) in cls.__TARGET_TYPES:
-            module_output = CondensedLinear(module)
+            # Introspection to determine subclass
+            module_output = cls.__new__(module)
             if hasattr(module, "qconfig"):
                 module_output.qconfig = module.qconfig
         for name, child in module.named_children():
             module_output.add_module(name, cls.convert_condensed_linear(child))
         del module
         return module_output
+
+
+class CondensedLinearFineGrained(CondensedLinearStructured):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        return (
+            torch.sum(self.condensed_weight * input[:, self.input_mask], axis=2)
+            + self.bias
+        )
+
+
+class CondensedLinearFineGrainedSparseOp(CondensedLinearStructured):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:  # todo
+        return F.linear(input, self.sparse_weight, self.bias)
