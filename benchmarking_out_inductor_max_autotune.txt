@@ -1,0 +1,379 @@
+/home/user/condensed-sparsity/src/condensed_sparsity/v2/condensed_linear.py:27: UserWarning: Sparse CSR tensor support is in beta state. If you miss a functionality in the sparse tensor support, please submit a feature request to https://github.com/pytorch/pytorch/issues. (Triggered internally at ../aten/src/ATen/SparseCsrTensorImpl.cpp:54.)
+  self.sparse_weight = nn.Parameter(self.weight.to_sparse_csr())
+Benchmarking batch size 1024 with sparsity 90 and num_threads 1
+[2023-09-12 04:03:42,281] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+[2023-09-12 04:04:27,702] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+[2023-09-12 04:05:10,765] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+[2023-09-12 04:05:54,053] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+[2023-09-12 04:06:39,155] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+[2023-09-12 04:07:23,147] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+[2023-09-12 04:08:06,228] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+[2023-09-12 04:08:48,457] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+[2023-09-12 04:09:34,745] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+[2023-09-12 04:10:19,976] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+[2023-09-12 04:11:04,070] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+/home/user/build/.venv/lib/python3.10/site-packages/torch/_inductor/compile_fx.py:90: UserWarning: TensorFloat32 tensor cores for float32 matrix multiplication available but not enabled. Consider setting `torch.set_float32_matmul_precision('high')` for better performance.
+  warnings.warn(
+AUTOTUNE bias_addmm(1024x1145, 1024x768, 768x1145)
+  bias_addmm 0.1188s 100.0%
+  addmm 0.1188s 100.0%
+  triton_mm_7 0.2089s 56.9%
+  triton_mm_4 0.2202s 54.0%
+  triton_mm_3 0.2243s 53.0%
+  triton_mm_2 0.2304s 51.6%
+  triton_mm_1 0.2365s 50.2%
+  triton_mm_0 0.3052s 38.9%
+  triton_mm_10 0.3308s 35.9%
+  triton_mm_8 0.5028s 23.6%
+[2023-09-12 04:20:33,464] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+AUTOTUNE bias_addmm(512x1145, 512x768, 768x1145)
+  bias_addmm 0.0655s 100.0%
+  addmm 0.0707s 92.8%
+  triton_mm_16 0.1147s 57.1%
+  triton_mm_15 0.1178s 55.7%
+  triton_mm_14 0.1188s 55.2%
+  triton_mm_13 0.1219s 53.8%
+  triton_mm_12 0.1577s 41.6%
+  triton_mm_22 0.1731s 37.9%
+  triton_mm_19 0.2028s 32.3%
+  triton_mm_20 0.2642s 24.8%
+[2023-09-12 04:21:35,667] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+AUTOTUNE bias_addmm(256x1145, 256x768, 768x1145)
+  bias_addmm 0.0440s 100.0%
+  addmm 0.0451s 97.7%
+  triton_mm_24 0.1004s 43.9%
+  triton_mm_34 0.1106s 39.8%
+  triton_mm_28 0.1106s 39.8%
+  triton_mm_27 0.1126s 39.1%
+  triton_mm_26 0.1167s 37.7%
+  triton_mm_25 0.1198s 36.8%
+  triton_mm_32 0.1393s 31.6%
+  triton_mm_35 0.1444s 30.5%
+[2023-09-12 04:22:37,671] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+AUTOTUNE bias_addmm(128x1145, 128x768, 768x1145)
+  addmm 0.0297s 100.0%
+  bias_addmm 0.0307s 96.7%
+  triton_mm_47 0.0799s 37.2%
+  triton_mm_42 0.0829s 35.8%
+  triton_mm_41 0.0829s 35.8%
+  triton_mm_45 0.0860s 34.5%
+  triton_mm_36 0.0973s 30.5%
+  triton_mm_40 0.1075s 27.6%
+  triton_mm_46 0.1075s 27.6%
+  triton_mm_39 0.1116s 26.6%
+[2023-09-12 04:23:40,633] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+AUTOTUNE bias_addmm(64x1145, 64x768, 768x1145)
+  bias_addmm 0.0225s 100.0%
+  addmm 0.0256s 88.0%
+  triton_mm_57 0.0461s 48.9%
+  triton_mm_59 0.0614s 36.7%
+  triton_mm_54 0.0799s 28.2%
+  triton_mm_53 0.0799s 28.2%
+  triton_mm_48 0.0973s 23.2%
+  triton_mm_58 0.1075s 21.0%
+  triton_mm_52 0.1096s 20.6%
+  triton_mm_50 0.1096s 20.6%
+[2023-09-12 04:24:43,927] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+AUTOTUNE bias_addmm(32x1145, 32x768, 768x1145)
+  bias_addmm 0.0174s 100.0%
+  addmm 0.0195s 89.5%
+  triton_mm_69 0.0461s 37.8%
+  triton_mm_71 0.0635s 27.4%
+  triton_mm_65 0.0788s 22.1%
+  triton_mm_66 0.0803s 21.7%
+  triton_mm_60 0.0963s 18.1%
+  triton_mm_70 0.1065s 16.3%
+  triton_mm_64 0.1096s 15.9%
+  triton_mm_62 0.1096s 15.9%
+[2023-09-12 04:25:46,992] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+AUTOTUNE bias_addmm(16x1145, 16x768, 768x1145)
+  bias_addmm 0.0164s 100.0%
+  addmm 0.0184s 88.9%
+  triton_mm_81 0.0451s 36.4%
+  triton_mm_83 0.0635s 25.8%
+  triton_mm_77 0.0778s 21.1%
+  triton_mm_78 0.0799s 20.5%
+  triton_mm_72 0.0942s 17.4%
+  triton_mm_82 0.1065s 15.4%
+  triton_mm_76 0.1075s 15.2%
+  triton_mm_75 0.1096s 15.0%
+[2023-09-12 04:26:50,082] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+AUTOTUNE bias_addmm(8x1145, 8x768, 768x1145)
+  bias_addmm 0.0164s 100.0%
+  addmm 0.0184s 88.9%
+  triton_mm_93 0.0451s 36.4%
+  triton_mm_95 0.0614s 26.7%
+  triton_mm_89 0.0778s 21.1%
+  triton_mm_90 0.0788s 20.8%
+  triton_mm_84 0.0963s 17.0%
+  triton_mm_94 0.1055s 15.5%
+  triton_mm_88 0.1085s 15.1%
+  triton_mm_85 0.1106s 14.8%
+[2023-09-12 04:27:53,994] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+AUTOTUNE bias_addmm(4x1145, 4x768, 768x1145)
+  bias_addmm 0.0164s 100.0%
+  addmm 0.0184s 88.9%
+  triton_mm_105 0.0461s 35.6%
+  triton_mm_107 0.0625s 26.2%
+  triton_mm_102 0.0788s 20.8%
+  triton_mm_101 0.0799s 20.5%
+  triton_mm_96 0.0952s 17.2%
+  triton_mm_106 0.1034s 15.8%
+  triton_mm_98 0.1085s 15.1%
+  triton_mm_100 0.1085s 15.1%
+[2023-09-12 04:28:57,453] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+AUTOTUNE bias_addmm(2x1145, 2x768, 768x1145)
+  bias_addmm 0.0113s 100.0%
+  addmm 0.0143s 78.6%
+  triton_mm_117 0.0440s 25.6%
+  triton_mm_119 0.0605s 18.6%
+  triton_mm_113 0.0778s 14.5%
+  triton_mm_114 0.0778s 14.5%
+  triton_mm_108 0.0952s 11.8%
+  triton_mm_118 0.1044s 10.8%
+  triton_mm_111 0.1075s 10.5%
+  triton_mm_112 0.1096s 10.3%
+[2023-09-12 04:30:00,969] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+AUTOTUNE bias_addmm(1x1145, 1x768, 768x1145)
+  addmm 0.0123s 100.0%
+  bias_addmm 0.0164s 75.0%
+  triton_mm_129 0.0461s 26.7%
+  triton_mm_131 0.0625s 19.7%
+  triton_mm_125 0.0788s 15.6%
+  triton_mm_126 0.0788s 15.6%
+  triton_mm_120 0.0952s 12.9%
+  triton_mm_130 0.1034s 11.9%
+  triton_mm_121 0.1075s 11.4%
+  triton_mm_124 0.1075s 11.4%
+[2023-09-12 04:31:08,041] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+AUTOTUNE bias_addmm(1024x1224, 1024x768, 768x1224)
+  bias_addmm 0.1239s 100.0%
+  addmm 0.1239s 100.0%
+  triton_mm_139 0.2120s 58.5%
+  triton_mm_135 0.2222s 55.8%
+  triton_mm_136 0.2222s 55.8%
+  triton_mm_133 0.2232s 55.5%
+  triton_mm_134 0.2294s 54.0%
+  triton_mm_132 0.3144s 39.4%
+  triton_mm_142 0.3359s 36.9%
+  triton_mm_140 0.5089s 24.3%
+AUTOTUNE bias_addmm(512x1224, 512x768, 768x1224)
+  bias_addmm 0.0666s 100.0%
+  addmm 0.0707s 94.2%
+  triton_mm_147 0.1137s 58.6%
+  triton_mm_148 0.1167s 57.0%
+  triton_mm_146 0.1167s 57.0%
+  triton_mm_145 0.1178s 56.5%
+  triton_mm_144 0.1628s 40.9%
+  triton_mm_154 0.1751s 38.0%
+  triton_mm_151 0.1896s 35.1%
+  triton_mm_152 0.2632s 25.3%
+AUTOTUNE bias_addmm(256x1224, 256x768, 768x1224)
+  bias_addmm 0.0440s 100.0%
+  addmm 0.0481s 91.5%
+  triton_mm_156 0.1004s 43.9%
+  triton_mm_157 0.1096s 40.2%
+  triton_mm_158 0.1096s 40.2%
+  triton_mm_160 0.1106s 39.8%
+  triton_mm_159 0.1106s 39.8%
+  triton_mm_166 0.1106s 39.8%
+  triton_mm_164 0.1372s 32.1%
+  triton_mm_167 0.1454s 30.3%
+AUTOTUNE bias_addmm(128x1224, 128x768, 768x1224)
+  bias_addmm 0.0317s 100.0%
+  addmm 0.0317s 100.0%
+  triton_mm_179 0.0809s 39.2%
+  triton_mm_174 0.0819s 38.8%
+  triton_mm_173 0.0829s 38.3%
+  triton_mm_177 0.0870s 36.5%
+  triton_mm_168 0.0963s 33.0%
+  triton_mm_172 0.1085s 29.2%
+  triton_mm_178 0.1085s 29.2%
+  triton_mm_171 0.1085s 29.2%
+AUTOTUNE bias_addmm(64x1224, 64x768, 768x1224)
+  bias_addmm 0.0225s 100.0%
+  addmm 0.0256s 88.0%
+  triton_mm_189 0.0481s 46.8%
+  triton_mm_191 0.0645s 34.9%
+  triton_mm_185 0.0799s 28.2%
+  triton_mm_186 0.0809s 27.8%
+  triton_mm_180 0.0963s 23.4%
+  triton_mm_183 0.1055s 21.4%
+  triton_mm_190 0.1075s 21.0%
+  triton_mm_181 0.1085s 20.8%
+AUTOTUNE bias_addmm(32x1224, 32x768, 768x1224)
+  bias_addmm 0.0174s 100.0%
+  addmm 0.0195s 89.5%
+  triton_mm_201 0.0451s 38.6%
+  triton_mm_203 0.0635s 27.4%
+  triton_mm_198 0.0799s 21.8%
+  triton_mm_197 0.0809s 21.5%
+  triton_mm_192 0.0963s 18.1%
+  triton_mm_202 0.1065s 16.3%
+  triton_mm_195 0.1065s 16.3%
+  triton_mm_196 0.1085s 16.0%
+AUTOTUNE bias_addmm(16x1224, 16x768, 768x1224)
+  bias_addmm 0.0174s 100.0%
+  addmm 0.0195s 89.5%
+  triton_mm_213 0.0451s 38.6%
+  triton_mm_215 0.0614s 28.3%
+  triton_mm_209 0.0778s 22.4%
+  triton_mm_210 0.0788s 22.1%
+  triton_mm_204 0.0963s 18.1%
+  triton_mm_214 0.1044s 16.7%
+  triton_mm_207 0.1065s 16.3%
+  triton_mm_208 0.1096s 15.9%
+AUTOTUNE bias_addmm(8x1224, 8x768, 768x1224)
+  bias_addmm 0.0164s 100.0%
+  addmm 0.0184s 88.9%
+  triton_mm_225 0.0461s 35.6%
+  triton_mm_227 0.0635s 25.8%
+  triton_mm_222 0.0788s 20.8%
+  triton_mm_221 0.0799s 20.5%
+  triton_mm_216 0.0963s 17.0%
+  triton_mm_217 0.1065s 15.4%
+  triton_mm_226 0.1065s 15.4%
+  triton_mm_219 0.1075s 15.2%
+Benchmarking batch size 512 with sparsity 90 and num_threads 1
+Benchmarking batch size 256 with sparsity 90 and num_threads 1
+Benchmarking batch size 128 with sparsity 90 and num_threads 1
+Benchmarking batch size 64 with sparsity 90 and num_threads 1
+Benchmarking batch size 32 with sparsity 90 and num_threads 1
+Benchmarking batch size 16 with sparsity 90 and num_threads 1
+Benchmarking batch size 8 with sparsity 90 and num_threads 1
+Benchmarking batch size 4 with sparsity 90 and num_threads 1
+Benchmarking batch size 2 with sparsity 90 and num_threads 1
+Benchmarking batch size 1 with sparsity 90 and num_threads 1
+Benchmarking batch size 1024 with sparsity 80 and num_threads 1
+Benchmarking batch size 512 with sparsity 80 and num_threads 1
+Benchmarking batch size 256 with sparsity 80 and num_threads 1
+Benchmarking batch size 128 with sparsity 80 and num_threads 1
+Benchmarking batch size 64 with sparsity 80 and num_threads 1
+Benchmarking batch size 32 with sparsity 80 and num_threads 1
+Benchmarking batch size 16 with sparsity 80 and num_threads 1
+Benchmarking batch size 8 with sparsity 80 and num_threads 1
+Benchmarking batch size 4 with sparsity 80 and num_threads 1
+Benchmarking batch size 2 with sparsity 80 and num_threads 1
+Benchmarking batch size 1 with sparsity 80 and num_threads 1
+[--------------------------------------------------------- Condensed Linear @ 90 with 1 threads --------------------------------------------------------]
+                     |  Structured sparsity @ 90  |  Fine-grained + structured sparsity @ 90  |  structured sparsity + sparse op @ 90  |  Dense benchmark
+1 threads: ----------------------------------------------------------------------------------------------------------------------------------------------
+      1024   x 768   |  [31m[1m        23072.2         [0m[0m  |  [31m[1m                 9573.5                [0m[0m  |  [31m[1m              90799.4               [0m[0m  |  [31m[1m    58368.9    [0m[0m
+      512    x 768   |  [31m[1m        11354.1         [0m[0m  |  [31m[1m                 4471.3                [0m[0m  |  [31m[1m              44875.8               [0m[0m  |  [31m[1m    28851.4    [0m[0m
+      256    x 768   |  [31m[1m         6278.1         [0m[0m  |  [31m[1m                 2486.1                [0m[0m  |  [31m[1m              22562.3               [0m[0m  |  [31m[1m    15945.5    [0m[0m
+      128    x 768   |  [31m[1m         3299.7         [0m[0m  |  [31m[1m                 1292.7                [0m[0m  |  [31m[1m              11345.6               [0m[0m  |  [31m[1m     8254.2    [0m[0m
+      64     x 768   |  [31m[1m         1776.4         [0m[0m  |  [31m[1m                  637.9                [0m[0m  |  [31m[1m               5777.8               [0m[0m  |  [31m[1m     4430.7    [0m[0m
+      32     x 768   |  [2m[91m         1021.2         [0m[0m  |  [2m[91m                  323.6                [0m[0m  |  [31m[1m               3004.1               [0m[0m  |  [31m[1m     2432.8    [0m[0m
+      16     x 768   |  [2m[91m          675.1         [0m[0m  |  [2m[91m                  229.2                [0m[0m  |  [31m[1m               1637.5               [0m[0m  |  [31m[1m     1541.9    [0m[0m
+      8      x 768   |  [2m[91m          492.8         [0m[0m  |                    169.2                  |  [2m[91m                892.7               [0m[0m  |  [2m[91m     1151.1    [0m[0m
+      4      x 768   |            402.5           |                    127.5                  |                  568.3                 |  [2m[91m      850.3    [0m[0m
+      2      x 768   |            384.3           |  [34m[1m                  107.3                [0m[0m  |                  378.1                 |  [2m[91m      786.7    [0m[0m
+      1      x 768   |  [92m[1m          204.9         [0m[0m  |  [92m[1m                  100.0                [0m[0m  |  [92m[1m                319.3               [0m[0m  |  [92m[1m      290.0    [0m[0m
+
+Times are in microseconds (us).
+
+[--------------------------------------------------------- Condensed Linear @ 80 with 1 threads --------------------------------------------------------]
+                     |  Structured sparsity @ 80  |  Fine-grained + structured sparsity @ 80  |  structured sparsity + sparse op @ 80  |  Dense benchmark
+1 threads: ----------------------------------------------------------------------------------------------------------------------------------------------
+      1024   x 768   |  [31m[1m        22718.4         [0m[0m  |  [31m[1m                18262.7                [0m[0m  |  [31m[1m              176277.9              [0m[0m  |  [31m[1m    58882.7    [0m[0m
+      512    x 768   |  [31m[1m        11545.2         [0m[0m  |  [31m[1m                 8999.7                [0m[0m  |  [31m[1m               87795.6              [0m[0m  |  [31m[1m    30463.5    [0m[0m
+      256    x 768   |  [31m[1m         6496.8         [0m[0m  |  [31m[1m                 4486.0                [0m[0m  |  [31m[1m               43699.4              [0m[0m  |  [31m[1m    15955.2    [0m[0m
+      128    x 768   |  [31m[1m         3431.9         [0m[0m  |  [31m[1m                 2422.4                [0m[0m  |  [31m[1m               22044.7              [0m[0m  |  [31m[1m     8347.6    [0m[0m
+      64     x 768   |  [31m[1m         1866.4         [0m[0m  |  [31m[1m                  944.9                [0m[0m  |  [31m[1m               11322.1              [0m[0m  |  [31m[1m     4466.2    [0m[0m
+      32     x 768   |  [31m[1m         1070.1         [0m[0m  |  [31m[1m                  625.0                [0m[0m  |  [31m[1m                5715.0              [0m[0m  |  [31m[1m     2438.9    [0m[0m
+      16     x 768   |  [2m[91m          679.8         [0m[0m  |  [2m[91m                  377.1                [0m[0m  |  [31m[1m                3031.3              [0m[0m  |  [31m[1m     1473.0    [0m[0m
+      8      x 768   |  [2m[91m          508.4         [0m[0m  |  [2m[91m                  232.9                [0m[0m  |  [2m[91m                1667.2              [0m[0m  |  [2m[91m     1086.5    [0m[0m
+      4      x 768   |            403.5           |                    172.1                  |                  1021.3                |  [2m[91m      821.0    [0m[0m
+      2      x 768   |            376.6           |                    132.9                  |                   652.5                |  [2m[91m      738.0    [0m[0m
+      1      x 768   |  [92m[1m          208.9         [0m[0m  |  [92m[1m                  110.9                [0m[0m  |  [92m[1m                 567.9              [0m[0m  |  [92m[1m      290.9    [0m[0m
+
+Times are in microseconds (us).
+
+Benchmarking batch size 1024 with sparsity 90 and num_threads 1
+Benchmarking batch size 512 with sparsity 90 and num_threads 1
+Benchmarking batch size 256 with sparsity 90 and num_threads 1
+Benchmarking batch size 128 with sparsity 90 and num_threads 1
+Benchmarking batch size 64 with sparsity 90 and num_threads 1
+Benchmarking batch size 32 with sparsity 90 and num_threads 1
+Benchmarking batch size 16 with sparsity 90 and num_threads 1
+Benchmarking batch size 8 with sparsity 90 and num_threads 1
+Benchmarking batch size 4 with sparsity 90 and num_threads 1
+Benchmarking batch size 2 with sparsity 90 and num_threads 1
+Benchmarking batch size 1 with sparsity 90 and num_threads 1
+Benchmarking batch size 1024 with sparsity 80 and num_threads 1
+Benchmarking batch size 512 with sparsity 80 and num_threads 1
+Benchmarking batch size 256 with sparsity 80 and num_threads 1
+Benchmarking batch size 128 with sparsity 80 and num_threads 1
+Benchmarking batch size 64 with sparsity 80 and num_threads 1
+Benchmarking batch size 32 with sparsity 80 and num_threads 1
+Benchmarking batch size 16 with sparsity 80 and num_threads 1
+Benchmarking batch size 8 with sparsity 80 and num_threads 1
+AUTOTUNE bias_addmm(4x1224, 4x768, 768x1224)
+  bias_addmm 0.0164s 100.0%
+  addmm 0.0195s 84.2%
+  triton_mm_237 0.0461s 35.6%
+  triton_mm_239 0.0635s 25.8%
+  triton_mm_234 0.0778s 21.1%
+  triton_mm_233 0.0799s 20.5%
+  triton_mm_228 0.0942s 17.4%
+  triton_mm_238 0.1044s 15.7%
+  triton_mm_231 0.1065s 15.4%
+  triton_mm_229 0.1065s 15.4%
+AUTOTUNE bias_addmm(2x1224, 2x768, 768x1224)
+  bias_addmm 0.0123s 100.0%
+  addmm 0.0154s 80.0%
+  triton_mm_249 0.0451s 27.3%
+  triton_mm_251 0.0635s 19.4%
+  triton_mm_246 0.0788s 15.6%
+  triton_mm_245 0.0799s 15.4%
+  triton_mm_240 0.0963s 12.8%
+  triton_mm_250 0.1055s 11.7%
+  triton_mm_243 0.1065s 11.5%
+  triton_mm_244 0.1096s 11.2%
+AUTOTUNE bias_addmm(1x1224, 1x768, 768x1224)
+  addmm 0.0123s 100.0%
+  bias_addmm 0.0164s 75.0%
+  triton_mm_261 0.0451s 27.3%
+  triton_mm_263 0.0614s 20.0%
+  triton_mm_258 0.0778s 15.8%
+  triton_mm_257 0.0799s 15.4%
+  triton_mm_252 0.0963s 12.8%
+  triton_mm_262 0.1044s 11.8%
+  triton_mm_256 0.1085s 11.3%
+  triton_mm_254 0.1096s 11.2%
+Benchmarking batch size 4 with sparsity 80 and num_threads 1
+Benchmarking batch size 2 with sparsity 80 and num_threads 1
+Benchmarking batch size 1 with sparsity 80 and num_threads 1
+[--------------------------------------------------------- Condensed Linear @ 90 with 1 threads --------------------------------------------------------]
+                     |  Structured sparsity @ 90  |  Fine-grained + structured sparsity @ 90  |  structured sparsity + sparse op @ 90  |  Dense benchmark
+1 threads: ----------------------------------------------------------------------------------------------------------------------------------------------
+      1024   x 768   |           151.5            |  [31m[1m                 1955.8                [0m[0m  |  [31m[1m               2863.1               [0m[0m  |  [31m[1m     334.6     [0m[0m
+      512    x 768   |           128.6            |  [31m[1m                  997.9                [0m[0m  |  [31m[1m               1453.3               [0m[0m  |  [2m[91m     171.0     [0m[0m
+      256    x 768   |           128.9            |  [2m[91m                  501.3                [0m[0m  |  [31m[1m                749.8               [0m[0m  |        93.2     
+      128    x 768   |  [34m[1m         107.5          [0m[0m  |  [2m[91m                  262.1                [0m[0m  |  [2m[91m                373.9               [0m[0m  |        71.3     
+      64     x 768   |  [34m[1m         101.2          [0m[0m  |                    135.0                  |                  152.9                 |  [34m[1m      50.8     [0m[0m
+      32     x 768   |  [92m[1m         100.5          [0m[0m  |  [92m[1m                  100.6                [0m[0m  |  [92m[1m                105.0               [0m[0m  |  [34m[1m      51.2     [0m[0m
+      16     x 768   |  [34m[1m         100.8          [0m[0m  |  [34m[1m                  107.6                [0m[0m  |  [34m[1m                112.0               [0m[0m  |        58.3     
+      8      x 768   |  [34m[1m         106.9          [0m[0m  |  [34m[1m                  107.3                [0m[0m  |  [34m[1m                111.5               [0m[0m  |        57.6     
+      4      x 768   |  [34m[1m         107.2          [0m[0m  |  [34m[1m                  106.4                [0m[0m  |  [34m[1m                112.0               [0m[0m  |  [34m[1m      50.1     [0m[0m
+      2      x 768   |  [34m[1m         107.3          [0m[0m  |  [34m[1m                  107.4                [0m[0m  |  [92m[1m                104.0               [0m[0m  |  [92m[1m      46.9     [0m[0m
+      1      x 768   |  [92m[1m          99.8          [0m[0m  |  [92m[1m                  100.3                [0m[0m  |  [34m[1m                107.1               [0m[0m  |  [34m[1m      49.5     [0m[0m
+
+Times are in microseconds (us).
+
+[--------------------------------------------------------- Condensed Linear @ 80 with 1 threads --------------------------------------------------------]
+                     |  Structured sparsity @ 80  |  Fine-grained + structured sparsity @ 80  |  structured sparsity + sparse op @ 80  |  Dense benchmark
+1 threads: ----------------------------------------------------------------------------------------------------------------------------------------------
+      1024   x 768   |           162.0            |  [31m[1m                 3934.4                [0m[0m  |  [31m[1m               5699.4               [0m[0m  |  [31m[1m     342.3     [0m[0m
+      512    x 768   |  [34m[1m         102.1          [0m[0m  |  [31m[1m                 1984.2                [0m[0m  |  [31m[1m               2914.8               [0m[0m  |  [2m[91m     173.7     [0m[0m
+      256    x 768   |  [92m[1m         100.2          [0m[0m  |  [31m[1m                  992.6                [0m[0m  |  [31m[1m               1403.7               [0m[0m  |        94.5     
+      128    x 768   |  [34m[1m         101.3          [0m[0m  |  [31m[1m                  517.1                [0m[0m  |  [31m[1m                702.0               [0m[0m  |        59.5     
+      64     x 768   |  [34m[1m         100.5          [0m[0m  |  [2m[91m                  253.8                [0m[0m  |  [2m[91m                281.2               [0m[0m  |  [34m[1m      51.1     [0m[0m
+      32     x 768   |  [34m[1m         100.6          [0m[0m  |                    132.0                  |                  140.6                 |  [34m[1m      50.5     [0m[0m
+      16     x 768   |  [92m[1m          99.8          [0m[0m  |  [92m[1m                  100.4                [0m[0m  |  [34m[1m                104.5               [0m[0m  |        53.8     
+      8      x 768   |  [34m[1m         100.8          [0m[0m  |  [92m[1m                   99.8                [0m[0m  |  [92m[1m                103.2               [0m[0m  |        53.8     
+      4      x 768   |  [92m[1m          99.3          [0m[0m  |  [34m[1m                  104.0                [0m[0m  |  [34m[1m                106.3               [0m[0m  |  [92m[1m      47.8     [0m[0m
+      2      x 768   |  [92m[1m          99.4          [0m[0m  |  [92m[1m                  100.4                [0m[0m  |  [34m[1m                104.6               [0m[0m  |  [92m[1m      47.7     [0m[0m
+      1      x 768   |  [34m[1m         102.6          [0m[0m  |  [34m[1m                  101.5                [0m[0m  |  [34m[1m                106.6               [0m[0m  |  [34m[1m      48.4     [0m[0m
+
+Times are in microseconds (us).

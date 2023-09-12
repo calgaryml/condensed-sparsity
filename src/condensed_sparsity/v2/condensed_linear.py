@@ -18,15 +18,21 @@ class CondensedLinearStructured(nn.Module):
         super().__init__()
         self._register_idx(module)
         with torch.no_grad():
-            self.weight = nn.Parameter(module.weight[self.active_neuron_idx])
-            self.condensed_weight = nn.Parameter(
-                self.weight[self.fine_grained_idx].reshape(
-                    shape=(self.weight.shape[0], -1)
-                )
+            self.weight = nn.Parameter(
+                module.weight[self.active_neuron_idx].contiguous()
             )
-            self.sparse_weight = nn.Parameter(self.weight.to_sparse_csr())
+            self.condensed_weight = nn.Parameter(
+                self.weight[self.fine_grained_idx]
+                .reshape(shape=(self.weight.shape[0], -1))
+                .contiguous()
+            )
+            self.sparse_weight = nn.Parameter(
+                self.weight.to_sparse_csr().contiguous()
+            )
             if hasattr(module, "bias"):
-                self.bias = nn.Parameter(module.bias[self.active_neuron_idx])
+                self.bias = nn.Parameter(
+                    module.bias[self.active_neuron_idx].contiguous()
+                )
             else:
                 self.register_parameter("bias", None)
         # self.in_features = module.in_features
