@@ -29,13 +29,14 @@ def main(
     num_features,
     dtype,
     num_threads,
+    compile,
 ):
     batch_sizes = [2**x for x in range(10, -1, -1)]
     results = []
     counter = 0
     for mod, sparsity in zip(mods, sparsities):
         mod.eval()
-        label = f"Condensed Linear @ {sparsity}"
+        label = f"Condensed Linear @ {sparsity} with {num_threads} threads"
         for batch_size in batch_sizes:
             print(
                 f"Benchmarking batch size {batch_size} with sparsity {sparsity}"
@@ -55,11 +56,22 @@ def main(
             cl_struc = CondensedLinearStructured(deepcopy(mod))
             cl_fine = CondensedLinearFineGrained(deepcopy(mod))
             cl_sparse_op = CondensedLinearFineGrainedSparseOp(deepcopy(mod))
-            structured_cl = torch.jit.trace(  # TODO: debug starting here
-                cl_struc.forward, x
-            )  # TODO: Try script here instead
-            fine_grained_cl = torch.jit.trace(cl_fine.forward, x)
-            cl_sparse_op = torch.jit.trace(cl_sparse_op.forward, x)
+
+            if compile == "trace":
+                structured_cl = torch.jit.trace(  # TODO: debug starting here
+                    cl_struc.forward, x
+                )  # TODO: Try script here instead
+                fine_grained_cl = torch.jit.trace(cl_fine.forward, x)
+                cl_sparse_op = torch.jit.trace(cl_sparse_op.forward, x)
+            elif compile == "script":
+                structured_cl = torch.jit.script(cl_struc, x)
+                fine_grained_cl = torch.jit.script(cl_fine, x)
+                cl_sparse_op = torch.jit.script(cl_sparse_op, x)
+            elif compile == "inductor":
+                _compiler_kwargs = {"mode": "max-autotune"}
+                structured_cl = torch.compile(cl_struc, **_compiler_kwargs)
+                fine_grained_cl = torch.compile(cl_fine, **_compiler_kwargs)
+                cl_sparse_op = torch.compile(cl_sparse_op, **_compiler_kwargs)
 
             # Benchmarking begins...
             _ = structured_cl(x)  # Warmup
@@ -102,7 +114,7 @@ def main(
                     num_threads=num_threads,
                 ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
             )
-            _ = mod(x)
+            _ = mod(x)  # TODO: compile the dense mod too?
             results.append(
                 benchmark.Timer(
                     stmt="mod(x)",
@@ -116,9 +128,15 @@ def main(
             )
 
     compare = benchmark.Compare(results)
-    f_name = f"benchmark_v2_gpu_threads_{num_threads}.pkl"
-    if device == "cpu":
-        f_name = f"benchmark_v2_cpu_threads_{num_threads}.pkl"
+    f_name = (
+        f"benchmark_v2_gpu_threads_{num_threads}_"
+        f"compiler_{compiler}_max_auto_tune.pkl"
+    )
+    if not cuda:
+        f_name = (
+            f"benchmark_v2_cpu_threads_{num_threads}_"
+            f"compiler_{compiler}_max_auto_tune.pkl"
+        )
     with open(f_name, "wb") as handle:
         pickle.dump(compare, handle)
     compare.colorize()
@@ -160,25 +178,42 @@ def get_mod(run_id: str, device):
 if __name__ == "__main__":
     # for d in ["cuda:0", "cpu"]:
     __RUN_IDS = {90: "nrblbn15"}
-    __RUN_IDS = {90: "nrblbn15", 80: "0p0wrlb0"}
-    for num_threads in [1, 2, 4, 8, 16, 32]:
-        for d in ["cpu", "gpu"]:
-            if d == "cpu":
-                device = torch.device("cpu")
-                cuda = True
-            else:
-                device = torch.device("cuda")
-                cuda = False
-            mods, sparsities = [], []
+    # __RUN_IDS = {90: "nrblbn15", 80: "0p0wrlb0"}
+    # for num_threads in [1, 2, 4, 8, 16, 32]:
+    for num_threads in [
+        1,
+    ]:
+        # for compiler in ["script", "trace", "inductor"]:
+        for compiler in [
+            "inductor",
+        ]:
+            for d in ["cpu", "gpu"]:
+                # for d in ["cpu", "gpu"]:
+                if d == "cpu":
+                    device = torch.device("cpu")
+                    cuda = True
+                else:
+                    device = torch.device("cuda")
+                    cuda = False
+                mods, sparsities = [], []
 
-            for sparsity, run_id in __RUN_IDS.items():
-                mod = get_mod(run_id, device)
-                mod.to(device)
-                mods.append(mod)
-                sparsities.append(sparsity)
-                num_features = mod.weight.shape[1]
-                dtype = torch.float32
-                num_threads = num_threads
-            results = main(
-                mods, sparsities, device, cuda, num_features, dtype, num_threads
-            )
+                for sparsity, run_id in __RUN_IDS.items():
+                    mod = get_mod(run_id, device)
+                    mod.to(device)
+                    mods.append(mod)
+                    sparsities.append(sparsity)
+                    num_features = mod.weight.shape[1]
+                    dtype = (
+                        torch.float32
+                    )  # Try float 16 https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html  # noqa
+                    num_threads = num_threads
+                results = main(
+                    mods,
+                    sparsities,
+                    device,
+                    cuda,
+                    num_features,
+                    dtype,
+                    num_threads,
+                    compiler,
+                )
