@@ -1,3 +1,4 @@
+from torch import _dynamo as dynamo
 import torch
 from torch.utils import benchmark
 import pickle
@@ -10,14 +11,15 @@ from rigl_torch.utils.checkpoint import Checkpoint
 import dotenv
 import os
 import pathlib
+import gc
 
 from condensed_sparsity.v2.condensed_linear import (
     CondensedLinearStructured,
     CondensedLinearFineGrained,
-    CondensedLinearFineGrainedSparseOp,
+    # CondensedLinearFineGrainedSparseOp,
 )
 
-__MIN_RUN_TIME = 10
+__MIN_RUN_TIME = 1
 
 
 @torch.no_grad()
@@ -30,112 +32,184 @@ def main(
     dtype,
     num_threads,
     compile,
+    compiler_kwargs,
 ):
+    # batch_sizes = [2**x for x in range(10, -1, -1)]
+    # torch.is_grad_enabled = lambda: False
+    __DISABLED_BACKENDS = ["ipex"]
+    # Need to pip install apache-tvm, onnx, and onnxruntime for others.
+    # TODO: Get IPEX working
     batch_sizes = [2**x for x in range(10, -1, -1)]
     results = []
     counter = 0
     for mod, sparsity in zip(mods, sparsities):
-        mod.eval()
-        label = f"Condensed Linear @ {sparsity} with {num_threads} threads"
-        for batch_size in batch_sizes:
-            print(
-                f"Benchmarking batch size {batch_size} with sparsity {sparsity}"
-                f" and num_threads {num_threads}"
-            )
-            counter += 1
-            sub_label = f"{batch_size:<6} x {num_features:<4}"
-            x = benchmark.FuzzedTensor(
-                "x",
-                size=(batch_size, num_features),
-                cuda=cuda,
-                dtype=dtype,
-                probability_contiguous=1.0,  # TRY contig.
-            )
-            x = x.default_tensor_constructor(x._size, x._dtype)
-            x = x.to(device=device)
-            cl_struc = CondensedLinearStructured(deepcopy(mod))
-            cl_fine = CondensedLinearFineGrained(deepcopy(mod))
-            cl_sparse_op = CondensedLinearFineGrainedSparseOp(deepcopy(mod))
+        for backend in dynamo.list_backends():
+            if backend in __DISABLED_BACKENDS:
+                continue
+            dynamo.reset()
+            mod = mod.type(dtype)
+            mod.eval()
+            label = f"Condensed Linear @ {sparsity} with {num_threads} threads"
+            for batch_size in batch_sizes:
+                print(
+                    f"Benchmarking batch size {batch_size} with sparsity {sparsity}"
+                    f" and num_threads {num_threads} with compiler {compiler} using backend {backend}"
+                )
+                counter += 1
+                sub_label = f"{batch_size:<6} x {num_features:<4}"
+                x = benchmark.FuzzedTensor(
+                    "x",
+                    size=(batch_size, num_features),
+                    cuda=cuda,
+                    dtype=dtype,
+                    probability_contiguous=1.0,  # TRY contig.
+                )
+                x = x.default_tensor_constructor(x._size, x._dtype)
+                x = x.to(device=device)
+                cl_struc = CondensedLinearStructured(deepcopy(mod), dtype=dtype)
+                cl_fine = CondensedLinearFineGrained(deepcopy(mod), dtype=dtype)
+                # cl_sparse_op = CondensedLinearFineGrainedSparseOp(
+                #     deepcopy(mod), dtype=dtype
+                # )
 
-            if compile == "trace":
-                structured_cl = torch.jit.trace(  # TODO: debug starting here
-                    cl_struc.forward, x
-                )  # TODO: Try script here instead
-                fine_grained_cl = torch.jit.trace(cl_fine.forward, x)
-                cl_sparse_op = torch.jit.trace(cl_sparse_op.forward, x)
-            elif compile == "script":
-                structured_cl = torch.jit.script(cl_struc, x)
-                fine_grained_cl = torch.jit.script(cl_fine, x)
-                cl_sparse_op = torch.jit.script(cl_sparse_op, x)
-            elif compile == "inductor":
-                _compiler_kwargs = {"mode": "max-autotune"}
-                structured_cl = torch.compile(cl_struc, **_compiler_kwargs)
-                fine_grained_cl = torch.compile(cl_fine, **_compiler_kwargs)
-                cl_sparse_op = torch.compile(cl_sparse_op, **_compiler_kwargs)
+                if compile == "trace":
+                    structured_cl = torch.jit.trace(cl_struc, x)
+                    fine_grained_cl = torch.jit.trace(cl_fine, x)
+                    # cl_sparse_op = torch.jit.trace(cl_sparse_op.forward, x)
+                    compiled_mod = torch.jit.trace(mod, x)
+                elif compile == "script":
+                    structured_cl = torch.jit.optimize_for_inference(
+                        torch.jit.script(cl_struc, x)
+                    )
+                    fine_grained_cl = torch.jit.optimize_for_inference(
+                        torch.jit.script(cl_fine, x)
+                    )
+                    # cl_sparse_op = torch.jit.script(cl_sparse_op, x)
+                    compiled_mod = torch.jit.optimize_for_inference(
+                        torch.jit.script(mod, x)
+                    )
 
-            # Benchmarking begins...
-            _ = structured_cl(x)  # Warmup
-            results.append(
-                benchmark.Timer(
-                    stmt="structured_cl(x)",
-                    setup="",
-                    globals={"x": x, "structured_cl": structured_cl},
-                    label=label,
-                    sub_label=sub_label,
-                    description=f"Structured sparsity @ {sparsity}",
-                    num_threads=num_threads,
-                ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
-            )
-            _ = fine_grained_cl(x)
-            results.append(
-                benchmark.Timer(
-                    stmt="fine_grained_cl(x)",
-                    setup="",
-                    globals={"x": x, "fine_grained_cl": fine_grained_cl},
-                    label=label,
-                    sub_label=sub_label,
-                    description=(
-                        f"Fine-grained + structured sparsity @ {sparsity}"
-                    ),
-                    num_threads=num_threads,
-                ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
-            )
-            _ = cl_sparse_op(x)
-            results.append(
-                benchmark.Timer(
-                    stmt="cl_sparse_op(x)",
-                    setup="",
-                    globals={"x": x, "cl_sparse_op": cl_sparse_op},
-                    label=label,
-                    sub_label=sub_label,
-                    description=(
-                        f"structured sparsity + sparse op @ {sparsity}"
-                    ),
-                    num_threads=num_threads,
-                ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
-            )
-            _ = mod(x)  # TODO: compile the dense mod too?
-            results.append(
-                benchmark.Timer(
-                    stmt="mod(x)",
-                    setup="",
-                    globals={"x": x, "mod": mod},
-                    label=label,
-                    sub_label=sub_label,
-                    description="Dense benchmark",
-                    num_threads=num_threads,
-                ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
-            )
+                elif compile == "inductor":
+                    # structured_cl = torch.compile(cl_struc, **compiler_kwargs)
+                    structured_cl = cl_struc
+                    fine_grained_cl = torch.compile(
+                        cl_fine, backend=backend, **compiler_kwargs
+                    )
+                    # cl_sparse_op = torch.compile(
+                    #     cl_sparse_op, mode=compiler_kwargs["mode"]
+                    # )
+                    compiled_mod = torch.compile(
+                        mod, backend=backend, **compiler_kwargs
+                    )
+
+                # Explanations of compiling for debugging
+                # (
+                #     explanation,
+                #     out_guards,
+                #     graphs,
+                #     ops_per_graph,
+                #     break_reasons,
+                #     explanation_verbose,
+                # ) = dynamo.explain(mod.forward, x)
+                # print(explanation_verbose)
+                # print(ops_per_graph)
+                # *_, explanation_verbose = dynamo.explain(cl_struc.forward, x)
+                # print(explanation_verbose)
+                # *_, explanation_verbose = dynamo.explain(cl_fine.forward, x)
+                # print(explanation_verbose)
+                # exit()
+
+                # Benchmarking begins...
+                with torch.no_grad():
+                    _ = structured_cl(x)  # JIT warmup and caching
+                    results.append(
+                        benchmark.Timer(
+                            stmt="structured_cl(x)",
+                            setup="",
+                            globals={"x": x, "structured_cl": structured_cl},
+                            label=label,
+                            sub_label=sub_label,
+                            description=f"Structured sparsity @ {sparsity}",
+                            num_threads=num_threads,
+                        ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
+                    )
+                    _ = fine_grained_cl(x)
+                    results.append(
+                        benchmark.Timer(
+                            stmt="fine_grained_cl(x)",
+                            setup="",
+                            globals={
+                                "x": x,
+                                "fine_grained_cl": fine_grained_cl,
+                            },
+                            label=label,
+                            sub_label=sub_label,
+                            description=(
+                                f"Fine-grained + structured sparsity @ {sparsity} with backend {backend}"
+                            ),
+                            num_threads=num_threads,
+                        ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
+                    )
+                    ## CSR Sparse Format
+                    # _ = cl_sparse_op(x)
+                    # results.append(
+                    #     benchmark.Timer(
+                    #         stmt="cl_sparse_op(x)",
+                    #         setup="",
+                    #         globals={"x": x, "cl_sparse_op": cl_sparse_op},
+                    #         label=label,
+                    #         sub_label=sub_label,
+                    #         description=(
+                    #             f"structured sparsity + sparse op @ {sparsity}"
+                    #         ),
+                    #         num_threads=num_threads,
+                    #     ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
+                    # )
+
+                    # Compiled dense benchmark
+                    _ = compiled_mod(x)
+                    results.append(
+                        benchmark.Timer(
+                            stmt="compiled_mod(x)",
+                            setup="",
+                            globals={"x": x, "compiled_mod": compiled_mod},
+                            label=label,
+                            sub_label=sub_label,
+                            description=f"Dense benchmark - Compiled - backend {backend}",
+                            num_threads=num_threads,
+                        ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
+                    )
+
+                    ## Eager dense benchmark
+                    _ = mod(x)
+                    results.append(
+                        benchmark.Timer(
+                            stmt="mod(x)",
+                            setup="",
+                            globals={"x": x, "mod": mod},
+                            label=label,
+                            sub_label=sub_label,
+                            description="Dense benchmark - Eager",
+                            num_threads=num_threads,
+                        ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
+                    )
+
+                    ## Clean up
+                    del structured_cl
+                    del fine_grained_cl
+                    del cl_struc
+                    del cl_fine
+                    gc.collect()
 
     compare = benchmark.Compare(results)
     f_name = (
         f"benchmark_v2_gpu_threads_{num_threads}_"
-        f"compiler_{compiler}_max_auto_tune.pkl"
+        f"compiler_{compiler}_max_auto_tune_fullgraph_deleted_mods_no_grad_param.pkl"
     )
     if not cuda:
         f_name = (
             f"benchmark_v2_cpu_threads_{num_threads}_"
-            f"compiler_{compiler}_max_auto_tune.pkl"
+            f"compiler_{compiler}_max_auto_tune_fullgraph_deleted_mods_no_grad_param.pkl"
         )
     with open(f_name, "wb") as handle:
         pickle.dump(compare, handle)
@@ -176,6 +250,17 @@ def get_mod(run_id: str, device):
 
 
 if __name__ == "__main__":
+    import logging
+
+    # dynamo.config.verbose = True
+    # dynamo.config.log_level = logging.INFO
+    # dynamo.config.output_code = True
+
+    compiler_kwargs = {
+        "mode": "max-autotune",
+        "fullgraph": True,
+    }
+
     # for d in ["cuda:0", "cpu"]:
     __RUN_IDS = {90: "nrblbn15"}
     # __RUN_IDS = {90: "nrblbn15", 80: "0p0wrlb0"}
@@ -184,10 +269,9 @@ if __name__ == "__main__":
         1,
     ]:
         # for compiler in ["script", "trace", "inductor"]:
-        for compiler in [
-            "inductor",
-        ]:
-            for d in ["cpu", "gpu"]:
+        for compiler in ["inductor"]:
+            # for d in ["cpu", "gpu"]:
+            for d in ["gpu"]:
                 # for d in ["cpu", "gpu"]:
                 if d == "cpu":
                     device = torch.device("cpu")
@@ -204,7 +288,7 @@ if __name__ == "__main__":
                     sparsities.append(sparsity)
                     num_features = mod.weight.shape[1]
                     dtype = (
-                        torch.float32
+                        torch.bfloat16
                     )  # Try float 16 https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html  # noqa
                     num_threads = num_threads
                 results = main(
@@ -216,4 +300,5 @@ if __name__ == "__main__":
                     dtype,
                     num_threads,
                     compiler,
+                    compiler_kwargs,
                 )

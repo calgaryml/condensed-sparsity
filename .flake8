@@ -1,4 +1,4 @@
 [flake8]
 max-line-length = 80
-ignore = E741, W503, E231, E203
+ignore = E741, W503, E231, E203, E266
 exclude = main.py, utils.py, models.py # TODO: Will address these after merging
