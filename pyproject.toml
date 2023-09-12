@@ -31,7 +31,7 @@ torchvision={version="^0.15.2+cu118", source="torch_repo"}
 tensorboard = "^2.10.0"
 hydra-core = "^1.2.0"
 python-dotenv="0.20.0"
-pytorch-lightning="1.6.5"
+pytorch-lightning="^1.6.5"
 scipy="1.8.0"
 wandb="0.12.5"
 xmanager="^0.3"
