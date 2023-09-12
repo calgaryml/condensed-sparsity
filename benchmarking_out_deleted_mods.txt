@@ -1,0 +1,25 @@
+Traceback (most recent call last):
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 115, in decorate_context
+    return func(*args, **kwargs)
+  File "/home/user/condensed-sparsity/./scripts/benchmarks_v2.py", line 41, in main
+    mod = mod.type(dtype)
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/nn/modules/module.py", line 968, in type
+    return self._apply(lambda t: t.type(dst_type))
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/nn/modules/module.py", line 819, in _apply
+    with torch.no_grad():
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/autograd/grad_mode.py", line 54, in __enter__
+    self.prev = torch.is_grad_enabled()
+TypeError: 'bool' object is not callable
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/user/condensed-sparsity/./scripts/benchmarks_v2.py", line 260, in <module>
+    results = main(
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 114, in decorate_context
+    with ctx_factory():
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/autograd/grad_mode.py", line 58, in __exit__
+    torch.set_grad_enabled(self.prev)
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/autograd/grad_mode.py", line 150, in __init__
+    self.prev = torch.is_grad_enabled()
+TypeError: 'bool' object is not callable
