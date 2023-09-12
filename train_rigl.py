@@ -499,7 +499,10 @@ def set_seed(cfg: omegaconf.DictConfig) -> omegaconf.DictConfig:
         logger.info(
             f"No seed set in config! Generated random seed: {cfg.training.seed}"
         )
-    pl.utilities.seed.seed_everything(cfg.training.seed)
+    # pl.utilities.seed.seed_everything(cfg.training.seed)
+
+    # Updated API
+    pl.seed_everything(cfg.training.seed)
     return cfg
 
 

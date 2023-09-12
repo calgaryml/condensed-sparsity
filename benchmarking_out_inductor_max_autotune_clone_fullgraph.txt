@@ -29,4 +29,3 @@ Benchmarking batch size 1 with sparsity 90 and num_threads 1
       1      x 768   |           138.2            |                    128.2                  |            103.3             |            67.6         
 
 Times are in microseconds (us).
-
