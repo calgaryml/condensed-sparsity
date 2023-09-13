@@ -7,7 +7,9 @@ from typing import Optional
 
 class CondensedLinearStructured(nn.Module):
     # TODO: Experiment with __constants__ and __final__
-    # SEE:
+    # TODO: Going to need some functionality to capture weight getter,
+    # maybe a callable/str union?
+    # TODO: Type annotations may help speed up TorchScript
     # __TARGET_TYPES = [nn.Linear, NonDynamicallyQuantizableLinear]
     __TARGET_TYPES = [nn.Linear]
     # __constants__ = ["active_neuron_idx", "fine_grained_idx"]
@@ -115,6 +117,7 @@ class CondensedLinearStructured(nn.Module):
         if type(module) in cls.__TARGET_TYPES:
             # Introspection to determine subclass
             module_output = cls.__new__(module)
+            # TODO: Move cls method to each condensed class
             if hasattr(module, "qconfig"):
                 module_output.qconfig = module.qconfig
         for name, child in module.named_children():
@@ -166,19 +169,43 @@ class CondensedLinearFineGrained(nn.Module):
         )
 
 
-# class CondensedLinearFineGrainedSparseOp(CondensedLinearStructured):
-#     def __init__(self, *args, **kwargs):
-#         super().__init__(*args, **kwargs)
+class CondensedLinearFineGrainedSparseOp(nn.Module):
+    def __init__(
+        self, module: nn.Module, dtype: Optional[torch.typename] = None
+    ):
+        super().__init__()
+        if dtype is None:
+            dtype = module.weight.dtype
+        active_neuron_idx = module.weight.sum(dim=1) != 0
+        fine_grained_idx = (module.weight[active_neuron_idx] != 0).to(
+            torch.bool
+        )
+        _, input_mask = fine_grained_idx.nonzero(as_tuple=True)
+        input_mask = input_mask.reshape(
+            shape=(module.weight[active_neuron_idx].shape[0], -1)
+        )
+        with torch.no_grad():
+            weight = nn.Parameter(
+                torch.clone(
+                    module.weight[active_neuron_idx].detach().type(dtype)
+                )
+            )
+            self.sparse_weight = nn.Parameter(
+                torch.clone(weight.detach().type(dtype).to_sparse_csr()),
+                requires_grad=False,
+            )
+            if hasattr(module, "bias"):
+                self.bias = nn.Parameter(
+                    torch.clone(
+                        module.bias[active_neuron_idx].detach().type(dtype)
+                    ),
+                    requires_grad=False,
+                )
+            else:
+                self.register_parameter("bias", None)
 
-#     def _clean_up_unused_params(self):
-#         del self.weight
-#         del self.input_mask
-#         del self.active_neuron_idx
-#         del self.fine_grained_idx
-#         del self.condensed_weight
-
-#     def forward(self, input: torch.Tensor) -> torch.Tensor:
-#         return F.linear(input, self.sparse_weight, self.bias)
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        return F.linear(input, self.sparse_weight, self.bias)
 
 
 ## TODO: Can use these with torch.compile, but not TorchScript. See: https://pytorch.org/docs/stable/jit_language_reference.html#:~:text=No%20support%20for%20inheritance%20or%20any%20other%20polymorphism%20strategy%2C%20except%20for%20inheriting%20from%20object%20to%20specify%20a%20new%2Dstyle%20class.  # noqa
@@ -192,11 +219,12 @@ class CondensedLinearFineGrained(nn.Module):
 #         del self.fine_grained_idx
 #         del self.sparse_weight
 
-#     def forward(self, input: torch.Tensor) -> torch.Tensor:
-#         return (
-#             torch.sum(self.condensed_weight * input[:, self.input_mask], axis=2)
-#             + self.bias
-#         )
+# def forward(self, input: torch.Tensor) -> torch.Tensor:
+#     return (
+#         torch.sum(
+#             self.condensed_weight * input[:, self.input_mask], axis=2)
+#         + self.bias
+#     )
 
 
 # class CondensedLinearFineGrainedSparseOp(CondensedLinearStructured):

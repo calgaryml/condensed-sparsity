@@ -36,24 +36,30 @@ def main(
 ):
     # batch_sizes = [2**x for x in range(10, -1, -1)]
     # torch.is_grad_enabled = lambda: False
-    __DISABLED_BACKENDS = ["ipex"]
+    __DISABLED_BACKENDS = ["ipex", "onnxrt", "tvm"]
     # Need to pip install apache-tvm, onnx, and onnxruntime for others.
     # TODO: Get IPEX working
     batch_sizes = [2**x for x in range(10, -1, -1)]
     results = []
     counter = 0
     for mod, sparsity in zip(mods, sparsities):
-        for backend in dynamo.list_backends():
+        # for backend in dynamo.list_backends():
+        for backend in ["inductor"]:
             if backend in __DISABLED_BACKENDS:
                 continue
+            if compiler in ["trace", "script"]:
+                backend = "N/A"
             dynamo.reset()
             mod = mod.type(dtype)
             mod.eval()
-            label = f"Condensed Linear @ {sparsity} with {num_threads} threads"
+            label = f"Condensed Linear @ {sparsity} with {num_threads} threads "
+            f"using compilation strategy {compiler} and backend {backend}"
             for batch_size in batch_sizes:
                 print(
-                    f"Benchmarking batch size {batch_size} with sparsity {sparsity}"
-                    f" and num_threads {num_threads} with compiler {compiler} using backend {backend}"
+                    f"Benchmarking batch size {batch_size} "
+                    f"with sparsity {sparsity} "
+                    f"num_threads {num_threads} "
+                    f"with compiler {compiler} using backend {backend}"
                 )
                 counter += 1
                 sub_label = f"{batch_size:<6} x {num_features:<4}"
@@ -71,11 +77,11 @@ def main(
                 # cl_sparse_op = CondensedLinearFineGrainedSparseOp(
                 #     deepcopy(mod), dtype=dtype
                 # )
-
+                torch.jit.enable_onednn_fusion(True)
                 if compile == "trace":
                     structured_cl = torch.jit.trace(cl_struc, x)
                     fine_grained_cl = torch.jit.trace(cl_fine, x)
-                    # cl_sparse_op = torch.jit.trace(cl_sparse_op.forward, x)
+                    # cl_sparse_op = torch.jit.trace(cl_sparse_op, x)
                     compiled_mod = torch.jit.trace(mod, x)
                 elif compile == "script":
                     structured_cl = torch.jit.optimize_for_inference(
@@ -90,8 +96,7 @@ def main(
                     )
 
                 elif compile == "inductor":
-                    # structured_cl = torch.compile(cl_struc, **compiler_kwargs)
-                    structured_cl = cl_struc
+                    structured_cl = torch.compile(cl_struc, **compiler_kwargs)
                     fine_grained_cl = torch.compile(
                         cl_fine, backend=backend, **compiler_kwargs
                     )
@@ -101,6 +106,9 @@ def main(
                     compiled_mod = torch.compile(
                         mod, backend=backend, **compiler_kwargs
                     )
+                # elif compile == None:
+                #     pass
+                #     # TODO: Profile with no compilation
 
                 # Explanations of compiling for debugging
                 # (
@@ -133,6 +141,20 @@ def main(
                             num_threads=num_threads,
                         ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
                     )
+                    _ = cl_struc(x)  # JIT warmup and caching
+                    results.append(
+                        benchmark.Timer(
+                            stmt="cl_struc(x)",
+                            setup="",
+                            globals={"x": x, "cl_struc": cl_struc},
+                            label=label,
+                            sub_label=sub_label,
+                            description=(
+                                f"Structured sparsity @ {sparsity} - eager mode"
+                            ),
+                            num_threads=num_threads,
+                        ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
+                    )
                     _ = fine_grained_cl(x)
                     results.append(
                         benchmark.Timer(
@@ -145,7 +167,8 @@ def main(
                             label=label,
                             sub_label=sub_label,
                             description=(
-                                f"Fine-grained + structured sparsity @ {sparsity} with backend {backend}"
+                                "Fine-grained + structured sparsity @ "
+                                f"{sparsity} with backend {backend}"
                             ),
                             num_threads=num_threads,
                         ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
@@ -160,7 +183,8 @@ def main(
                     #         label=label,
                     #         sub_label=sub_label,
                     #         description=(
-                    #             f"structured sparsity + sparse op @ {sparsity}"
+                    #             "structured sparsity + sparse op @ "
+                    #             f"{sparsity}"
                     #         ),
                     #         num_threads=num_threads,
                     #     ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
@@ -175,7 +199,10 @@ def main(
                             globals={"x": x, "compiled_mod": compiled_mod},
                             label=label,
                             sub_label=sub_label,
-                            description=f"Dense benchmark - Compiled - backend {backend}",
+                            description=(
+                                "Dense benchmark - Compiled - backend "
+                                f"{backend}"
+                            ),
                             num_threads=num_threads,
                         ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
                     )
@@ -204,12 +231,12 @@ def main(
     compare = benchmark.Compare(results)
     f_name = (
         f"benchmark_v2_gpu_threads_{num_threads}_"
-        f"compiler_{compiler}_max_auto_tune_fullgraph_deleted_mods_no_grad_param.pkl"
+        f"compiler_{compiler}_debugging.pkl"
     )
     if not cuda:
         f_name = (
             f"benchmark_v2_cpu_threads_{num_threads}_"
-            f"compiler_{compiler}_max_auto_tune_fullgraph_deleted_mods_no_grad_param.pkl"
+            f"compiler_{compiler}_debugging.pkl"
         )
     with open(f_name, "wb") as handle:
         pickle.dump(compare, handle)
@@ -250,9 +277,8 @@ def get_mod(run_id: str, device):
 
 
 if __name__ == "__main__":
-    import logging
 
-    # dynamo.config.verbose = True
+    dynamo.config.verbose = False
     # dynamo.config.log_level = logging.INFO
     # dynamo.config.output_code = True
 
@@ -262,17 +288,14 @@ if __name__ == "__main__":
     }
 
     # for d in ["cuda:0", "cpu"]:
-    __RUN_IDS = {90: "nrblbn15"}
-    # __RUN_IDS = {90: "nrblbn15", 80: "0p0wrlb0"}
+    # __RUN_IDS = {90: "nrblbn15"}
+    __RUN_IDS = {90: "nrblbn15", 80: "0p0wrlb0"}
     # for num_threads in [1, 2, 4, 8, 16, 32]:
-    for num_threads in [
-        1,
-    ]:
-        # for compiler in ["script", "trace", "inductor"]:
-        for compiler in ["inductor"]:
-            # for d in ["cpu", "gpu"]:
-            for d in ["gpu"]:
-                # for d in ["cpu", "gpu"]:
+    for num_threads in [32]:
+        for compiler in ["script", "trace", "inductor"]:
+            # for compiler in ["inductor"]:
+            # for d in ["gpu"]:
+            for d in ["cpu", "gpu"]:
                 if d == "cpu":
                     device = torch.device("cpu")
                     cuda = True
