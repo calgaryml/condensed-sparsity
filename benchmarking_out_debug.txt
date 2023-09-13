@@ -1,30 +1,29 @@
-Traceback (most recent call last):
-  File "/home/user/condensed-sparsity/./scripts/benchmarks_v2.py", line 10, in <module>
-    from rigl_torch.utils.checkpoint import Checkpoint
-  File "/home/user/condensed-sparsity/src/rigl_torch/utils/checkpoint.py", line 15, in <module>
-    from rigl_torch.rigl_scheduler import RigLScheduler
-  File "/home/user/condensed-sparsity/src/rigl_torch/rigl_scheduler.py", line 9, in <module>
-    import wandb
-  File "/home/user/build/.venv/lib/python3.10/site-packages/wandb/__init__.py", line 34, in <module>
-    from wandb import sdk as wandb_sdk
-  File "/home/user/build/.venv/lib/python3.10/site-packages/wandb/sdk/__init__.py", line 12, in <module>
-    from .wandb_init import _attach, init  # noqa: F401
-  File "/home/user/build/.venv/lib/python3.10/site-packages/wandb/sdk/wandb_init.py", line 35, in <module>
-    from .backend.backend import Backend
-  File "/home/user/build/.venv/lib/python3.10/site-packages/wandb/sdk/backend/backend.py", line 20, in <module>
-    from ..interface import interface
-  File "/home/user/build/.venv/lib/python3.10/site-packages/wandb/sdk/interface/interface.py", line 21, in <module>
-    from wandb.proto import wandb_internal_pb2 as pb
-  File "/home/user/build/.venv/lib/python3.10/site-packages/wandb/proto/wandb_internal_pb2.py", line 15, in <module>
-    from wandb.proto import wandb_base_pb2 as wandb_dot_proto_dot_wandb__base__pb2
-  File "/home/user/build/.venv/lib/python3.10/site-packages/wandb/proto/wandb_base_pb2.py", line 36, in <module>
-    _descriptor.FieldDescriptor(
-  File "/home/user/build/.venv/lib/python3.10/site-packages/google/protobuf/descriptor.py", line 561, in __new__
-    _message.Message._CheckCalledFromGeneratedFile()
-TypeError: Descriptors cannot not be created directly.
-If this call came from a _pb2.py file, your generated code is out of date and must be regenerated with protoc >= 3.19.0.
-If you cannot immediately regenerate your protos, some other possible workarounds are:
- 1. Downgrade the protobuf package to 3.20.x or lower.
- 2. Set PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python (but this will use pure-Python parsing and will be much slower).
+/home/user/condensed-sparsity/src/condensed_sparsity/v2/condensed_linear.py:68: UserWarning: Sparse CSR tensor support is in beta state. If you miss a functionality in the sparse tensor support, please submit a feature request to https://github.com/pytorch/pytorch/issues. (Triggered internally at ../aten/src/ATen/SparseCsrTensorImpl.cpp:54.)
+  torch.clone(self.weight.detach().type(dtype).to_sparse_csr()),
+Benchmarking batch size 1024 with sparsity 90 and num_threads 1 with compiler inductor using backend inductor
+Benchmarking batch size 512 with sparsity 90 and num_threads 1 with compiler inductor using backend inductor
+Benchmarking batch size 256 with sparsity 90 and num_threads 1 with compiler inductor using backend inductor
+Benchmarking batch size 128 with sparsity 90 and num_threads 1 with compiler inductor using backend inductor
+Benchmarking batch size 64 with sparsity 90 and num_threads 1 with compiler inductor using backend inductor
+Benchmarking batch size 32 with sparsity 90 and num_threads 1 with compiler inductor using backend inductor
+Benchmarking batch size 16 with sparsity 90 and num_threads 1 with compiler inductor using backend inductor
+Benchmarking batch size 8 with sparsity 90 and num_threads 1 with compiler inductor using backend inductor
+Benchmarking batch size 4 with sparsity 90 and num_threads 1 with compiler inductor using backend inductor
+Benchmarking batch size 2 with sparsity 90 and num_threads 1 with compiler inductor using backend inductor
+Benchmarking batch size 1 with sparsity 90 and num_threads 1 with compiler inductor using backend inductor
+[---------------------------------------------------------------------------- Condensed Linear @ 90 with 1 threads ----------------------------------------------------------------------------]
+                     |  Structured sparsity @ 90  |  Fine-grained + structured sparsity @ 90 with backend inductor  |  Dense benchmark - Compiled - backend inductor  |  Dense benchmark - Eager
+1 threads: -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+      1024   x 768   |           124.7            |  [31m[1m                            1771.3                           [0m[0m  |                      114.5                      |  [2m[91m         114.2         [0m[0m
+      512    x 768   |           124.1            |  [31m[1m                             896.6                           [0m[0m  |                      100.4                      |            65.2         
+      256    x 768   |           123.8            |  [2m[91m                             460.1                           [0m[0m  |  [92m[1m                     82.4                    [0m[0m  |  [92m[1m          47.3         [0m[0m
+      128    x 768   |  [92m[1m         102.8          [0m[0m  |  [2m[91m                             235.4                           [0m[0m  |  [92m[1m                     82.8                    [0m[0m  |  [92m[1m          46.8         [0m[0m
+      64     x 768   |  [34m[1m         106.0          [0m[0m  |                               133.5                             |  [92m[1m                     82.4                    [0m[0m  |  [34m[1m          47.5         [0m[0m
+      32     x 768   |  [34m[1m         104.9          [0m[0m  |  [34m[1m                             104.2                           [0m[0m  |  [92m[1m                     82.4                    [0m[0m  |  [34m[1m          47.9         [0m[0m
+      16     x 768   |  [92m[1m         103.5          [0m[0m  |  [34m[1m                             104.2                           [0m[0m  |  [34m[1m                     86.4                    [0m[0m  |  [34m[1m          51.5         [0m[0m
+      8      x 768   |  [92m[1m         103.3          [0m[0m  |  [92m[1m                             103.7                           [0m[0m  |  [34m[1m                     86.1                    [0m[0m  |  [34m[1m          50.9         [0m[0m
+      4      x 768   |  [92m[1m         103.1          [0m[0m  |  [34m[1m                             105.1                           [0m[0m  |  [34m[1m                     86.5                    [0m[0m  |  [34m[1m          51.4         [0m[0m
+      2      x 768   |  [92m[1m         103.3          [0m[0m  |  [92m[1m                             102.9                           [0m[0m  |  [34m[1m                     86.1                    [0m[0m  |            52.0         
+      1      x 768   |  [92m[1m         102.5          [0m[0m  |  [34m[1m                             105.3                           [0m[0m  |  [34m[1m                     88.6                    [0m[0m  |            53.3         
 
-More information: https://developers.google.com/protocol-buffers/docs/news/2022-05-06#python-updates
+Times are in microseconds (us).

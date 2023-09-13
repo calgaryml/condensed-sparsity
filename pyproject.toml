@@ -52,6 +52,11 @@ jupyter = "^1.0.0"
 jupytext = "^1.14.1"
 fvcore = "^0.1.5.post20221221"
 
+[tool.poetry.group.jitbackends.dependencies]
+apache-tvm= "^0.11.1"
+onnx="^1.14.1"
+onnxruntime="^1.15.1"
+
 [tool.poetry.group.computecanada.dependencies]
 certifi= "2022.9.14"
 cffi="1.15.0" 
