@@ -2,7 +2,78 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.linear import NonDynamicallyQuantizableLinear  # noqa
-from typing import Optional
+from typing import Optional, Callable
+
+
+# TODO Create factory methods for each type of condensed layer
+
+
+def _get_active_neuron_idx(weight: torch.Tensor) -> torch.Tensor:
+    # We find all-zero rows in first dimension of weight tensor
+    return weight.sum(dim=list(range(1, weight.dim()))) != 0
+
+
+def _get_fine_grained_idx(
+    weight: torch.Tensor, active_neuron_idx
+) -> torch.Tensor:
+    return (weight[active_neuron_idx] != 0).to(torch.bool)
+
+
+def _default_weight_getter(
+    module: nn.Module, attr_name: str = "weight"
+) -> torch.Tensor:
+    return getattr(module, attr_name)
+
+
+def structured_condensed_conv2d_factory(
+    module: nn.Module,
+    weight_getter: Optional[Callable] = _default_weight_getter,
+    dtype: Optional[torch.typename] = None,
+) -> nn.Conv2d:
+    if dtype is None:
+        dtype = module.weight.dtype
+    with torch.no_grad():
+        original_weight = weight_getter(module)
+        active_neuron_idx = _get_active_neuron_idx(original_weight)
+        module.weight = nn.Parameter(
+            torch.clone(original_weight[active_neuron_idx].detach().type(dtype))
+        )
+        if hasattr(module, "bias"):
+            module.bias = nn.Parameter(
+                torch.clone(module.bias[active_neuron_idx].detach().type(dtype))
+            )
+        module.out_channels = module.weight.shape[0]
+    return module
+
+
+# class StructuredCondensedConv2DFactory(nn.Module):
+#     __TARGET_TYPES: List[nn.Module] = [nn.Conv2d]
+
+#     def convert_conv2d()
+
+#     def __init__(
+#         self,
+#         module: nn.Module,
+#         weight_getter: Optional[Callable] = _default_weight_getter,
+#         dtype: Optional[torch.typename] = None,
+#     ):
+#         super().__init__()
+#         if dtype is None:
+#             dtype = module.weight.dtype
+#         with torch.no_grad():
+#             original_weight = weight_getter(module)
+#             active_neuron_idx = _get_active_neuron_idx(original_weight)
+#             module.weight = nn.Parameter(
+#                 torch.clone(original_weight[active_neuron_idx].detach().type(dtype))
+#             )
+#             if hasattr(module, "bias"):
+#                 module.bias = nn.Parameter(
+#                     torch.clone(
+#                         module.bias[active_neuron_idx].detach().type(dtype)
+#                     )
+#                 )
+
+#     def foward(self, )
 
 
 class CondensedLinearStructured(nn.Module):
