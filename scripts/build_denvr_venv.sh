@@ -13,7 +13,6 @@ echo "alias python=python3" >> ~/.bashrc && echo "alias pip=pip3" >> ~/.bashrc
 # Clone repo and cd into it
 git clone git@github.com:calgaryml/condensed-sparsity.git
 cd condensed-sparsity
-git checkout -t origin/vit-exp
 
 # Build venv
 export PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring
@@ -29,3 +28,4 @@ cp -r ~/shared/ILSVRC ~/scratch/ILSVRC
 git config --global user.name "Mike Lasby"
 git config --global user.email "mklasby@gmail.com"
 exec bash
+
