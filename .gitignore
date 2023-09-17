@@ -198,3 +198,6 @@ artifacts/
 python_subproc_tests.py
 *.pdf
 *.ps
+
+# Exclude vscode dev container docker files
+.docker/*
