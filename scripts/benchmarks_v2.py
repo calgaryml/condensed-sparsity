@@ -16,6 +16,7 @@ import gc
 from condensed_sparsity.v2.condensed_linear import (
     CondensedLinearStructured,
     CondensedLinearFineGrained,
+    VmapCondensed,
     # CondensedLinearFineGrainedSparseOp,
 )
 
@@ -48,7 +49,7 @@ def main(
             if backend in __DISABLED_BACKENDS:
                 continue
             if compiler in ["trace", "script"]:
-                backend = "N/A"
+                backend = compiler
             dynamo.reset()
             mod = mod.type(dtype)
             mod.eval()
@@ -74,15 +75,17 @@ def main(
                 x = x.to(device=device)
                 cl_struc = CondensedLinearStructured(deepcopy(mod), dtype=dtype)
                 cl_fine = CondensedLinearFineGrained(deepcopy(mod), dtype=dtype)
+                cl_vmap = VmapCondensed(deepcopy(mod), dtype=dtype)
                 # cl_sparse_op = CondensedLinearFineGrainedSparseOp(
                 #     deepcopy(mod), dtype=dtype
                 # )
-                torch.jit.enable_onednn_fusion(True)
+                # torch.jit.enable_onednn_fusion(True)
                 if compile == "trace":
                     structured_cl = torch.jit.trace(cl_struc, x)
                     fine_grained_cl = torch.jit.trace(cl_fine, x)
                     # cl_sparse_op = torch.jit.trace(cl_sparse_op, x)
                     compiled_mod = torch.jit.trace(mod, x)
+                    compiled_vmap = torch.jit.trace(cl_vmap, x)
                 elif compile == "script":
                     structured_cl = torch.jit.optimize_for_inference(
                         torch.jit.script(cl_struc, x)
@@ -93,6 +96,9 @@ def main(
                     # cl_sparse_op = torch.jit.script(cl_sparse_op, x)
                     compiled_mod = torch.jit.optimize_for_inference(
                         torch.jit.script(mod, x)
+                    )
+                    compiled_vmap = torch.jit.optimize_for_inference(
+                        torch.jit.script(cl_vmap, x)
                     )
 
                 elif compile == "inductor":
@@ -106,9 +112,9 @@ def main(
                     compiled_mod = torch.compile(
                         mod, backend=backend, **compiler_kwargs
                     )
-                # elif compile == None:
-                #     pass
-                #     # TODO: Profile with no compilation
+                    compiled_vmap = torch.compile(
+                        cl_vmap, backend=backend, **compiler_kwargs
+                    )
 
                 # Explanations of compiling for debugging
                 # (
@@ -128,19 +134,15 @@ def main(
                 # exit()
 
                 # Benchmarking begins...
+
+                # print(x.device)
+                # print(x.dtype)
+                # print(structured_cl.weight.device)
+                # print(structured_cl.weight.dtype)
+                # print(structured_cl.bias.dtype)
                 with torch.no_grad():
-                    _ = structured_cl(x)  # JIT warmup and caching
-                    results.append(
-                        benchmark.Timer(
-                            stmt="structured_cl(x)",
-                            setup="",
-                            globals={"x": x, "structured_cl": structured_cl},
-                            label=label,
-                            sub_label=sub_label,
-                            description=f"Structured sparsity @ {sparsity}",
-                            num_threads=num_threads,
-                        ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
-                    )
+                    # Uncompiled benchmarks
+                    # Structured
                     _ = cl_struc(x)  # JIT warmup and caching
                     results.append(
                         benchmark.Timer(
@@ -155,54 +157,16 @@ def main(
                             num_threads=num_threads,
                         ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
                     )
-                    _ = fine_grained_cl(x)
+                    # Vmap eager
+                    _ = cl_vmap(x)
                     results.append(
                         benchmark.Timer(
-                            stmt="fine_grained_cl(x)",
+                            stmt="cl_vmap(x)",
                             setup="",
-                            globals={
-                                "x": x,
-                                "fine_grained_cl": fine_grained_cl,
-                            },
+                            globals={"x": x, "cl_vmap": cl_vmap},
                             label=label,
                             sub_label=sub_label,
-                            description=(
-                                "Fine-grained + structured sparsity @ "
-                                f"{sparsity} with backend {backend}"
-                            ),
-                            num_threads=num_threads,
-                        ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
-                    )
-                    ## CSR Sparse Format
-                    # _ = cl_sparse_op(x)
-                    # results.append(
-                    #     benchmark.Timer(
-                    #         stmt="cl_sparse_op(x)",
-                    #         setup="",
-                    #         globals={"x": x, "cl_sparse_op": cl_sparse_op},
-                    #         label=label,
-                    #         sub_label=sub_label,
-                    #         description=(
-                    #             "structured sparsity + sparse op @ "
-                    #             f"{sparsity}"
-                    #         ),
-                    #         num_threads=num_threads,
-                    #     ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
-                    # )
-
-                    # Compiled dense benchmark
-                    _ = compiled_mod(x)
-                    results.append(
-                        benchmark.Timer(
-                            stmt="compiled_mod(x)",
-                            setup="",
-                            globals={"x": x, "compiled_mod": compiled_mod},
-                            label=label,
-                            sub_label=sub_label,
-                            description=(
-                                "Dense benchmark - Compiled - backend "
-                                f"{backend}"
-                            ),
+                            description=("Vmap - Eager"),
                             num_threads=num_threads,
                         ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
                     )
@@ -220,13 +184,104 @@ def main(
                             num_threads=num_threads,
                         ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
                     )
-
-                    ## Clean up
-                    del structured_cl
-                    del fine_grained_cl
+                    del cl_vmap
                     del cl_struc
                     del cl_fine
-                    gc.collect()
+
+                    if compile is not None:
+                        _ = structured_cl(x)  # JIT warmup and caching
+                        results.append(
+                            benchmark.Timer(
+                                stmt="structured_cl(x)",
+                                setup="",
+                                globals={
+                                    "x": x,
+                                    "structured_cl": structured_cl,
+                                },
+                                label=label,
+                                sub_label=sub_label,
+                                description=(
+                                    f"Structured sparsity @ {sparsity} "
+                                    f"with backend {backend}"
+                                ),
+                                num_threads=num_threads,
+                            ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
+                        )
+                        _ = fine_grained_cl(x)
+                        results.append(
+                            benchmark.Timer(
+                                stmt="fine_grained_cl(x)",
+                                setup="",
+                                globals={
+                                    "x": x,
+                                    "fine_grained_cl": fine_grained_cl,
+                                },
+                                label=label,
+                                sub_label=sub_label,
+                                description=(
+                                    "Fine-grained + structured sparsity @ "
+                                    f"{sparsity} with backend {backend}"
+                                ),
+                                num_threads=num_threads,
+                            ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
+                        )
+                        ## CSR Sparse Format
+                        # _ = cl_sparse_op(x)
+                        # results.append(
+                        #     benchmark.Timer(
+                        #         stmt="cl_sparse_op(x)",
+                        #         setup="",
+                        #         globals={"x": x, "cl_sparse_op": cl_sparse_op},  # noqa
+                        #         label=label,
+                        #         sub_label=sub_label,
+                        #         description=(
+                        #             "structured sparsity + sparse op @ "
+                        #             f"{sparsity}"
+                        #         ),
+                        #         num_threads=num_threads,
+                        #     ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
+                        # )
+
+                        # Vmap benchmarks
+                        _ = compiled_vmap(x)
+                        results.append(
+                            benchmark.Timer(
+                                stmt="compiled_vmap(x)",
+                                setup="",
+                                globals={
+                                    "x": x,
+                                    "compiled_vmap": compiled_vmap,
+                                },
+                                label=label,
+                                sub_label=sub_label,
+                                description=(
+                                    "Vmap - Compiled - backend " f"{backend}"
+                                ),
+                                num_threads=num_threads,
+                            ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
+                        )
+
+                        # Compiled dense benchmark
+                        _ = compiled_mod(x)
+                        results.append(
+                            benchmark.Timer(
+                                stmt="compiled_mod(x)",
+                                setup="",
+                                globals={"x": x, "compiled_mod": compiled_mod},
+                                label=label,
+                                sub_label=sub_label,
+                                description=(
+                                    "Dense benchmark - Compiled - backend "
+                                    f"{backend}"
+                                ),
+                                num_threads=num_threads,
+                            ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
+                        )
+
+                        ## Clean up
+                        del structured_cl
+                        del fine_grained_cl
+                gc.collect()
 
     compare = benchmark.Compare(results)
     f_name = (
@@ -278,7 +333,7 @@ def get_mod(run_id: str, device):
 
 if __name__ == "__main__":
 
-    dynamo.config.verbose = False
+    dynamo.config.verbose = True
     # dynamo.config.log_level = logging.INFO
     # dynamo.config.output_code = True
 
@@ -288,20 +343,20 @@ if __name__ == "__main__":
     }
 
     # for d in ["cuda:0", "cpu"]:
-    # __RUN_IDS = {90: "nrblbn15"}
-    __RUN_IDS = {90: "nrblbn15", 80: "0p0wrlb0"}
+    __RUN_IDS = {90: "nrblbn15"}
+    # __RUN_IDS = {90: "nrblbn15", 80: "0p0wrlb0"}
     # for num_threads in [1, 2, 4, 8, 16, 32]:
     for num_threads in [32]:
-        for compiler in ["script", "trace", "inductor"]:
-            # for compiler in ["inductor"]:
+        # for compiler in ["script", "trace", "inductor"]:
+        for compiler in ["inductor"]:
             # for d in ["gpu"]:
             for d in ["cpu", "gpu"]:
                 if d == "cpu":
                     device = torch.device("cpu")
-                    cuda = True
+                    cuda = False
                 else:
                     device = torch.device("cuda")
-                    cuda = False
+                    cuda = True
                 mods, sparsities = [], []
 
                 for sparsity, run_id in __RUN_IDS.items():
