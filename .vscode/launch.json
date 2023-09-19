@@ -46,7 +46,7 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "justMyCode": true,
+            "justMyCode": false,
         },
         {
             "name": "Resnet50x5",

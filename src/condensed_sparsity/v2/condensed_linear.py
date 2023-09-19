@@ -2,7 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.linear import NonDynamicallyQuantizableLinear  # noqa
-from typing import Optional, Callable
+from typing import Any, Optional, Callable  # noqa
+from functools import partial  # noqa
 
 
 # TODO Create factory methods for each type of condensed layer
@@ -277,6 +278,143 @@ class CondensedLinearFineGrainedSparseOp(nn.Module):
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         return F.linear(input, self.sparse_weight, self.bias)
+
+
+class VmapCondensed(nn.Module):
+    def __init__(
+        self, module: nn.Module, dtype: Optional[torch.typename] = None
+    ):
+        super().__init__()
+        if dtype is None:
+            dtype = module.weight.dtype
+        with torch.no_grad():
+            active_neuron_idx = module.weight.sum(dim=1) != 0
+            fine_grained_idx = (module.weight[active_neuron_idx] != 0).to(
+                torch.bool
+            )
+            _, self.input_mask = fine_grained_idx.nonzero(as_tuple=True)
+            self.input_mask = self.input_mask.reshape(
+                shape=(module.weight[active_neuron_idx].shape[0], -1)
+            )
+            weight = module.weight[active_neuron_idx].detach().type(dtype)
+            self.condensed_weight = nn.Parameter(
+                torch.clone(
+                    weight[fine_grained_idx]
+                    .reshape(shape=(weight.shape[0], -1))
+                    .detach()
+                    .type(dtype)
+                ),
+                requires_grad=False,
+            )
+            if hasattr(module, "bias"):
+                self.bias = nn.Parameter(
+                    torch.clone(
+                        module.bias[active_neuron_idx].detach().type(dtype)
+                    ),
+                    requires_grad=False,
+                )
+            else:
+                self.register_parameter("bias", None)
+
+    def forward(self, input: torch.Tensor):
+        return forward_fast(
+            input, self.condensed_weight, self.bias, self.input_mask
+        )
+
+
+class forward_neuron_single:
+    def __init__(self, input: torch.Tensor) -> torch.Tensor:
+        self.input = input
+
+    def __call__(self, weights, indices: torch.Tensor) -> torch.Tensor:
+        return torch.sum(self.input[indices] * weights)
+
+
+class forward_neuron_v:
+    def __init__(
+        self,
+        weights: torch.Tensor,
+        bias: torch.Tensor,
+        indx_seqs: torch.LongTensor,
+    ) -> torch.Tensor:
+        self.weights = weights
+        self.bias = bias
+        self.indx_seqs = indx_seqs
+
+    def __call__(self, input: torch.Tensor) -> torch.Tensor:
+        return (
+            torch.vmap(forward_neuron_single(input), in_dims=0, out_dims=0)(
+                self.weights, self.indx_seqs
+            )
+            + self.bias
+        )
+
+
+class forward_neuron:
+    def __init__(
+        self,
+        weights: torch.Tensor,
+        bias: torch.Tensor,
+        indx_seqs: torch.LongTensor,
+    ):
+        self.weights = weights
+        self.bias = bias
+        self.indx_seqs = indx_seqs
+
+    def __call__(self, input: torch.Tensor) -> torch.Tensor:
+        return torch.vmap(
+            forward_neuron_v(self.weights, self.bias, self.indx_seqs)
+        )(input)
+
+
+def forward_sparsity_single(
+    input: torch.Tensor, weights: torch.Tensor, indices: torch.LongTensor
+) -> torch.Tensor:
+    return input[indices] * weights
+
+
+def forward_sparsity_v(
+    input: torch.Tensor,
+    weights: torch.Tensor,
+    bias: torch.Tensor,
+    indx_seqs: torch.LongTensor,
+) -> torch.Tensor:
+    output_neurons = torch.vmap(
+        lambda w, idx: forward_sparsity_single(
+            input=input, weights=w, indx_seqs=idx
+        ),
+        in_dims=1,
+        out_dims=1,
+    )(weights, indx_seqs)
+    return torch.sum(output_neurons, axis=1) + bias
+
+
+def forward_sparsity(
+    input: torch.Tensor,
+    weights: torch.Tensor,
+    bias: torch.Tensor,
+    indx_seqs: torch.LongTensor,
+) -> torch.Tensor:
+    return torch.vmap(
+        lambda i: forward_sparsity_v(
+            input=i, weights=weights, bias=bias, indx_seqs=indx_seqs
+        )
+    )(input)
+
+
+def forward_fast(
+    input: torch.Tensor,
+    weights: torch.Tensor,
+    bias: torch.Tensor,
+    indx_seqs: torch.LongTensor,
+) -> torch.Tensor:
+    return forward_neuron(weights, bias, indx_seqs)(input)
+    # if number of neurons is greater than sparsity, vmap over neurons
+    if weights.shape[0] > weights.shape[1]:
+        return forward_neuron(input, weights, bias, indx_seqs)
+    # otherwise vmap over sparsity
+    else:
+        return forward_sparsity(input, weights, bias, indx_seqs)
 
 
 ## TODO: Can use these with torch.compile, but not TorchScript. See: https://pytorch.org/docs/stable/jit_language_reference.html#:~:text=No%20support%20for%20inheritance%20or%20any%20other%20polymorphism%20strategy%2C%20except%20for%20inheriting%20from%20object%20to%20specify%20a%20new%2Dstyle%20class.  # noqa
