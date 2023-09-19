@@ -40,6 +40,9 @@ jobs:
       - name: Lint with Flake8
         run: poetry run python -m flake8 .
 
+      - name: Setup mock env
+        run: export BASE_PATH="./"
+
       - name: Test with pytest
         run: poetry run python -m pytest tests -vs
 
