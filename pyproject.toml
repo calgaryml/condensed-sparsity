@@ -40,6 +40,7 @@ gcsfs = "^2022.11.0"
 cython = "^3.0.0"
 jaxlib = {version="^0.4.16+cuda12.cudnn89", source="jax_repo"}
 jax = {version="^0.4.16", extras=["cuda12_pip"]}
+flax = "^0.7.4"
 
 [[tool.poetry.source]]
 name="torch_repo"
