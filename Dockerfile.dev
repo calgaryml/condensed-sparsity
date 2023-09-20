@@ -4,7 +4,8 @@
 ARG USERNAME=user
 ARG WORKSPACE_DIR=/home/user/condensed-sparsity
 
-FROM pytorch/pytorch:1.13.1-cuda11.6-cudnn8-devel AS pytorch-base
+# FROM pytorch/pytorch:1.13.1-cuda11.6-cudnn8-devel AS pytorch-base
+FROM pytorch/pytorch:2.0.1-cuda11.7-cudnn8-devel AS pytorch-base
 ARG USERNAME
 ARG WORKSPACE_DIR
 
@@ -39,7 +40,7 @@ ARG WORKSPACE_DIR
 
 # Install git/ssh/tmux
 RUN apt-get update \
-    && apt-get install -y git ssh tmux vim curl htop sudo
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y git ssh tmux vim curl htop sudo
 
 RUN echo ${USERNAME} ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/${USERNAME} \
     && chmod 0440 /etc/sudoers.d/${USERNAME}
