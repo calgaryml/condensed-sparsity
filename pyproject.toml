@@ -38,8 +38,8 @@ xmanager="^0.3"
 gcsfs = "^2022.11.0"
 # sparseprop = "^0.1.11" # Install with pip. Build script is not PEP517 compliant. 
 cython = "^3.0.0"
-jaxlib = {version="^0.4.16+cuda12.cudnn89", source="jax_repo"}
-jax = {version="^0.4.16", extras=["cuda12_pip"]}
+jaxlib = {version="^0.4.16+cuda11.cudnn86", source="jax_repo"}
+jax = {version="^0.4.16", extras=["cuda11_pip"]}
 flax = "^0.7.4"
 
 [[tool.poetry.source]]
