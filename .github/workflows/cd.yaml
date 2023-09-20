@@ -42,7 +42,7 @@ jobs:
         run: poetry run python -m flake8 .
 
       - name: Setup mock env
-        run: export BASE_PATH="./"
+        run: echo "BASE_PATH='./'" >> "$GITHUB_ENV"
 
       - name: Test with pytest
         run: poetry run python -m pytest tests -vs
