@@ -1,0 +1,387 @@
+/home/user/condensed-sparsity/src/condensed_sparsity/v2/condensed_linear.py:142: UserWarning: Sparse CSR tensor support is in beta state. If you miss a functionality in the sparse tensor support, please submit a feature request to https://github.com/pytorch/pytorch/issues. (Triggered internally at ../aten/src/ATen/SparseCsrTensorImpl.cpp:54.)
+  torch.clone(self.weight.detach().type(dtype).to_sparse_csr()),
+Condensed Linear @ 90 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 90 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 90 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 90 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 90 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 90 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 90 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 90 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 90 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 90 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 90 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 90 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 80 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 80 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 80 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 80 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 80 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 80 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 80 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 80 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 80 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 80 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 80 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 80 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+[----------------------------------------------------------------------------------------------------- Condensed Linear @ 90 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32 -----------------------------------------------------------------------------------------------------]
+                     |  Structured sparsity @ 90 - eager mode  |  Vmap - Eager  |  Dense benchmark - Eager  |  Fine-grained + structured sparsity @ 90 eager  |  Structured sparsity @ 90 with backend inductor  |  Fine-grained + structured sparsity @ 90 with backend inductor  |  Dense benchmark - Compiled - backend inductor
+1 threads: ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+      2048   x 768   |  [31m[1m               20083.6               [0m[0m  |  [31m[1m 4956438.6  [0m[0m  |  [31m[1m        51845.2        [0m[0m  |  [31m[1m                  5500508.0                  [0m[0m  |  [31m[1m                   20246.6                    [0m[0m  |  [31m[1m                           31491.3                           [0m[0m  |  [31m[1m                   52736.8                   [0m[0m
+      1024   x 768   |  [31m[1m                9871.4               [0m[0m  |  [31m[1m 2543362.7  [0m[0m  |  [31m[1m        25853.3        [0m[0m  |  [31m[1m                  2532147.6                  [0m[0m  |  [31m[1m                   10070.7                    [0m[0m  |  [31m[1m                           19659.4                           [0m[0m  |  [31m[1m                   26906.9                   [0m[0m
+      512    x 768   |  [31m[1m                5130.5               [0m[0m  |  [31m[1m 1200887.1  [0m[0m  |  [31m[1m        13538.9        [0m[0m  |  [31m[1m                  1193210.8                  [0m[0m  |  [31m[1m                    5131.9                    [0m[0m  |  [31m[1m                           10433.5                           [0m[0m  |  [31m[1m                   13112.3                   [0m[0m
+      256    x 768   |  [31m[1m                2585.4               [0m[0m  |  [31m[1m  599869.0  [0m[0m  |  [31m[1m         6524.3        [0m[0m  |  [31m[1m                   597940.4                  [0m[0m  |  [31m[1m                    2750.0                    [0m[0m  |  [31m[1m                            5223.9                           [0m[0m  |  [31m[1m                    6915.2                   [0m[0m
+      128    x 768   |  [31m[1m                1424.6               [0m[0m  |  [31m[1m  230163.3  [0m[0m  |  [31m[1m         3546.3        [0m[0m  |  [31m[1m                   230541.9                  [0m[0m  |  [31m[1m                    1419.1                    [0m[0m  |  [31m[1m                            2423.7                           [0m[0m  |  [31m[1m                    3808.0                   [0m[0m
+      64     x 768   |  [31m[1m                 823.4               [0m[0m  |  [31m[1m   89438.1  [0m[0m  |  [31m[1m         2059.7        [0m[0m  |  [31m[1m                    88363.7                  [0m[0m  |  [2m[91m                     879.5                    [0m[0m  |  [31m[1m                            1415.4                           [0m[0m  |  [31m[1m                    2092.5                   [0m[0m
+      32     x 768   |  [2m[91m                 500.7               [0m[0m  |  [31m[1m   43959.8  [0m[0m  |  [2m[91m         1284.5        [0m[0m  |  [31m[1m                    44193.8                  [0m[0m  |  [2m[91m                     599.3                    [0m[0m  |  [31m[1m                             771.6                           [0m[0m  |  [2m[91m                    1327.5                   [0m[0m
+      16     x 768   |  [2m[91m                 356.6               [0m[0m  |  [31m[1m   21676.1  [0m[0m  |  [2m[91m          894.9        [0m[0m  |  [31m[1m                    20835.6                  [0m[0m  |  [2m[91m                     412.1                    [0m[0m  |  [2m[91m                             480.2                           [0m[0m  |  [2m[91m                     950.4                   [0m[0m
+      8      x 768   |  [2m[91m                 466.3               [0m[0m  |  [31m[1m    9966.8  [0m[0m  |  [2m[91m         1243.7        [0m[0m  |  [31m[1m                     9929.2                  [0m[0m  |  [2m[91m                     539.1                    [0m[0m  |  [2m[91m                             284.1                           [0m[0m  |  [2m[91m                    1131.8                   [0m[0m
+      4      x 768   |                   235.0                 |  [2m[91m    4968.9  [0m[0m  |  [2m[91m          729.1        [0m[0m  |  [2m[91m                     5112.9                  [0m[0m  |                       364.3                      |                               175.8                             |  [2m[91m                     650.4                   [0m[0m
+      2      x 768   |  [34m[1m                 130.6               [0m[0m  |      2615.8    |  [34m[1m          318.8        [0m[0m  |                       2461.9                    |  [34m[1m                     195.3                    [0m[0m  |                               124.5                             |  [34m[1m                     350.4                   [0m[0m
+      1      x 768   |  [92m[1m                 120.0               [0m[0m  |  [92m[1m    1402.3  [0m[0m  |  [92m[1m          295.6        [0m[0m  |  [92m[1m                     1266.5                  [0m[0m  |  [92m[1m                     189.2                    [0m[0m  |  [92m[1m                              98.9                           [0m[0m  |  [92m[1m                     319.9                   [0m[0m
+
+Times are in microseconds (us).
+
+[----------------------------------------------------------------------------------------------------- Condensed Linear @ 80 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32 -----------------------------------------------------------------------------------------------------]
+                     |  Structured sparsity @ 80 - eager mode  |  Vmap - Eager  |  Dense benchmark - Eager  |  Fine-grained + structured sparsity @ 80 eager  |  Structured sparsity @ 80 with backend inductor  |  Fine-grained + structured sparsity @ 80 with backend inductor  |  Dense benchmark - Compiled - backend inductor
+1 threads: ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+      2048   x 768   |  [31m[1m               20235.4               [0m[0m  |  [31m[1m 9386583.0  [0m[0m  |  [31m[1m        52996.8        [0m[0m  |  [31m[1m                  9348884.1                  [0m[0m  |  [31m[1m                   21124.1                    [0m[0m  |  [31m[1m                           80771.7                           [0m[0m  |  [31m[1m                   56988.7                   [0m[0m
+      1024   x 768   |  [31m[1m               10501.5               [0m[0m  |  [31m[1m 5260956.3  [0m[0m  |  [31m[1m        26102.3        [0m[0m  |  [31m[1m                  4899476.5                  [0m[0m  |  [31m[1m                   10383.1                    [0m[0m  |  [31m[1m                           42327.1                           [0m[0m  |  [31m[1m                   25382.2                   [0m[0m
+      512    x 768   |  [31m[1m                5190.9               [0m[0m  |  [31m[1m 2399994.9  [0m[0m  |  [31m[1m        13338.9        [0m[0m  |  [31m[1m                  2380084.7                  [0m[0m  |  [31m[1m                    5321.7                    [0m[0m  |  [31m[1m                           20256.6                           [0m[0m  |  [31m[1m                   13481.3                   [0m[0m
+      256    x 768   |  [31m[1m                2815.8               [0m[0m  |  [31m[1m 1202192.2  [0m[0m  |  [31m[1m         6957.9        [0m[0m  |  [31m[1m                  1199729.5                  [0m[0m  |  [31m[1m                    2874.7                    [0m[0m  |  [31m[1m                            9834.6                           [0m[0m  |  [31m[1m                    7084.4                   [0m[0m
+      128    x 768   |  [31m[1m                1514.0               [0m[0m  |  [31m[1m  607913.9  [0m[0m  |  [31m[1m         3854.6        [0m[0m  |  [31m[1m                   608915.5                  [0m[0m  |  [31m[1m                    1583.3                    [0m[0m  |  [31m[1m                            6162.3                           [0m[0m  |  [31m[1m                    3686.7                   [0m[0m
+      64     x 768   |  [31m[1m                 858.0               [0m[0m  |  [31m[1m  231954.0  [0m[0m  |  [31m[1m         2091.9        [0m[0m  |  [31m[1m                   232128.3                  [0m[0m  |  [2m[91m                     936.6                    [0m[0m  |  [31m[1m                            2177.6                           [0m[0m  |  [31m[1m                    2160.3                   [0m[0m
+      32     x 768   |  [2m[91m                 534.8               [0m[0m  |  [31m[1m   91737.8  [0m[0m  |  [2m[91m         1405.3        [0m[0m  |  [31m[1m                    92471.3                  [0m[0m  |  [2m[91m                     627.0                    [0m[0m  |  [31m[1m                            1432.3                           [0m[0m  |  [2m[91m                    1352.4                   [0m[0m
+      16     x 768   |  [2m[91m                 380.2               [0m[0m  |  [31m[1m   46203.3  [0m[0m  |  [2m[91m          966.3        [0m[0m  |  [31m[1m                    46848.5                  [0m[0m  |  [2m[91m                     484.0                    [0m[0m  |  [31m[1m                             865.7                           [0m[0m  |  [2m[91m                     959.1                   [0m[0m
+      8      x 768   |  [2m[91m                 429.6               [0m[0m  |  [31m[1m   20621.1  [0m[0m  |  [2m[91m         1095.5        [0m[0m  |  [31m[1m                    20559.0                  [0m[0m  |  [2m[91m                     523.5                    [0m[0m  |  [2m[91m                             450.7                           [0m[0m  |  [2m[91m                    1203.1                   [0m[0m
+      4      x 768   |                   245.1                 |  [2m[91m    9932.8  [0m[0m  |            669.0          |  [2m[91m                     9801.4                  [0m[0m  |                       313.6                      |  [2m[91m                             258.8                           [0m[0m  |  [2m[91m                     815.3                   [0m[0m
+      2      x 768   |                   163.9                 |      5029.7    |  [34m[1m          405.9        [0m[0m  |  [2m[91m                     4914.8                  [0m[0m  |  [34m[1m                     231.4                    [0m[0m  |                               152.8                             |                       438.0                   
+      1      x 768   |  [92m[1m                 147.0               [0m[0m  |  [92m[1m    2626.5  [0m[0m  |  [92m[1m          369.2        [0m[0m  |  [92m[1m                     2454.9                  [0m[0m  |  [92m[1m                     213.0                    [0m[0m  |  [92m[1m                             115.6                           [0m[0m  |  [92m[1m                     347.9                   [0m[0m
+
+Times are in microseconds (us).
+/home/user/build/.venv/lib/python3.10/site-packages/torch/_inductor/compile_fx.py:90: UserWarning: TensorFloat32 tensor cores for float32 matrix multiplication available but not enabled. Consider setting `torch.set_float32_matmul_precision('high')` for better performance.
+  warnings.warn(
+AUTOTUNE bias_addmm(2048x1145, 2048x768, 768x1145)
+  bias_addmm 0.2007s 100.0%
+  addmm 0.2017s 99.5%
+  triton_mm_7 0.3717s 54.0%
+  triton_mm_4 0.4065s 49.4%
+  triton_mm_2 0.4065s 49.4%
+  triton_mm_3 0.4178s 48.0%
+  triton_mm_1 0.4178s 48.0%
+  triton_mm_0 0.4956s 40.5%
+  triton_mm_10 0.5448s 36.8%
+  triton_mm_8 0.8837s 22.7%
+AUTOTUNE bias_addmm(1024x1145, 1024x768, 768x1145)
+  addmm 0.1106s 100.0%
+  bias_addmm 0.1106s 100.0%
+  triton_mm_19 0.1894s 58.4%
+  triton_mm_14 0.2048s 54.0%
+  triton_mm_16 0.2058s 53.7%
+  triton_mm_13 0.2109s 52.4%
+  triton_mm_15 0.2109s 52.4%
+  triton_mm_12 0.2898s 38.2%
+  triton_mm_22 0.3123s 35.4%
+  triton_mm_23 0.4567s 24.2%
+AUTOTUNE bias_addmm(512x1145, 512x768, 768x1145)
+  bias_addmm 0.0604s 100.0%
+  addmm 0.0645s 93.7%
+  triton_mm_28 0.1058s 57.1%
+  triton_mm_26 0.1065s 56.7%
+  triton_mm_27 0.1085s 55.7%
+  triton_mm_25 0.1085s 55.7%
+  triton_mm_24 0.1475s 41.0%
+  triton_mm_34 0.1638s 36.9%
+  triton_mm_31 0.1833s 33.0%
+  triton_mm_35 0.2386s 25.3%
+AUTOTUNE bias_addmm(256x1145, 256x768, 768x1145)
+  bias_addmm 0.0420s 100.0%
+  addmm 0.0420s 100.0%
+  triton_mm_36 0.0952s 44.1%
+  triton_mm_38 0.1055s 39.8%
+  triton_mm_40 0.1055s 39.8%
+  triton_mm_46 0.1055s 39.8%
+  triton_mm_39 0.1085s 38.7%
+  triton_mm_37 0.1085s 38.7%
+  triton_mm_44 0.1321s 31.8%
+  triton_mm_47 0.1372s 30.6%
+AUTOTUNE bias_addmm(128x1145, 128x768, 768x1145)
+  bias_addmm 0.0276s 100.0%
+  addmm 0.0276s 100.0%
+  triton_mm_59 0.0768s 36.0%
+  triton_mm_54 0.0768s 36.0%
+  triton_mm_53 0.0778s 35.5%
+  triton_mm_57 0.0819s 33.8%
+  triton_mm_48 0.0942s 29.3%
+  triton_mm_50 0.1044s 26.5%
+  triton_mm_52 0.1044s 26.5%
+  triton_mm_58 0.1055s 26.2%
+AUTOTUNE bias_addmm(64x1145, 64x768, 768x1145)
+  addmm 0.0246s 100.0%
+  bias_addmm 0.0256s 96.0%
+  triton_mm_69 0.0440s 55.8%
+  triton_mm_71 0.0614s 40.0%
+  triton_mm_66 0.0768s 32.0%
+  triton_mm_65 0.0768s 32.0%
+  triton_mm_60 0.0942s 26.1%
+  triton_mm_70 0.1055s 23.3%
+  triton_mm_64 0.1055s 23.3%
+  triton_mm_62 0.1055s 23.3%
+AUTOTUNE bias_addmm(32x1145, 32x768, 768x1145)
+  addmm 0.0184s 100.0%
+  bias_addmm 0.0184s 100.0%
+  triton_mm_81 0.0440s 41.9%
+  triton_mm_83 0.0614s 30.0%
+  triton_mm_77 0.0768s 24.0%
+  triton_mm_78 0.0770s 23.9%
+  triton_mm_72 0.0942s 19.6%
+  triton_mm_82 0.1055s 17.5%
+  triton_mm_74 0.1055s 17.5%
+  triton_mm_76 0.1055s 17.5%
+AUTOTUNE bias_addmm(16x1145, 16x768, 768x1145)
+  bias_addmm 0.0174s 100.0%
+  addmm 0.0184s 94.4%
+  triton_mm_93 0.0440s 39.5%
+  triton_mm_95 0.0614s 28.3%
+  triton_mm_89 0.0768s 22.7%
+  triton_mm_90 0.0768s 22.7%
+  triton_mm_84 0.0935s 18.6%
+  triton_mm_94 0.1055s 16.5%
+  triton_mm_88 0.1055s 16.5%
+  triton_mm_86 0.1055s 16.5%
+AUTOTUNE bias_addmm(8x1145, 8x768, 768x1145)
+  bias_addmm 0.0164s 100.0%
+  addmm 0.0184s 88.9%
+  triton_mm_105 0.0440s 37.2%
+  triton_mm_107 0.0614s 26.7%
+  triton_mm_101 0.0768s 21.3%
+  triton_mm_102 0.0768s 21.3%
+  triton_mm_96 0.0942s 17.4%
+  triton_mm_106 0.1055s 15.5%
+  triton_mm_98 0.1055s 15.5%
+  triton_mm_100 0.1055s 15.5%
+AUTOTUNE bias_addmm(4x1145, 4x768, 768x1145)
+  bias_addmm 0.0164s 100.0%
+  addmm 0.0184s 88.9%
+  triton_mm_117 0.0430s 38.1%
+  triton_mm_119 0.0604s 27.1%
+  triton_mm_114 0.0758s 21.6%
+  triton_mm_113 0.0758s 21.6%
+  triton_mm_108 0.0942s 17.4%
+  triton_mm_118 0.1034s 15.8%
+  triton_mm_110 0.1055s 15.5%
+  triton_mm_112 0.1055s 15.5%
+AUTOTUNE bias_addmm(2x1145, 2x768, 768x1145)
+  bias_addmm 0.0123s 100.0%
+  addmm 0.0154s 80.0%
+  triton_mm_129 0.0440s 27.9%
+  triton_mm_131 0.0614s 20.0%
+  triton_mm_126 0.0758s 16.2%
+  triton_mm_125 0.0758s 16.2%
+  triton_mm_120 0.0932s 13.2%
+  triton_mm_130 0.1024s 12.0%
+  triton_mm_123 0.1055s 11.7%
+  triton_mm_121 0.1055s 11.7%
+AUTOTUNE bias_addmm(1x1145, 1x768, 768x1145)
+  addmm 0.0133s 100.0%
+  bias_addmm 0.0172s 77.6%
+  triton_mm_141 0.0440s 30.2%
+  triton_mm_143 0.0614s 21.7%
+  triton_mm_138 0.0759s 17.5%
+  triton_mm_137 0.0768s 17.3%
+  triton_mm_132 0.0942s 14.1%
+  triton_mm_142 0.1034s 12.9%
+  triton_mm_134 0.1055s 12.6%
+  triton_mm_136 0.1055s 12.6%
+AUTOTUNE bias_addmm(2048x1224, 2048x768, 768x1224)
+  addmm 0.2222s 100.0%
+  bias_addmm 0.2222s 100.0%
+  triton_mm_151 0.3809s 58.3%
+  triton_mm_148 0.4147s 53.6%
+  triton_mm_146 0.4147s 53.6%
+  triton_mm_145 0.4157s 53.4%
+  triton_mm_147 0.4157s 53.4%
+  triton_mm_144 0.5786s 38.4%
+  triton_mm_154 0.6328s 35.1%
+  triton_mm_155 0.9923s 22.4%
+AUTOTUNE bias_addmm(1024x1224, 1024x768, 768x1224)
+  bias_addmm 0.1137s 100.0%
+  addmm 0.1178s 96.5%
+  triton_mm_163 0.1935s 58.7%
+  triton_mm_158 0.2089s 54.4%
+  triton_mm_160 0.2099s 54.1%
+  triton_mm_159 0.2099s 54.1%
+  triton_mm_157 0.2109s 53.9%
+  triton_mm_156 0.3000s 37.9%
+  triton_mm_166 0.3205s 35.5%
+  triton_mm_164 0.5120s 22.2%
+AUTOTUNE bias_addmm(512x1224, 512x768, 768x1224)
+  bias_addmm 0.0614s 100.0%
+  addmm 0.0655s 93.7%
+  triton_mm_170 0.1065s 57.7%
+  triton_mm_172 0.1065s 57.7%
+  triton_mm_169 0.1065s 57.7%
+  triton_mm_171 0.1075s 57.1%
+  triton_mm_168 0.1516s 40.5%
+  triton_mm_178 0.1649s 37.3%
+  triton_mm_175 0.1884s 32.6%
+  triton_mm_176 0.2580s 23.8%
+AUTOTUNE bias_addmm(256x1224, 256x768, 768x1224)
+  bias_addmm 0.0379s 100.0%
+  addmm 0.0430s 88.2%
+  triton_mm_180 0.0952s 39.8%
+  triton_mm_184 0.1044s 36.3%
+  triton_mm_182 0.1044s 36.3%
+  triton_mm_181 0.1055s 36.0%
+  triton_mm_183 0.1055s 36.0%
+  triton_mm_190 0.1065s 35.6%
+  triton_mm_188 0.1321s 28.7%
+  triton_mm_191 0.1382s 27.4%
+AUTOTUNE bias_addmm(128x1224, 128x768, 768x1224)
+  bias_addmm 0.0276s 100.0%
+  addmm 0.0285s 96.9%
+  triton_mm_203 0.0768s 36.0%
+  triton_mm_198 0.0778s 35.5%
+  triton_mm_197 0.0778s 35.5%
+  triton_mm_201 0.0820s 33.7%
+  triton_mm_192 0.0942s 29.3%
+  triton_mm_194 0.1044s 26.5%
+  triton_mm_195 0.1044s 26.5%
+  triton_mm_196 0.1045s 26.5%
+AUTOTUNE bias_addmm(64x1224, 64x768, 768x1224)
+  bias_addmm 0.0215s 100.0%
+  addmm 0.0256s 84.0%
+  triton_mm_213 0.0440s 48.8%
+  triton_mm_215 0.0614s 35.0%
+  triton_mm_210 0.0768s 28.0%
+  triton_mm_209 0.0778s 27.6%
+  triton_mm_204 0.0942s 22.8%
+  triton_mm_205 0.1044s 20.6%
+  triton_mm_207 0.1044s 20.6%
+  triton_mm_214 0.1055s 20.4%
+AUTOTUNE bias_addmm(32x1224, 32x768, 768x1224)
+  bias_addmm 0.0174s 100.0%
+  addmm 0.0195s 89.5%
+  triton_mm_225 0.0440s 39.5%
+  triton_mm_227 0.0614s 28.3%
+  triton_mm_221 0.0768s 22.7%
+  triton_mm_222 0.0768s 22.7%
+  triton_mm_216 0.0942s 18.5%
+  triton_mm_219 0.1044s 16.7%
+  triton_mm_217 0.1044s 16.7%
+  triton_mm_226 0.1044s 16.7%
+AUTOTUNE bias_addmm(16x1224, 16x768, 768x1224)
+  bias_addmm 0.0184s 100.0%
+  addmm 0.0184s 100.0%
+  triton_mm_237 0.0440s 41.9%
+  triton_mm_239 0.0614s 30.0%
+  triton_mm_233 0.0768s 24.0%
+  triton_mm_234 0.0768s 24.0%
+  triton_mm_228 0.0942s 19.6%
+  triton_mm_229 0.1044s 17.6%
+  triton_mm_231 0.1044s 17.6%
+  triton_mm_238 0.1055s 17.5%
+AUTOTUNE bias_addmm(8x1224, 8x768, 768x1224)
+  bias_addmm 0.0164s 100.0%
+  addmm 0.0184s 88.9%
+  triton_mm_249 0.0440s 37.2%
+  triton_mm_251 0.0614s 26.7%
+  triton_mm_246 0.0768s 21.3%
+  triton_mm_245 0.0768s 21.3%
+  triton_mm_240 0.0932s 17.6%
+  triton_mm_241 0.1044s 15.7%
+  triton_mm_243 0.1044s 15.7%
+  triton_mm_250 0.1047s 15.7%
+AUTOTUNE bias_addmm(4x1224, 4x768, 768x1224)
+  bias_addmm 0.0164s 100.0%
+  addmm 0.0184s 88.9%
+  triton_mm_261 0.0440s 37.2%
+  triton_mm_263 0.0614s 26.7%
+  triton_mm_258 0.0768s 21.3%
+  triton_mm_257 0.0768s 21.3%
+  triton_mm_252 0.0942s 17.4%
+  triton_mm_262 0.1034s 15.8%
+  triton_mm_255 0.1044s 15.7%
+  triton_mm_253 0.1052s 15.6%
+AUTOTUNE bias_addmm(2x1224, 2x768, 768x1224)
+  bias_addmm 0.0133s 100.0%
+  addmm 0.0154s 86.7%
+  triton_mm_273 0.0430s 31.0%
+  triton_mm_275 0.0604s 22.0%
+  triton_mm_269 0.0758s 17.6%
+  triton_mm_270 0.0758s 17.6%
+  triton_mm_264 0.0932s 14.3%
+  triton_mm_274 0.1033s 12.9%
+  triton_mm_267 0.1034s 12.9%
+  triton_mm_265 0.1044s 12.7%
+AUTOTUNE bias_addmm(1x1224, 1x768, 768x1224)
+  addmm 0.0133s 100.0%
+  bias_addmm 0.0164s 81.2%
+  triton_mm_285 0.0440s 30.2%
+  triton_mm_287 0.0604s 22.0%
+  triton_mm_282 0.0758s 17.6%
+  triton_mm_281 0.0768s 17.3%
+  triton_mm_276 0.0942s 14.1%
+  triton_mm_286 0.1034s 12.9%
+  triton_mm_278 0.1065s 12.5%
+  triton_mm_280 0.1065s 12.5%
+
+Condensed Linear @ 90 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 90 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 90 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 90 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 90 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 90 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 90 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 90 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 90 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 90 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 90 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 90 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 80 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 80 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 80 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 80 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 80 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 80 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 80 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 80 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 80 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 80 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 80 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+Condensed Linear @ 80 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32
+[----------------------------------------------------------------------------------------------------- Condensed Linear @ 90 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32 -----------------------------------------------------------------------------------------------------]
+                     |  Structured sparsity @ 90 - eager mode  |  Vmap - Eager  |  Dense benchmark - Eager  |  Fine-grained + structured sparsity @ 90 eager  |  Structured sparsity @ 90 with backend inductor  |  Fine-grained + structured sparsity @ 90 with backend inductor  |  Dense benchmark - Compiled - backend inductor
+1 threads: ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+      2048   x 768   |  [31m[1m                227.6                [0m[0m  |  [31m[1m  11651.5   [0m[0m  |  [31m[1m         565.2         [0m[0m  |  [31m[1m                   11640.5                   [0m[0m  |  [2m[91m                    247.0                     [0m[0m  |  [31m[1m                            3447.2                           [0m[0m  |  [31m[1m                    563.8                    [0m[0m
+      1024   x 768   |  [31m[1m                128.8                [0m[0m  |  [31m[1m   5844.7   [0m[0m  |  [31m[1m         286.1         [0m[0m  |  [31m[1m                    5844.0                   [0m[0m  |  [2m[91m                    132.5                     [0m[0m  |  [31m[1m                            1757.1                           [0m[0m  |  [31m[1m                    287.5                    [0m[0m
+      512    x 768   |  [2m[91m                 62.9                [0m[0m  |  [31m[1m   2951.4   [0m[0m  |  [31m[1m         146.2         [0m[0m  |  [31m[1m                    2944.0                   [0m[0m  |                       72.4                       |  [31m[1m                             906.2                           [0m[0m  |  [2m[91m                    148.0                    [0m[0m
+      256    x 768   |  [2m[91m                 40.9                [0m[0m  |  [31m[1m   1485.2   [0m[0m  |  [2m[91m          82.0         [0m[0m  |  [31m[1m                    1486.3                   [0m[0m  |  [34m[1m                     66.6                     [0m[0m  |  [31m[1m                             461.5                           [0m[0m  |                       82.4                    
+      128    x 768   |                   25.5                  |  [2m[91m    755.3   [0m[0m  |  [2m[91m          52.7         [0m[0m  |  [31m[1m                     756.2                   [0m[0m  |                       69.2                       |  [2m[91m                             251.6                           [0m[0m  |                       52.7                    
+      64     x 768   |                   27.7                  |  [2m[91m    390.4   [0m[0m  |            35.5           |  [31m[1m                     390.0                   [0m[0m  |  [34m[1m                     63.8                     [0m[0m  |  [2m[91m                             125.9                           [0m[0m  |  [34m[1m                     49.3                    [0m[0m
+      32     x 768   |                   27.0                  |      206.1     |            28.8           |  [2m[91m                     206.1                   [0m[0m  |  [34m[1m                     63.9                     [0m[0m  |  [34m[1m                              65.7                           [0m[0m  |                       52.9                    
+      16     x 768   |                   27.8                  |  [34m[1m    185.0   [0m[0m  |            28.9           |  [2m[91m                     112.9                   [0m[0m  |  [34m[1m                     65.2                     [0m[0m  |  [92m[1m                              62.7                           [0m[0m  |                       50.7                    
+      8      x 768   |                   27.8                  |  [34m[1m    178.4   [0m[0m  |            28.9           |                        63.7                     |  [92m[1m                     63.0                     [0m[0m  |  [92m[1m                              62.8                           [0m[0m  |                       50.4                    
+      4      x 768   |                   27.4                  |  [92m[1m    173.9   [0m[0m  |  [92m[1m          24.6         [0m[0m  |  [34m[1m                      51.3                   [0m[0m  |  [34m[1m                     64.3                     [0m[0m  |  [34m[1m                              63.4                           [0m[0m  |  [34m[1m                     46.2                    [0m[0m
+      2      x 768   |  [92m[1m                 20.4                [0m[0m  |  [34m[1m    176.0   [0m[0m  |  [92m[1m          24.7         [0m[0m  |  [34m[1m                      52.5                   [0m[0m  |  [92m[1m                     62.9                     [0m[0m  |  [92m[1m                              62.7                           [0m[0m  |  [92m[1m                     44.9                    [0m[0m
+      1      x 768   |                   26.2                  |  [92m[1m    173.8   [0m[0m  |  [92m[1m          24.7         [0m[0m  |  [92m[1m                      50.2                   [0m[0m  |  [34m[1m                     63.8                     [0m[0m  |  [92m[1m                              62.9                           [0m[0m  |  [34m[1m                     46.0                    [0m[0m
+
+Times are in microseconds (us).
+
+[----------------------------------------------------------------------------------------------------- Condensed Linear @ 80 with 1 threads using compilation strategy inductor and backend inductor and dtype torch.float32 -----------------------------------------------------------------------------------------------------]
+                     |  Structured sparsity @ 80 - eager mode  |  Vmap - Eager  |  Dense benchmark - Eager  |  Fine-grained + structured sparsity @ 80 eager  |  Structured sparsity @ 80 with backend inductor  |  Fine-grained + structured sparsity @ 80 with backend inductor  |  Dense benchmark - Compiled - backend inductor
+1 threads: ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+      2048   x 768   |  [31m[1m                251.8                [0m[0m  |  [31m[1m  32214.3   [0m[0m  |  [31m[1m         583.5         [0m[0m  |  [31m[1m                   32277.0                   [0m[0m  |  [2m[91m                    262.9                     [0m[0m  |  [31m[1m                            7282.3                           [0m[0m  |  [31m[1m                    587.7                    [0m[0m
+      1024   x 768   |  [31m[1m                131.1                [0m[0m  |  [31m[1m  16148.3   [0m[0m  |  [31m[1m         293.9         [0m[0m  |  [31m[1m                   16160.5                   [0m[0m  |  [2m[91m                    144.3                     [0m[0m  |  [31m[1m                            3711.4                           [0m[0m  |  [31m[1m                    295.8                    [0m[0m
+      512    x 768   |  [2m[91m                 68.4                [0m[0m  |  [31m[1m   8084.5   [0m[0m  |  [31m[1m         151.5         [0m[0m  |  [31m[1m                    8095.3                   [0m[0m  |                       77.3                       |  [31m[1m                            1835.7                           [0m[0m  |  [2m[91m                    151.6                    [0m[0m
+      256    x 768   |  [2m[91m                 40.9                [0m[0m  |  [31m[1m   4057.0   [0m[0m  |  [2m[91m          83.9         [0m[0m  |  [31m[1m                    4057.8                   [0m[0m  |  [34m[1m                     64.1                     [0m[0m  |  [31m[1m                             921.3                           [0m[0m  |                       83.9                    
+      128    x 768   |                   26.5                  |  [31m[1m   2040.6   [0m[0m  |  [2m[91m          53.8         [0m[0m  |  [31m[1m                    2039.1                   [0m[0m  |  [34m[1m                     63.8                     [0m[0m  |  [31m[1m                             467.2                           [0m[0m  |                       54.7                    
+      64     x 768   |                   26.6                  |  [31m[1m   1030.8   [0m[0m  |            35.4           |  [31m[1m                    1028.9                   [0m[0m  |  [34m[1m                     62.1                     [0m[0m  |  [2m[91m                             237.6                           [0m[0m  |  [34m[1m                     47.7                    [0m[0m
+      32     x 768   |                   26.9                  |  [2m[91m    525.4   [0m[0m  |            28.0           |  [31m[1m                     525.6                   [0m[0m  |  [34m[1m                     65.5                     [0m[0m  |  [2m[91m                             134.6                           [0m[0m  |  [34m[1m                     48.4                    [0m[0m
+      16     x 768   |                   27.5                  |      272.3     |            29.0           |  [31m[1m                     272.4                   [0m[0m  |  [34m[1m                     64.5                     [0m[0m  |                                71.6                             |                       50.2                    
+      8      x 768   |                   27.6                  |  [34m[1m    176.5   [0m[0m  |            27.1           |  [2m[91m                     145.2                   [0m[0m  |  [34m[1m                     64.8                     [0m[0m  |  [34m[1m                              63.9                           [0m[0m  |                       50.9                    
+      4      x 768   |                   28.3                  |  [34m[1m    179.1   [0m[0m  |  [34m[1m          24.5         [0m[0m  |                        77.7                     |  [34m[1m                     64.7                     [0m[0m  |  [34m[1m                              63.0                           [0m[0m  |  [92m[1m                     45.5                    [0m[0m
+      2      x 768   |  [92m[1m                 20.0                [0m[0m  |  [34m[1m    179.0   [0m[0m  |  [34m[1m          24.1         [0m[0m  |  [34m[1m                      48.9                   [0m[0m  |  [92m[1m                     60.1                     [0m[0m  |  [92m[1m                              59.3                           [0m[0m  |  [92m[1m                     45.2                    [0m[0m
+      1      x 768   |                   24.0                  |  [92m[1m    169.3   [0m[0m  |  [92m[1m          23.5         [0m[0m  |  [92m[1m                      47.7                   [0m[0m  |  [92m[1m                     59.9                     [0m[0m  |  [92m[1m                              59.9                           [0m[0m  |  [92m[1m                     45.6                    [0m[0m
+
+Times are in microseconds (us).

@@ -40,7 +40,7 @@ ARG WORKSPACE_DIR
 
 # Install git/ssh/tmux
 RUN apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -y git ssh tmux vim curl htop sudo
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y git ssh tmux vim curl htop sudo unzip
 
 RUN echo ${USERNAME} ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/${USERNAME} \
     && chmod 0440 /etc/sudoers.d/${USERNAME}
@@ -76,6 +76,11 @@ RUN python -m venv .venv && \
     poetry install -vvv --no-root && \
     pip install sparseprop && \
     echo "source ${BUILD_PATH}/.venv/bin/activate" >> /home/$USERNAME/.bashrc
+
+# Install TorchLib for cpp dependicies
+RUN wget https://download.pytorch.org/libtorch/cu118/libtorch-shared-with-deps-2.0.1%2Bcu118.zip && \
+    unzip ./libtorch-shared-with-deps-2.0.1+cu118.zip
+
 
 # Build coco API  TODO: Figure out why this wont build! 
 WORKDIR ${BUILD_PATH}/src/cocoapi/PythonAPI
