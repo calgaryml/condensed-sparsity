@@ -1,0 +1,73 @@
+/home/user/condensed-sparsity/src/condensed_sparsity/v2/condensed_linear.py:142: UserWarning: Sparse CSR tensor support is in beta state. If you miss a functionality in the sparse tensor support, please submit a feature request to https://github.com/pytorch/pytorch/issues. (Triggered internally at ../aten/src/ATen/SparseCsrTensorImpl.cpp:54.)
+  torch.clone(self.weight.detach().type(dtype).to_sparse_csr()),
+Sparsity 99 with 1 threads using compilation strategy inductor and dtype torch.float32 on device cuda.
+Benchmarking 2048   x 768 ...
+/home/user/build/.venv/lib/python3.10/site-packages/torch/_inductor/compile_fx.py:90: UserWarning: TensorFloat32 tensor cores for float32 matrix multiplication available but not enabled. Consider setting `torch.set_float32_matmul_precision('high')` for better performance.
+  warnings.warn(
+[2023-09-26 04:38:31,195] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+[2023-09-26 04:38:58,733] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+[2023-09-26 04:39:29,527] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+[2023-09-26 04:39:56,784] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+[2023-09-26 04:40:24,231] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+[2023-09-26 04:40:48,849] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+[2023-09-26 04:41:13,968] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+[2023-09-26 04:41:39,215] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+[2023-09-26 04:42:04,176] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+[2023-09-26 04:42:28,783] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+[2023-09-26 04:42:53,105] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+[2023-09-26 04:43:17,590] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+[2023-09-26 04:43:43,312] torch._dynamo.utils: [WARNING] Unsupported: meta converter nyi with fake tensor propagation.
+Benchmarking 1024   x 768 ...
+Benchmarking 512    x 768 ...
+Benchmarking 256    x 768 ...
+Benchmarking 128    x 768 ...
+Benchmarking 64     x 768 ...
+Benchmarking 32     x 768 ...
+Benchmarking 16     x 768 ...
+Benchmarking 8      x 768 ...
+Benchmarking 4      x 768 ...
+Benchmarking 2      x 768 ...
+Benchmarking 1      x 768 ...
+Sparsity 95 with 1 threads using compilation strategy inductor and dtype torch.float32 on device cuda.
+Benchmarking 2048   x 768 ...
+Traceback (most recent call last):
+  File "/home/user/condensed-sparsity/./scripts/benchmarks_v2.py", line 455, in <module>
+    else:
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 115, in decorate_context
+    return func(*args, **kwargs)
+  File "/home/user/condensed-sparsity/./scripts/benchmarks_v2.py", line 296, in main
+    benchmark.Timer(
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/utils/benchmark/utils/timer.py", line 394, in blocked_autorange
+    number = self._estimate_block_size(min_run_time)
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/utils/benchmark/utils/timer.py", line 311, in _estimate_block_size
+    time_taken = self._timeit(number)
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/utils/benchmark/utils/timer.py", line 256, in _timeit
+    return max(self._timer.timeit(number), 1e-9)
+  File "/opt/conda/lib/python3.10/timeit.py", line 178, in timeit
+    timing = self.inner(it, self.timer)
+  File "<timeit-src>", line 6, in inner
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1501, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/_dynamo/eval_frame.py", line 82, in forward
+    return self.dynamo_ctx(self._orig_mod.forward)(*args, **kwargs)
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/_dynamo/eval_frame.py", line 209, in _fn
+    return fn(*args, **kwargs)
+  File "/home/user/condensed-sparsity/src/condensed_sparsity/v2/condensed_linear.py", line 238, in forward
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/_dynamo/eval_frame.py", line 209, in _fn
+    return fn(*args, **kwargs)
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/_functorch/aot_autograd.py", line 2836, in forward
+    return compiled_fn(full_args)
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/_functorch/aot_autograd.py", line 1224, in g
+    return f(*args)
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/_functorch/aot_autograd.py", line 1900, in runtime_wrapper
+    all_outs = call_func_with_args(
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/_functorch/aot_autograd.py", line 1249, in call_func_with_args
+    out = normalize_as_list(f(args))
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/_inductor/compile_fx.py", line 248, in run
+    return model(new_inputs)
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/_inductor/compile_fx.py", line 267, in run
+    return compiled_fn(new_inputs)
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/_inductor/compile_fx.py", line 340, in run
+    assert dst.data_ptr() == src.data_ptr()
+AssertionError

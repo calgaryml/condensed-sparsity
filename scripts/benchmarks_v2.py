@@ -14,13 +14,14 @@ import pathlib
 import gc
 
 from condensed_sparsity.v2.condensed_linear import (  # noqa
+    CSRLinear,
     CondensedLinearStructured,
     CondensedLinearFineGrained,
     VmapCondensed,
     CondensedLinearFineGrainedSparseOp,  # noqa
 )
 
-__MIN_RUN_TIME = 1
+__MIN_RUN_TIME = 2
 
 
 @torch.no_grad()
@@ -32,254 +33,336 @@ def main(
     num_features,
     dtype,
     num_threads,
-    compile,
+    compiler,
     compiler_kwargs,
+    include_csr=True,
 ):
-    # batch_sizes = [2**x for x in range(10, -1, -1)]
-    # torch.is_grad_enabled = lambda: False
-    __DISABLED_BACKENDS = ["ipex", "onnxrt", "tvm"]  # noqa
-    # Need to pip install apache-tvm, onnx, and onnxruntime for others.
-    # TODO: Get IPEX working
+    __DISABLED_BACKENDS = ["tvm", "onnxrt"]
+    # NOTE: tvm has issues with NoneType resolution from index slice operator in
+    # fine-grain condensed. Unknown issue in onnxrt.
+
     batch_sizes = [2**x for x in range(11, -1, -1)]
     results = []
     counter = 0
     for mod, sparsity in zip(mods, sparsities):
-        # for backend in dynamo.list_backends():
-        for backend in ["inductor"]:
-            # if backend in __DISABLED_BACKENDS:
-            # continue
-            if compiler in ["trace", "script"]:
-                backend = compiler
-            dynamo.reset()
-            mod = mod.type(dtype)
-            mod.eval()
-            label = (
-                f"Condensed Linear @ {sparsity} with {num_threads} threads "
-                f"using compilation strategy {compiler} and backend {backend} "
-                f"and dtype {dtype}"
+        label = (
+            f"Sparsity {sparsity} with {num_threads} threads "
+            f"using compilation strategy {compiler} "
+            f"and dtype {dtype} on device {device}."
+        )
+        print(label)
+        # Get condensed modules
+        mod = mod.type(dtype)
+        mod.eval()
+        cl_struc = CondensedLinearStructured(deepcopy(mod), dtype=dtype).eval()
+        cl_fine = CondensedLinearFineGrained(deepcopy(mod), dtype=dtype).eval()
+        cl_vmap = VmapCondensed(deepcopy(mod), dtype=dtype).eval()
+        if include_csr:
+            cl_sparse_op = CondensedLinearFineGrainedSparseOp(
+                deepcopy(mod), dtype=dtype
+            ).eval()
+            csr_linear = CSRLinear(deepcopy(mod), dtype=dtype).eval()
+        else:
+            cl_sparse_op = None
+            csr_linear = None
+
+        for batch_size in batch_sizes:
+            sub_label = f"{batch_size:<6} x {num_features:<4}"
+            print(f"Benchmarking {sub_label}...")
+            counter += 1
+            # Load input tensor
+            x = benchmark.FuzzedTensor(
+                "x",
+                size=(batch_size, num_features),
+                cuda=cuda,
+                dtype=dtype,
+                probability_contiguous=1.0,
             )
-            for batch_size in batch_sizes:
-                print(label)
-                counter += 1
-                sub_label = f"{batch_size:<6} x {num_features:<4}"
-                x = benchmark.FuzzedTensor(
-                    "x",
-                    size=(batch_size, num_features),
-                    cuda=cuda,
-                    dtype=dtype,
-                    probability_contiguous=1.0,  # TRY contig.
+            x = x.default_tensor_constructor(x._size, x._dtype)
+            x = x.to(device=device)
+
+            # First we benchmark uncompiled
+            with torch.no_grad():
+                # Uncompiled benchmarks
+                ## Eager dense benchmark
+                _ = mod(x)
+                results.append(
+                    benchmark.Timer(
+                        stmt="mod(x)",
+                        setup="",
+                        globals={"x": x, "mod": mod},
+                        label=label,
+                        sub_label=sub_label,
+                        description="Dense benchmark - eager",
+                        num_threads=num_threads,
+                    ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
                 )
-                x = x.default_tensor_constructor(x._size, x._dtype)
-                x = x.to(device=device)
-                cl_struc = CondensedLinearStructured(
-                    deepcopy(mod), dtype=dtype
-                ).eval()
-                cl_fine = CondensedLinearFineGrained(
-                    deepcopy(mod), dtype=dtype
-                ).eval()
-                cl_vmap = VmapCondensed(deepcopy(mod), dtype=dtype).eval()
-                # cl_sparse_op = CondensedLinearFineGrainedSparseOp(
-                #     deepcopy(mod), dtype=dtype
-                # ).eval()
-                mod.eval()
-                # torch.jit.enable_onednn_fusion(True)
-                if compile == "trace":
-                    structured_cl = torch.jit.trace(cl_struc, x)
-                    fine_grained_cl = torch.jit.trace(cl_fine, x)
-                    # cl_sparse_op = torch.jit.trace(cl_sparse_op, x)
-                    compiled_mod = torch.jit.trace(mod, x)
 
-                    # compiled_vmap = torch.jit.trace(cl_vmap, x)
-                elif compile == "script":
-                    structured_cl = torch.jit.optimize_for_inference(
-                        torch.jit.freeze(torch.jit.script(cl_struc, x))
-                    )
-                    fine_grained_cl = torch.jit.optimize_for_inference(
-                        torch.jit.freeze(torch.jit.script(cl_fine, x))
-                    )
-                    # cl_sparse_op = torch.jit.optimize_for_inference(
-                    #     torch.jit.freeze(torch.jit.script(cl_sparse_op, x))
-                    # )
-                    compiled_mod = torch.jit.optimize_for_inference(
-                        torch.jit.freeze(torch.jit.script(mod, x))
-                    )
-                    # compiled_vmap = torch.jit.optimize_for_inference(
-                    #     torch.jit.script(cl_vmap, x)
-                    # )
+                # Structured
+                _ = cl_struc(x)  # JIT warmup and caching
+                results.append(
+                    benchmark.Timer(
+                        stmt="cl_struc(x)",
+                        setup="",
+                        globals={"x": x, "cl_struc": cl_struc},
+                        label=label,
+                        sub_label=sub_label,
+                        description=("Structured sparsity - eager"),
+                        num_threads=num_threads,
+                    ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
+                )
 
-                elif compile == "inductor":
-                    structured_cl = torch.compile(cl_struc, **compiler_kwargs)
-                    fine_grained_cl = torch.compile(
-                        cl_fine, backend=backend, **compiler_kwargs
-                    )
-                    # cl_sparse_op = torch.compile(
-                    #     cl_sparse_op, mode=compiler_kwargs["mode"]
-                    # )
-                    compiled_mod = torch.compile(
-                        mod, backend=backend, **compiler_kwargs
-                    )
-                    # compiled_vmap = torch.compile(
-                    #     cl_vmap, backend=backend, **compiler_kwargs
-                    # )
-
-                # Explanations of compiling for debugging
-                # (
-                #     explanation,
-                #     out_guards,
-                #     graphs,
-                #     ops_per_graph,
-                #     break_reasons,
-                #     explanation_verbose,
-                # ) = dynamo.explain(mod.forward, x)
-                # print(explanation_verbose)
-                # print(ops_per_graph)
-                # *_, explanation_verbose = dynamo.explain(cl_struc.forward, x)
-                # print(explanation_verbose)
-                # *_, explanation_verbose = dynamo.explain(cl_fine.forward, x)
-                # print(explanation_verbose)
-                # exit()
-
-                # Benchmarking begins...
-
-                # print(x.device)
-                # print(x.dtype)
-                # print(structured_cl.weight.device)
-                # print(structured_cl.weight.dtype)
-                # print(structured_cl.bias.dtype)
-                with torch.no_grad():
-                    # Uncompiled benchmarks
-                    # Structured
-                    _ = cl_struc(x)  # JIT warmup and caching
+                # csr eager
+                if include_csr:
+                    _ = cl_sparse_op(x)
                     results.append(
                         benchmark.Timer(
-                            stmt="cl_struc(x)",
+                            stmt="cl_sparse_op(x)",
                             setup="",
-                            globals={"x": x, "cl_struc": cl_struc},
+                            globals={"x": x, "cl_sparse_op": cl_sparse_op},
                             label=label,
                             sub_label=sub_label,
-                            description=(
-                                f"Structured sparsity @ {sparsity} - eager mode"
-                            ),
-                            num_threads=num_threads,
-                        ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
-                    )
-                    # Vmap eager
-                    _ = cl_vmap(x)
-                    results.append(
-                        benchmark.Timer(
-                            stmt="cl_vmap(x)",
-                            setup="",
-                            globals={"x": x, "cl_vmap": cl_vmap},
-                            label=label,
-                            sub_label=sub_label,
-                            description=("Vmap - Eager"),
+                            description=("structured + csr - eager"),
                             num_threads=num_threads,
                         ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
                     )
 
-                    ## Eager dense benchmark
-                    _ = mod(x)
+                    _ = csr_linear(x)
                     results.append(
                         benchmark.Timer(
-                            stmt="mod(x)",
+                            stmt="csr_linear(x)",
                             setup="",
-                            globals={"x": x, "mod": mod},
+                            globals={"x": x, "csr_linear": csr_linear},
                             label=label,
                             sub_label=sub_label,
-                            description="Dense benchmark - Eager",
+                            description=("csr only - eager"),
                             num_threads=num_threads,
                         ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
                     )
 
-                    ## Eager fine grained
-                    _ = cl_fine(x)
-                    results.append(
-                        benchmark.Timer(
-                            stmt="cl_fine(x)",
-                            setup="",
-                            globals={
-                                "x": x,
-                                "cl_fine": cl_fine,
-                            },
-                            label=label,
-                            sub_label=sub_label,
-                            description=(
-                                "Fine-grained + structured sparsity @ "
-                                f"{sparsity} eager"
-                            ),
-                            num_threads=num_threads,
-                        ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
-                    )
-                    del cl_vmap
-                    del cl_struc
-                    del cl_fine
+                # Vmap eager
+                _ = cl_vmap(x)
+                results.append(
+                    benchmark.Timer(
+                        stmt="cl_vmap(x)",
+                        setup="",
+                        globals={"x": x, "cl_vmap": cl_vmap},
+                        label=label,
+                        sub_label=sub_label,
+                        description=("Vmap - eager"),
+                        num_threads=num_threads,
+                    ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
+                )
 
-                    if compile is not None:
-                        _ = structured_cl(x)  # JIT warmup and caching
+                ## Eager fine grained
+                _ = cl_fine(x)
+                results.append(
+                    benchmark.Timer(
+                        stmt="cl_fine(x)",
+                        setup="",
+                        globals={
+                            "x": x,
+                            "cl_fine": cl_fine,
+                        },
+                        label=label,
+                        sub_label=sub_label,
+                        description=("Fine-grained + structured - eager"),
+                        num_threads=num_threads,
+                    ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
+                )
+
+            # Compiled/jit benchmarks
+            if compiler is not None:
+                # for backend in dynamo.list_backends():
+                for backend in ["inductor"]:
+                    if backend in __DISABLED_BACKENDS:
+                        continue
+                    if compiler in ["trace", "script"]:
+                        backend = compiler
+                    dynamo.reset()
+
+                    # Compilation
+                    if compiler == "trace":
+                        cl_struct_compiled = torch.jit.trace(cl_struc, x)
+                        cl_fine_compiled = torch.jit.trace(cl_fine, x)
+                        mod_compiled = torch.jit.trace(mod, x)
+                        # vmap_compiled = torch.jit.trace(cl_vmap, x)
+                        if include_csr:
+                            cl_sparse_op_compiled = torch.jit.trace(
+                                cl_sparse_op, x
+                            )
+                            csr_compiled = torch.jit.trace(csr_linear, x)
+
+                    elif compiler == "script":
+                        cl_struct_compiled = torch.jit.optimize_for_inference(
+                            torch.jit.freeze(torch.jit.script(cl_struc, x))
+                        )
+                        cl_fine_compiled = torch.jit.optimize_for_inference(
+                            torch.jit.freeze(torch.jit.script(cl_fine, x))
+                        )
+                        mod_compiled = torch.jit.optimize_for_inference(
+                            torch.jit.freeze(torch.jit.script(mod, x))
+                        )
+                        # vmap_compiled = torch.jit.optimize_for_inference(
+                        #     torch.jit.script(cl_vmap, x)
+                        # )
+                        if include_csr:
+                            cl_sparse_op_compiled = (
+                                torch.jit.optimize_for_inference(
+                                    torch.jit.freeze(
+                                        torch.jit.script(cl_sparse_op, x)
+                                    )
+                                )
+                            )
+                            csr_compiled = torch.jit.trace(
+                                torch.jit.optimize_for_inference(
+                                    torch.jit.freeze(
+                                        torch.jit.script(csr_linear, x)
+                                    )
+                                )
+                            )
+
+                    elif compiler == "inductor":
+                        cl_struct_compiled = torch.compile(
+                            cl_struc, **compiler_kwargs
+                        )
+                        cl_fine_compiled = torch.compile(
+                            cl_fine, backend=backend, **compiler_kwargs
+                        )
+                        mod_compiled = torch.compile(
+                            mod, backend=backend, **compiler_kwargs
+                        )
+                        # vmap_compiled = torch.compile(
+                        #     cl_vmap, backend=backend, **compiler_kwargs
+                        # )
+                        if include_csr:
+                            cl_sparse_op_compiled = torch.compile(
+                                cl_sparse_op, mode=compiler_kwargs["mode"]
+                            )
+                            csr_compiled = torch.compile(
+                                csr_linear, mode=compiler_kwargs["mode"]
+                            )
+
+                    # Explanations of compiling for debugging
+                    # (
+                    #     explanation,
+                    #     out_guards,
+                    #     graphs,
+                    #     ops_per_graph,
+                    #     break_reasons,
+                    #     explanation_verbose,
+                    # ) = dynamo.explain(mod.forward, x)
+                    # print(explanation_verbose)
+                    # print(ops_per_graph)
+                    # *_, explanation_verbose = dynamo.explain(cl_struc.forward, x)  # noqa
+                    # print(explanation_verbose)
+                    # *_, explanation_verbose = dynamo.explain(cl_fine.forward, x)  # noqa
+                    # print(explanation_verbose)
+                    # exit()
+
+                    # Compilation
+                    with torch.no_grad():
+                        # Compiled dense benchmark
+                        _ = mod_compiled(x)
                         results.append(
                             benchmark.Timer(
-                                stmt="structured_cl(x)",
+                                stmt="mod_compiled(x)",
                                 setup="",
-                                globals={
-                                    "x": x,
-                                    "structured_cl": structured_cl,
-                                },
+                                globals={"x": x, "mod_compiled": mod_compiled},
                                 label=label,
                                 sub_label=sub_label,
                                 description=(
-                                    f"Structured sparsity @ {sparsity} "
-                                    f"with backend {backend}"
+                                    "Dense benchmark - Compiled - backend "
+                                    f"{backend}"
                                 ),
                                 num_threads=num_threads,
                             ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
                         )
-                        _ = fine_grained_cl(x)
+                        # Structured compiled
+                        _ = cl_struct_compiled(x)  # JIT warmup and caching
                         results.append(
                             benchmark.Timer(
-                                stmt="fine_grained_cl(x)",
+                                stmt="cl_struct_compiled(x)",
                                 setup="",
                                 globals={
                                     "x": x,
-                                    "fine_grained_cl": fine_grained_cl,
+                                    "cl_struct_compiled": cl_struct_compiled,
                                 },
                                 label=label,
                                 sub_label=sub_label,
                                 description=(
-                                    "Fine-grained + structured sparsity @ "
-                                    f"{sparsity} with backend {backend}"
+                                    "Structured sparsity compiled "
+                                    f"with backend - {backend}"
                                 ),
                                 num_threads=num_threads,
                             ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
                         )
                         ## CSR Sparse Format
-                        # _ = cl_sparse_op(x)
-                        # results.append(
-                        #     benchmark.Timer(
-                        #         stmt="cl_sparse_op(x)",
-                        #         setup="",
-                        #         globals={
-                        #             "x": x,
-                        #             "cl_sparse_op": cl_sparse_op,
-                        #         },  # noqa
-                        #         label=label,
-                        #         sub_label=sub_label,
-                        #         description=(
-                        #             "structured sparsity + sparse op @ "
-                        #             f"{sparsity} with backend {backend}"
-                        #         ),
-                        #         num_threads=num_threads,
-                        #     ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
-                        # )
-
+                        if include_csr:
+                            _ = cl_sparse_op_compiled(x)
+                            results.append(
+                                benchmark.Timer(
+                                    stmt="cl_sparse_op_compiled(x)",
+                                    setup="",
+                                    globals={
+                                        "x": x,
+                                        "cl_sparse_op_compiled": cl_sparse_op_compiled,  # noqa
+                                    },
+                                    label=label,
+                                    sub_label=sub_label,
+                                    description=(
+                                        "structured + csr with backend "
+                                        f"{backend}"
+                                    ),
+                                    num_threads=num_threads,
+                                ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
+                            )
+                            _ = csr_compiled(x)
+                            results.append(
+                                benchmark.Timer(
+                                    stmt="csr_compiled(x)",
+                                    setup="",
+                                    globals={
+                                        "x": x,
+                                        "csr_compiled": csr_compiled,
+                                    },
+                                    label=label,
+                                    sub_label=sub_label,
+                                    description=(
+                                        "csr only compiled with backend - "
+                                        f"{backend}"
+                                    ),
+                                    num_threads=num_threads,
+                                ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
+                            )
+                        # Fine grained compiled
+                        _ = cl_fine_compiled(x)
+                        results.append(
+                            benchmark.Timer(
+                                stmt="cl_fine_compiled(x)",
+                                setup="",
+                                globals={
+                                    "x": x,
+                                    "cl_fine_compiled": cl_fine_compiled,
+                                },
+                                label=label,
+                                sub_label=sub_label,
+                                description=(
+                                    "Fine-grained + structured with "
+                                    f"backend {backend}"
+                                ),
+                                num_threads=num_threads,
+                            ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
+                        )
                         # Vmap benchmarks
-                        # _ = compiled_vmap(x)
+                        # _ = vmap_compiled(x)
                         # results.append(
                         #     benchmark.Timer(
-                        #         stmt="compiled_vmap(x)",
+                        #         stmt="vmap_compiled(x)",
                         #         setup="",
                         #         globals={
                         #             "x": x,
-                        #             "compiled_vmap": compiled_vmap,
+                        #             "vmap_compiled": vmap_compiled,
                         #         },
                         #         label=label,
                         #         sub_label=sub_label,
@@ -290,39 +373,36 @@ def main(
                         #     ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
                         # )
 
-                        # Compiled dense benchmark
-                        _ = compiled_mod(x)
-                        results.append(
-                            benchmark.Timer(
-                                stmt="compiled_mod(x)",
-                                setup="",
-                                globals={"x": x, "compiled_mod": compiled_mod},
-                                label=label,
-                                sub_label=sub_label,
-                                description=(
-                                    "Dense benchmark - Compiled - backend "
-                                    f"{backend}"
-                                ),
-                                num_threads=num_threads,
-                            ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
-                        )
+                        ## Clean up compiled
+                        del mod_compiled
+                        del cl_struct_compiled
+                        del cl_fine_compiled
+                        if include_csr:
+                            del cl_sparse_op_compiled
+                            del csr_compiled
+                        # del vmap_compiled
+                        gc.collect()
 
-                        ## Clean up
-                        del structured_cl
-                        del fine_grained_cl
-                        # del cl_sparse_op
-                gc.collect()
+                    if compiler in ["trace", "script"]:
+                        break  # No need to run through other backends
 
+        # clean up eager modules
+        del cl_struc
+        del cl_fine
+        del cl_vmap
+        if include_csr:
+            del cl_sparse_op
+            del csr_linear
+    # Collate results and save
     compare = benchmark.Compare(results)
-    f_name = (
-        f"benchmark_v2_gpu_threads_{num_threads}_"
-        f"compiler_{compiler}_final.pkl"
-    )
     if not cuda:
-        f_name = (
-            f"benchmark_v2_cpu_threads_{num_threads}_"
-            f"compiler_{compiler}_final.pkl"
-        )
+        device_name = "cpu"
+    else:
+        device_name = "gpu"
+    f_name = (
+        f"benchmark_v2_{device_name}_threads_{num_threads}_"
+        f"compiler_{compiler}_dtype_{dtype}final_low-thread-count.pkl"
+    )
     with open(f_name, "wb") as handle:
         pickle.dump(compare, handle)
     compare.colorize()
@@ -338,13 +418,13 @@ def get_mod(run_id: str, device):
                 "compute.distributed=False",
                 "dataset=imagenet",
                 "model=vit",
-                f"experiment.run_id={run_id}",
+                f"experiment.run_id={run_id.split('_')[1]}",
                 "training.batch_size=2",
             ],
         )
     dotenv.load_dotenv("../.env", override=True)
     os.environ["IMAGE_NET_PATH"]
-    checkpoint_dir = pathlib.Path(f"./artifacts/checkpoints/20230601_{run_id}")
+    checkpoint_dir = pathlib.Path(f"./artifacts/checkpoints/{run_id}")
     checkpoint = Checkpoint.load_best_checkpoint(checkpoint_dir=checkpoint_dir)
     model_state = checkpoint.model
     model = ModelFactory.load_model(
@@ -362,9 +442,10 @@ def get_mod(run_id: str, device):
 
 
 if __name__ == "__main__":
+    # import logging
 
     dynamo.config.verbose = True
-    # dynamo.config.log_level = logging.INFO
+    # dynamo.config.log_level = logging.DEBUG
     # dynamo.config.output_code = True
 
     compiler_kwargs = {
@@ -372,15 +453,28 @@ if __name__ == "__main__":
         "fullgraph": True,
     }
     # torch.set_float32_matmul_precision("high")
-    # for d in ["cuda:0", "cpu"]:
-    # __RUN_IDS = {90: "nrblbn15"}
-    __RUN_IDS = {90: "nrblbn15", 80: "0p0wrlb0"}
-    # for num_threads in [1, 12, 32]:
-    for num_threads in [1]:
-        # for compiler in ["script", "trace", "inductor"]:
-        for compiler in ["inductor"]:
-            # for d in ["gpu"]:
-            for d in ["cpu", "gpu"]:
+    # NOTE: Below results in errors during compilation
+    # torch.jit.enable_onednn_fusion(
+    #     True
+    # )  # seems like we need this to use inductor on gpu
+    __RUN_IDS = {
+        99: "20230911_3f1ffqmr",
+        95: "20230911_1mxhel1q",
+        90: "20230601_nrblbn15",
+        80: "20230601_0p0wrlb0",
+    }
+    # for dtype in [torch.float32, torch.bfloat16]:
+    # for num_threads in [1, 40, 80]:
+    for num_threads in [1, 2, 4, 8, 16]:
+        for compiler in [
+            "inductor",
+            # "script",
+            # "trace",
+        ]:
+            for d in [
+                "cpu",
+                # "cpu"
+            ]:  # NOTE: Need gpu runs for bf16 all threads
                 if d == "cpu":
                     device = torch.device("cpu")
                     cuda = False
@@ -398,9 +492,16 @@ if __name__ == "__main__":
                     dtype = (
                         # torch.bfloat16
                         # bfloat16 not supported for CSR sparse
+                        # float16 not supported by IPEX
                         torch.float32
-                    )  # Try float 16 https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html  # noqa
-                    num_threads = num_threads
+                    )  # https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html  # noqa
+                    if dtype == torch.bfloat16 or compiler in [
+                        "script",
+                        "trace",
+                    ]:
+                        include_csr = False  # Doesn't work with above options
+                    else:
+                        include_csr = True
                 results = main(
                     mods,
                     sparsities,
@@ -411,6 +512,7 @@ if __name__ == "__main__":
                     num_threads,
                     compiler,
                     compiler_kwargs,
+                    include_csr,
                 )
 
 

@@ -1,0 +1,136 @@
+/home/user/condensed-sparsity/src/condensed_sparsity/v2/condensed_linear.py:142: UserWarning: Sparse CSR tensor support is in beta state. If you miss a functionality in the sparse tensor support, please submit a feature request to https://github.com/pytorch/pytorch/issues. (Triggered internally at ../aten/src/ATen/SparseCsrTensorImpl.cpp:54.)
+  torch.clone(self.weight.detach().type(dtype).to_sparse_csr()),
+[2023-09-24 20:08:14,928] torch._dynamo.eval_frame: [DEBUG] skipping __init__ /opt/conda/lib/python3.10/contextlib.py
+[2023-09-24 20:08:14,929] torch._dynamo.eval_frame: [DEBUG] skipping __enter__ /opt/conda/lib/python3.10/contextlib.py
+[2023-09-24 20:08:14,929] torch._dynamo.eval_frame: [DEBUG] skipping __init__ /opt/conda/lib/python3.10/contextlib.py
+[2023-09-24 20:08:14,929] torch._dynamo.eval_frame: [DEBUG] skipping __enter__ /opt/conda/lib/python3.10/contextlib.py
+[2023-09-24 20:08:14,929] torch._dynamo.eval_frame: [DEBUG] skipping enable_dynamic /home/user/build/.venv/lib/python3.10/site-packages/torch/_dynamo/eval_frame.py
+[2023-09-24 20:08:14,936] torch._dynamo.symbolic_convert: [INFO] Step 1: torchdynamo start tracing forward
+[2023-09-24 20:08:14,936] torch._dynamo.symbolic_convert: [DEBUG] TRACE starts_line /home/user/condensed-sparsity/src/condensed_sparsity/v2/condensed_linear.py:177
+[2023-09-24 20:08:14,936] torch._dynamo.symbolic_convert: [DEBUG] TRACE LOAD_GLOBAL F []
+[2023-09-24 20:08:14,936] torch._dynamo.symbolic_convert: [DEBUG] TRACE LOAD_ATTR linear [TorchVariable(<module 'torch.nn.functional' from '/home/user/build/.venv/lib/python3.10/site-packages/torch/nn/functional.py'>)]
+[2023-09-24 20:08:14,937] torch._dynamo.symbolic_convert: [DEBUG] TRACE LOAD_FAST input [TorchVariable(<built-in function linear>)]
+[2023-09-24 20:08:14,937] torch._dynamo.symbolic_convert: [DEBUG] TRACE LOAD_FAST self [TorchVariable(<built-in function linear>), TensorVariable()]
+[2023-09-24 20:08:14,937] torch._dynamo.symbolic_convert: [DEBUG] TRACE LOAD_ATTR weight [TorchVariable(<built-in function linear>), TensorVariable(), NNModuleVariable()]
+[2023-09-24 20:08:14,942] torch._dynamo.symbolic_convert: [DEBUG] TRACE LOAD_FAST self [TorchVariable(<built-in function linear>), TensorVariable(), TensorVariable()]
+[2023-09-24 20:08:14,942] torch._dynamo.symbolic_convert: [DEBUG] TRACE LOAD_ATTR bias [TorchVariable(<built-in function linear>), TensorVariable(), TensorVariable(), NNModuleVariable()]
+[2023-09-24 20:08:14,944] torch._dynamo.symbolic_convert: [DEBUG] TRACE CALL_FUNCTION 3 [TorchVariable(<built-in function linear>), TensorVariable(), TensorVariable(), TensorVariable()]
+[2023-09-24 20:08:14,952] torch._dynamo.symbolic_convert: [DEBUG] TRACE RETURN_VALUE None [TensorVariable()]
+[2023-09-24 20:08:14,952] torch._dynamo.symbolic_convert: [INFO] Step 1: torchdynamo done tracing forward (RETURN_VALUE)
+[2023-09-24 20:08:14,952] torch._dynamo.symbolic_convert: [DEBUG] RETURN_VALUE triggered compile
+[2023-09-24 20:08:14,952] torch._dynamo.output_graph: [DEBUG] COMPILING GRAPH due to GraphCompileReason(reason='return_value', user_stack=[<FrameSummary file /home/user/condensed-sparsity/src/condensed_sparsity/v2/condensed_linear.py, line 177 in forward>])
+[2023-09-24 20:08:14,954] torch._dynamo.output_graph: [INFO] Step 2: calling compiler function debug_wrapper
+Condensed Linear @ 90 with 1 threads using compilation strategy inductor and backend tvm and dtype torch.float32 on device cpu.
+[2023-09-24 20:08:18,193] torch._inductor.compile_fx: [INFO] Step 3: torchinductor compiling FORWARDS graph 0
+[2023-09-24 20:08:18,220] torch._inductor.compile_fx: [INFO] Step 3: torchinductor done compiling FORWARDS graph 0
+[2023-09-24 20:08:18,220] torch._dynamo.output_graph: [INFO] Step 2: done compiler function debug_wrapper
+[2023-09-24 20:08:18,223] torch._dynamo.eval_frame: [DEBUG] skipping _fn /home/user/build/.venv/lib/python3.10/site-packages/torch/_dynamo/eval_frame.py
+[2023-09-24 20:08:18,223] torch._dynamo.eval_frame: [DEBUG] skipping nothing /home/user/build/.venv/lib/python3.10/site-packages/torch/_dynamo/eval_frame.py
+[2023-09-24 20:08:18,227] torch._dynamo.eval_frame: [DEBUG] skipping __exit__ /opt/conda/lib/python3.10/contextlib.py
+[2023-09-24 20:08:18,227] torch._dynamo.eval_frame: [DEBUG] skipping __exit__ /opt/conda/lib/python3.10/contextlib.py
+/home/user/build/.venv/lib/python3.10/site-packages/torch/_dynamo/eval_frame.py:279: UserWarning: changing options to `torch.compile()` may require calling `torch._dynamo.reset()` to take effect
+  warnings.warn(
+[2023-09-24 20:08:28,770] torch._dynamo.symbolic_convert: [INFO] Step 1: torchdynamo start tracing forward
+[2023-09-24 20:08:28,770] torch._dynamo.symbolic_convert: [DEBUG] TRACE starts_line /home/user/condensed-sparsity/src/condensed_sparsity/v2/condensed_linear.py:240
+[2023-09-24 20:08:28,770] torch._dynamo.symbolic_convert: [DEBUG] TRACE LOAD_GLOBAL torch []
+[2023-09-24 20:08:28,771] torch._dynamo.symbolic_convert: [DEBUG] TRACE LOAD_ATTR sum [TorchVariable(<module 'torch' from '/home/user/build/.venv/lib/python3.10/site-packages/torch/__init__.py'>)]
+[2023-09-24 20:08:28,772] torch._dynamo.symbolic_convert: [DEBUG] TRACE LOAD_FAST self [TorchVariable(<built-in method sum of type object at 0x7f7ac092f880>)]
+[2023-09-24 20:08:28,772] torch._dynamo.symbolic_convert: [DEBUG] TRACE LOAD_ATTR condensed_weight [TorchVariable(<built-in method sum of type object at 0x7f7ac092f880>), NNModuleVariable()]
+[2023-09-24 20:08:28,775] torch._dynamo.symbolic_convert: [DEBUG] TRACE LOAD_FAST input [TorchVariable(<built-in method sum of type object at 0x7f7ac092f880>), TensorVariable()]
+[2023-09-24 20:08:28,775] torch._dynamo.symbolic_convert: [DEBUG] TRACE LOAD_CONST None [TorchVariable(<built-in method sum of type object at 0x7f7ac092f880>), TensorVariable(), TensorVariable()]
+[2023-09-24 20:08:28,775] torch._dynamo.symbolic_convert: [DEBUG] TRACE LOAD_CONST None [TorchVariable(<built-in method sum of type object at 0x7f7ac092f880>), TensorVariable(), TensorVariable(), ConstantVariable(NoneType)]
+[2023-09-24 20:08:28,775] torch._dynamo.symbolic_convert: [DEBUG] TRACE BUILD_SLICE 2 [TorchVariable(<built-in method sum of type object at 0x7f7ac092f880>), TensorVariable(), TensorVariable(), ConstantVariable(NoneType), ConstantVariable(NoneType)]
+[2023-09-24 20:08:28,776] torch._dynamo.symbolic_convert: [DEBUG] TRACE LOAD_FAST self [TorchVariable(<built-in method sum of type object at 0x7f7ac092f880>), TensorVariable(), TensorVariable(), SliceVariable()]
+[2023-09-24 20:08:28,776] torch._dynamo.symbolic_convert: [DEBUG] TRACE LOAD_ATTR input_mask [TorchVariable(<built-in method sum of type object at 0x7f7ac092f880>), TensorVariable(), TensorVariable(), SliceVariable(), NNModuleVariable()]
+[2023-09-24 20:08:28,778] torch._dynamo.symbolic_convert: [DEBUG] TRACE BUILD_TUPLE 2 [TorchVariable(<built-in method sum of type object at 0x7f7ac092f880>), TensorVariable(), TensorVariable(), SliceVariable(), TensorVariable()]
+[2023-09-24 20:08:28,778] torch._dynamo.symbolic_convert: [DEBUG] TRACE BINARY_SUBSCR None [TorchVariable(<built-in method sum of type object at 0x7f7ac092f880>), TensorVariable(), TensorVariable(), TupleVariable()]
+[2023-09-24 20:08:28,783] torch._dynamo.symbolic_convert: [DEBUG] TRACE BINARY_MULTIPLY None [TorchVariable(<built-in method sum of type object at 0x7f7ac092f880>), TensorVariable(), TensorVariable()]
+[2023-09-24 20:08:28,784] torch._dynamo.symbolic_convert: [DEBUG] TRACE LOAD_CONST 2 [TorchVariable(<built-in method sum of type object at 0x7f7ac092f880>), TensorVariable()]
+[2023-09-24 20:08:28,785] torch._dynamo.symbolic_convert: [DEBUG] TRACE LOAD_CONST ('dim',) [TorchVariable(<built-in method sum of type object at 0x7f7ac092f880>), TensorVariable(), ConstantVariable(int)]
+[2023-09-24 20:08:28,785] torch._dynamo.symbolic_convert: [DEBUG] TRACE CALL_FUNCTION_KW 2 [TorchVariable(<built-in method sum of type object at 0x7f7ac092f880>), TensorVariable(), ConstantVariable(int), ConstantVariable(tuple)]
+[2023-09-24 20:08:28,787] torch._dynamo.symbolic_convert: [DEBUG] TRACE starts_line /home/user/condensed-sparsity/src/condensed_sparsity/v2/condensed_linear.py:241
+[2023-09-24 20:08:28,787] torch._dynamo.symbolic_convert: [DEBUG] TRACE LOAD_FAST self [TensorVariable()]
+[2023-09-24 20:08:28,788] torch._dynamo.symbolic_convert: [DEBUG] TRACE LOAD_ATTR bias [TensorVariable(), NNModuleVariable()]
+[2023-09-24 20:08:28,790] torch._dynamo.symbolic_convert: [DEBUG] TRACE starts_line /home/user/condensed-sparsity/src/condensed_sparsity/v2/condensed_linear.py:240
+[2023-09-24 20:08:28,790] torch._dynamo.symbolic_convert: [DEBUG] TRACE BINARY_ADD None [TensorVariable(), TensorVariable()]
+[2023-09-24 20:08:28,791] torch._dynamo.symbolic_convert: [DEBUG] TRACE starts_line /home/user/condensed-sparsity/src/condensed_sparsity/v2/condensed_linear.py:239
+[2023-09-24 20:08:28,792] torch._dynamo.symbolic_convert: [DEBUG] TRACE RETURN_VALUE None [TensorVariable()]
+[2023-09-24 20:08:28,792] torch._dynamo.symbolic_convert: [INFO] Step 1: torchdynamo done tracing forward (RETURN_VALUE)
+[2023-09-24 20:08:28,792] torch._dynamo.symbolic_convert: [DEBUG] RETURN_VALUE triggered compile
+[2023-09-24 20:08:28,792] torch._dynamo.output_graph: [DEBUG] COMPILING GRAPH due to GraphCompileReason(reason='return_value', user_stack=[<FrameSummary file /home/user/condensed-sparsity/src/condensed_sparsity/v2/condensed_linear.py, line 239 in forward>])
+[2023-09-24 20:08:28,794] torch._dynamo.output_graph: [INFO] Step 2: calling compiler function tvm
+Traceback (most recent call last):
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/_dynamo/output_graph.py", line 670, in call_user_compiler
+    compiled_fn = compiler_fn(gm, self.fake_example_inputs())
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/_dynamo/debug_utils.py", line 1055, in debug_wrapper
+    compiled_gm = compiler_fn(gm, example_inputs)
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/_dynamo/debug_utils.py", line 1055, in debug_wrapper
+    compiled_gm = compiler_fn(gm, example_inputs)
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/_dynamo/backends/common.py", line 107, in wrapper
+    return fn(model, inputs, **kwargs)
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/_dynamo/backends/tvm.py", line 25, in tvm
+    mod, params = relay.frontend.from_pytorch(jit_mod, shape_list)
+  File "/home/user/build/.venv/lib/python3.10/site-packages/tvm/relay/frontend/pytorch.py", line 4649, in from_pytorch
+    outputs = converter.convert_operators(_get_operator_nodes(graph.nodes()), outputs, ret_name)
+  File "/home/user/build/.venv/lib/python3.10/site-packages/tvm/relay/frontend/pytorch.py", line 4022, in convert_operators
+    relay_out = relay_op(
+  File "/home/user/build/.venv/lib/python3.10/site-packages/tvm/relay/frontend/pytorch.py", line 2336, in index
+    if self.infer_type(indices).dtype == "bool":
+  File "/home/user/build/.venv/lib/python3.10/site-packages/tvm/relay/frontend/pytorch.py", line 155, in infer_type
+    new_node = tf.visit(node)
+  File "/home/user/build/.venv/lib/python3.10/site-packages/tvm/relay/frontend/pytorch.py", line 92, in visit
+    v = super().visit(expr)
+  File "/home/user/build/.venv/lib/python3.10/site-packages/tvm/relay/expr_functor.py", line 76, in visit
+    raise Exception("warning unhandled case: {0}".format(type(expr)))
+Exception: warning unhandled case: <class 'NoneType'>
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/user/condensed-sparsity/./scripts/benchmarks_v2.py", line 405, in <module>
+    results = main(
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 115, in decorate_context
+    return func(*args, **kwargs)
+  File "/home/user/condensed-sparsity/./scripts/benchmarks_v2.py", line 236, in main
+    _ = fine_grained_cl(x)
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1501, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/_dynamo/eval_frame.py", line 82, in forward
+    return self.dynamo_ctx(self._orig_mod.forward)(*args, **kwargs)
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/_dynamo/eval_frame.py", line 209, in _fn
+    return fn(*args, **kwargs)
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/_dynamo/eval_frame.py", line 337, in catch_errors
+    return callback(frame, cache_size, hooks)
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/_dynamo/convert_frame.py", line 104, in _fn
+    return fn(*args, **kwargs)
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/_dynamo/convert_frame.py", line 262, in _convert_frame_assert
+    return _compile(
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/_dynamo/utils.py", line 163, in time_wrapper
+    r = func(*args, **kwargs)
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/_dynamo/convert_frame.py", line 324, in _compile
+    out_code = transform_code_object(code, transform)
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/_dynamo/bytecode_transformation.py", line 445, in transform_code_object
+    transformations(instructions, code_options)
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/_dynamo/convert_frame.py", line 311, in transform
+    tracer.run()
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/_dynamo/symbolic_convert.py", line 1726, in run
+    super().run()
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/_dynamo/symbolic_convert.py", line 576, in run
+    and self.step()
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/_dynamo/symbolic_convert.py", line 540, in step
+    getattr(self, inst.opname)(inst)
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/_dynamo/symbolic_convert.py", line 1792, in RETURN_VALUE
+    self.output.compile_subgraph(
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/_dynamo/output_graph.py", line 517, in compile_subgraph
+    self.compile_and_call_fx_graph(tx, list(reversed(stack_values)), root)
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/_dynamo/output_graph.py", line 588, in compile_and_call_fx_graph
+    compiled_fn = self.call_user_compiler(gm)
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/_dynamo/utils.py", line 163, in time_wrapper
+    r = func(*args, **kwargs)
+  File "/home/user/build/.venv/lib/python3.10/site-packages/torch/_dynamo/output_graph.py", line 675, in call_user_compiler
+    raise BackendCompilerFailed(self.compiler_fn, e) from e
+torch._dynamo.exc.BackendCompilerFailed: tvm raised Exception: warning unhandled case: <class 'NoneType'>
+
+
+You can suppress this exception and fall back to eager by setting:
+    torch._dynamo.config.suppress_errors = True
