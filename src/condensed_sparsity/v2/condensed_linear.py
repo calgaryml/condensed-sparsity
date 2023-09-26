@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.modules.linear import NonDynamicallyQuantizableLinear  # noqa
-from typing import Any, Optional, Callable  # noqa
+from typing import Any, Optional, Callable, List  # noqa
 from functools import partial  # noqa
 
 
@@ -77,13 +77,39 @@ def structured_condensed_conv2d_factory(
 #     def foward(self, )
 
 
+class CSRLinear(nn.Module):
+    def __init__(
+        self, module: nn.Module, dtype: torch.typename = torch.float32
+    ):
+        super().__init__()
+        if dtype is None:
+            dtype = module.weight.dtype
+        # self._register_idx(module)
+        # self.active_neuron_idx = module.weight.sum(dim=1) != 0
+        with torch.no_grad():
+            self.sparse_weight = nn.Parameter(
+                torch.clone(module.weight.detach().type(dtype).to_sparse_csr()),
+                requires_grad=False,
+            )
+            if hasattr(module, "bias"):
+                self.bias = nn.Parameter(
+                    torch.clone(module.bias.detach().type(dtype)),
+                    requires_grad=False,
+                )
+            else:
+                self.register_parameter("bias", None)
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        return F.linear(input, self.sparse_weight, self.bias)
+
+
 class CondensedLinearStructured(nn.Module):
     # TODO: Experiment with __constants__ and __final__
     # TODO: Going to need some functionality to capture weight getter,
     # maybe a callable/str union?
     # TODO: Type annotations may help speed up TorchScript
     # __TARGET_TYPES = [nn.Linear, NonDynamicallyQuantizableLinear]
-    __TARGET_TYPES = [nn.Linear]
+    # __TARGET_TYPES: List[nn.Module] = [nn.Linear]
     # __constants__ = ["active_neuron_idx", "fine_grained_idx"]
     # in_features: int
     # out_features: int
@@ -92,7 +118,7 @@ class CondensedLinearStructured(nn.Module):
     # weight: torch.Tensor
 
     def __init__(
-        self, module: nn.Module, dtype: Optional[torch.typename] = None
+        self, module: nn.Module, dtype: torch.typename = torch.float32
     ):
         super().__init__()
         if dtype is None:
@@ -163,7 +189,7 @@ class CondensedLinearStructured(nn.Module):
         del self.fine_grained_idx
 
     @torch.no_grad()
-    def _register_idx(self, module):
+    def _register_idx(self, module: nn.Module):
         self.active_neuron_idx = module.weight.sum(dim=1) != 0
         self.fine_grained_idx = (module.weight[self.active_neuron_idx] != 0).to(
             torch.bool
@@ -182,25 +208,25 @@ class CondensedLinearStructured(nn.Module):
             in_features, out_features, self.bias is not None
         )
 
-    @classmethod
-    def convert_condensed_linear(cls, module):
-        # Based on convert_sync_batchnorm
-        module_output = module
-        if type(module) in cls.__TARGET_TYPES:
-            # Introspection to determine subclass
-            module_output = cls.__new__(module)
-            # TODO: Move cls method to each condensed class
-            if hasattr(module, "qconfig"):
-                module_output.qconfig = module.qconfig
-        for name, child in module.named_children():
-            module_output.add_module(name, cls.convert_condensed_linear(child))
-        del module
-        return module_output
+    # @classmethod
+    # def convert_condensed_linear(cls, module):
+    #     # Based on convert_sync_batchnorm
+    #     module_output = module
+    #     if type(module) in cls.__TARGET_TYPES:
+    #         # Introspection to determine subclass
+    #         module_output = cls.__new__(module)
+    #         # TODO: Move cls method to each condensed class
+    #         if hasattr(module, "qconfig"):
+    #             module_output.qconfig = module.qconfig
+    #     for name, child in module.named_children():
+    #         module_output.add_module(name, cls.convert_condensed_linear(child))  # noqa
+    #     del module
+    #     return module_output
 
 
 class CondensedLinearFineGrained(nn.Module):
     def __init__(
-        self, module: nn.Module, dtype: Optional[torch.typename] = None
+        self, module: nn.Module, dtype: torch.typename = torch.float32
     ):
         super().__init__()
         if dtype is None:
@@ -243,7 +269,7 @@ class CondensedLinearFineGrained(nn.Module):
 
 class CondensedLinearFineGrainedSparseOp(nn.Module):
     def __init__(
-        self, module: nn.Module, dtype: Optional[torch.typename] = None
+        self, module: nn.Module, dtype: torch.typename = torch.float32
     ):
         super().__init__()
         if dtype is None:
@@ -282,7 +308,7 @@ class CondensedLinearFineGrainedSparseOp(nn.Module):
 
 class VmapCondensed(nn.Module):
     def __init__(
-        self, module: nn.Module, dtype: Optional[torch.typename] = None
+        self, module: nn.Module, dtype: torch.typename = torch.float32
     ):
         super().__init__()
         if dtype is None:

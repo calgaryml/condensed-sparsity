@@ -64,6 +64,7 @@ def get_weighted_layers(
         items = [(None, model)]
 
     for name, p in items:
+        # TODO, switch to MHA module with target of in_proj_weight
         if type(p) is NonDynamicallyQuantizableLinear:
             layer_names.append(name)
             layers.append([p])
@@ -126,8 +127,16 @@ def get_W(model):
 
     W = []
     for layer in layers:
-        idx = 0 if hasattr(layer[0], "weight") else 1
-        W.append(layer[idx].weight)
+        idx = (
+            0
+            if hasattr(layer[0], "weight")
+            or hasattr(layer[0], "in_proj_weight")
+            else 1
+        )
+        if hasattr(layer[idx], "weight"):
+            W.append(layer[idx].weight)
+        elif hasattr(layer[idx], "in_proj_weight"):
+            W.append(layer[idx].in_proj_weight)
 
     assert len(W) == len(linear_layers_mask)
     assert len(W) == len(mha_layers_mask)

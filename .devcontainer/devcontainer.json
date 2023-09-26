@@ -12,6 +12,9 @@
 			"extensions": [
 				"ms-python.python",
 				"njpwerner.autodocstring",
+				"ms-python.flake8",
+				"ms-python.black-formatter",
+				"iliazeus.vscode-ansi",
 			],
 			"settings": {
 				"terminal.integrated.defaultProfile.linux": "bash",
