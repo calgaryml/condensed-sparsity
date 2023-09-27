@@ -401,7 +401,7 @@ def main(
         device_name = "gpu"
     f_name = (
         f"benchmark_v2_{device_name}_threads_{num_threads}_"
-        f"compiler_{compiler}_dtype_{dtype}final_low-thread-count.pkl"
+        f"compiler_{compiler}_dtype_{dtype}final_smaller_layer.pkl"
     )
     with open(f_name, "wb") as handle:
         pickle.dump(compare, handle)
@@ -410,7 +410,11 @@ def main(
     return results
 
 
-def get_mod(run_id: str, device):
+def get_mod(
+    run_id: str,
+    device,
+    layer_name: str = "encoder.layers.encoder_layer_11.mlp.3",
+):
     with initialize("../configs", version_base="1.2.0"):
         cfg = compose(
             "config.yaml",
@@ -438,7 +442,7 @@ def get_mod(run_id: str, device):
             checkpoint.get_single_process_model_state_from_distributed_state()
         )
         model.load_state_dict(model_state)
-    return model.get_submodule("encoder.layers.encoder_layer_11.mlp.0")
+    return model.get_submodule(layer_name)
 
 
 if __name__ == "__main__":
@@ -465,7 +469,8 @@ if __name__ == "__main__":
     }
     # for dtype in [torch.float32, torch.bfloat16]:
     # for num_threads in [1, 40, 80]:
-    for num_threads in [1, 2, 4, 8, 16]:
+    __LAYER_NAME = "encoder.layers.encoder_layer_11.mlp.3"
+    for num_threads in [1, 2, 4, 8, 16, 40, 80]:
         for compiler in [
             "inductor",
             # "script",
@@ -473,7 +478,7 @@ if __name__ == "__main__":
         ]:
             for d in [
                 "cpu",
-                # "cpu"
+                # "gpu"
             ]:  # NOTE: Need gpu runs for bf16 all threads
                 if d == "cpu":
                     device = torch.device("cpu")
@@ -484,7 +489,7 @@ if __name__ == "__main__":
                 mods, sparsities = [], []
 
                 for sparsity, run_id in __RUN_IDS.items():
-                    mod = get_mod(run_id, device)
+                    mod = get_mod(run_id, device, __LAYER_NAME)
                     mod.to(device)
                     mods.append(mod)
                     sparsities.append(sparsity)
@@ -514,7 +519,6 @@ if __name__ == "__main__":
                     compiler_kwargs,
                     include_csr,
                 )
-
 
 # @jax.jit
 # def sp2(X, weights):

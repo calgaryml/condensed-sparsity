@@ -84,8 +84,6 @@ class CSRLinear(nn.Module):
         super().__init__()
         if dtype is None:
             dtype = module.weight.dtype
-        # self._register_idx(module)
-        # self.active_neuron_idx = module.weight.sum(dim=1) != 0
         with torch.no_grad():
             self.sparse_weight = nn.Parameter(
                 torch.clone(module.weight.detach().type(dtype).to_sparse_csr()),
