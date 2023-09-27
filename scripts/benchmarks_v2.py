@@ -411,7 +411,7 @@ def main(
         device_name = "gpu"
     f_name = (
         f"benchmark_v2_{device_name}_threads_{num_threads}_"
-        f"compiler_{compiler}_dtype_{dtype}final_hector_second_run.pkl"
+        f"compiler_{compiler}_dtype_{dtype}final_minnewaka_nice.pkl"
     )
     with open(f_name, "wb") as handle:
         pickle.dump(compare, handle)
