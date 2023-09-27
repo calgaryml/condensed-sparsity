@@ -21,7 +21,7 @@ from condensed_sparsity.v2.condensed_linear import (  # noqa
     CondensedLinearFineGrainedSparseOp,  # noqa
 )
 
-__MIN_RUN_TIME = 2
+__MIN_RUN_TIME = 1
 
 
 @torch.no_grad()
@@ -36,6 +36,7 @@ def main(
     compiler,
     compiler_kwargs,
     include_csr=True,
+    skip_eager=False,
 ):
     __DISABLED_BACKENDS = ["tvm", "onnxrt"]
     # NOTE: tvm has issues with NoneType resolution from index slice operator in
@@ -54,16 +55,15 @@ def main(
         # Get condensed modules
         mod = mod.type(dtype)
         mod.eval()
-        from condensed_sparsity.v2.condensed_linear import (
-            _get_active_neuron_idx,
-        )
+        # from condensed_sparsity.v2.condensed_linear import (
+        #     _get_active_neuron_idx,
+        # )
 
-        active_neuron_index = _get_active_neuron_idx(mod.weight).sum()
-        print(f"{active_neuron_index} sparsity {sparsity}")
-        continue
+        # active_neuron_index = _get_active_neuron_idx(mod.weight).sum()
+        # print(f"{active_neuron_index} sparsity {sparsity}")
+        # continue
         cl_struc = CondensedLinearStructured(deepcopy(mod), dtype=dtype).eval()
         cl_fine = CondensedLinearFineGrained(deepcopy(mod), dtype=dtype).eval()
-        print(cl_fine.active_neuron_idx)
         cl_vmap = VmapCondensed(deepcopy(mod), dtype=dtype).eval()
         if include_csr:
             cl_sparse_op = CondensedLinearFineGrainedSparseOp(
@@ -90,94 +90,95 @@ def main(
             x = x.to(device=device)
 
             # First we benchmark uncompiled
-            with torch.no_grad():
-                # Uncompiled benchmarks
-                ## Eager dense benchmark
-                _ = mod(x)
-                results.append(
-                    benchmark.Timer(
-                        stmt="mod(x)",
-                        setup="",
-                        globals={"x": x, "mod": mod},
-                        label=label,
-                        sub_label=sub_label,
-                        description="Dense benchmark - eager",
-                        num_threads=num_threads,
-                    ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
-                )
-
-                # Structured
-                _ = cl_struc(x)  # JIT warmup and caching
-                results.append(
-                    benchmark.Timer(
-                        stmt="cl_struc(x)",
-                        setup="",
-                        globals={"x": x, "cl_struc": cl_struc},
-                        label=label,
-                        sub_label=sub_label,
-                        description=("Structured sparsity - eager"),
-                        num_threads=num_threads,
-                    ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
-                )
-
-                # csr eager
-                if include_csr:
-                    _ = cl_sparse_op(x)
+            if not skip_eager:
+                with torch.no_grad():
+                    # Uncompiled benchmarks
+                    ## Eager dense benchmark
+                    _ = mod(x)
                     results.append(
                         benchmark.Timer(
-                            stmt="cl_sparse_op(x)",
+                            stmt="mod(x)",
                             setup="",
-                            globals={"x": x, "cl_sparse_op": cl_sparse_op},
+                            globals={"x": x, "mod": mod},
                             label=label,
                             sub_label=sub_label,
-                            description=("structured + csr - eager"),
+                            description="Dense benchmark - eager",
                             num_threads=num_threads,
                         ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
                     )
 
-                    _ = csr_linear(x)
+                    # Structured
+                    _ = cl_struc(x)  # JIT warmup and caching
                     results.append(
                         benchmark.Timer(
-                            stmt="csr_linear(x)",
+                            stmt="cl_struc(x)",
                             setup="",
-                            globals={"x": x, "csr_linear": csr_linear},
+                            globals={"x": x, "cl_struc": cl_struc},
                             label=label,
                             sub_label=sub_label,
-                            description=("csr only - eager"),
+                            description=("Structured sparsity - eager"),
                             num_threads=num_threads,
                         ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
                     )
 
-                # Vmap eager
-                _ = cl_vmap(x)
-                results.append(
-                    benchmark.Timer(
-                        stmt="cl_vmap(x)",
-                        setup="",
-                        globals={"x": x, "cl_vmap": cl_vmap},
-                        label=label,
-                        sub_label=sub_label,
-                        description=("Vmap - eager"),
-                        num_threads=num_threads,
-                    ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
-                )
+                    # csr eager
+                    if include_csr:
+                        _ = cl_sparse_op(x)
+                        results.append(
+                            benchmark.Timer(
+                                stmt="cl_sparse_op(x)",
+                                setup="",
+                                globals={"x": x, "cl_sparse_op": cl_sparse_op},
+                                label=label,
+                                sub_label=sub_label,
+                                description=("structured + csr - eager"),
+                                num_threads=num_threads,
+                            ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
+                        )
 
-                ## Eager fine grained
-                _ = cl_fine(x)
-                results.append(
-                    benchmark.Timer(
-                        stmt="cl_fine(x)",
-                        setup="",
-                        globals={
-                            "x": x,
-                            "cl_fine": cl_fine,
-                        },
-                        label=label,
-                        sub_label=sub_label,
-                        description=("Fine-grained + structured - eager"),
-                        num_threads=num_threads,
-                    ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
-                )
+                        _ = csr_linear(x)
+                        results.append(
+                            benchmark.Timer(
+                                stmt="csr_linear(x)",
+                                setup="",
+                                globals={"x": x, "csr_linear": csr_linear},
+                                label=label,
+                                sub_label=sub_label,
+                                description=("csr only - eager"),
+                                num_threads=num_threads,
+                            ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
+                        )
+
+                    # Vmap eager
+                    _ = cl_vmap(x)
+                    results.append(
+                        benchmark.Timer(
+                            stmt="cl_vmap(x)",
+                            setup="",
+                            globals={"x": x, "cl_vmap": cl_vmap},
+                            label=label,
+                            sub_label=sub_label,
+                            description=("Vmap - eager"),
+                            num_threads=num_threads,
+                        ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
+                    )
+
+                    ## Eager fine grained
+                    _ = cl_fine(x)
+                    results.append(
+                        benchmark.Timer(
+                            stmt="cl_fine(x)",
+                            setup="",
+                            globals={
+                                "x": x,
+                                "cl_fine": cl_fine,
+                            },
+                            label=label,
+                            sub_label=sub_label,
+                            description=("Fine-grained + structured - eager"),
+                            num_threads=num_threads,
+                        ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
+                    )
 
             # Compiled/jit benchmarks
             if compiler is not None:
@@ -401,7 +402,7 @@ def main(
         if include_csr:
             del cl_sparse_op
             del csr_linear
-    return
+
     # Collate results and save
     compare = benchmark.Compare(results)
     if not cuda:
@@ -410,7 +411,7 @@ def main(
         device_name = "gpu"
     f_name = (
         f"benchmark_v2_{device_name}_threads_{num_threads}_"
-        f"compiler_{compiler}_dtype_{dtype}final_smaller_layer.pkl"
+        f"compiler_{compiler}_dtype_{dtype}final_hector_second_run.pkl"
     )
     with open(f_name, "wb") as handle:
         pickle.dump(compare, handle)
@@ -479,7 +480,7 @@ if __name__ == "__main__":
     # for dtype in [torch.float32, torch.bfloat16]:
     # for num_threads in [1, 40, 80]:
     __LAYER_NAME = "encoder.layers.encoder_layer_11.mlp.3"
-    for num_threads in [1, 2, 4, 8, 16, 40, 80]:
+    for num_threads in [1, 2, 4, 8, 16]:
         for compiler in [
             "inductor",
             # "script",
@@ -527,6 +528,7 @@ if __name__ == "__main__":
                     compiler,
                     compiler_kwargs,
                     include_csr,
+                    skip_eager=True,
                 )
 
 # @jax.jit
