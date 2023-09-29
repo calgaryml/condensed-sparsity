@@ -21,7 +21,7 @@ from condensed_sparsity.v2.condensed_linear import (  # noqa
     CondensedLinearFineGrainedSparseOp,  # noqa
 )
 
-__MIN_RUN_TIME = 1
+__MIN_RUN_TIME = 2
 
 
 @torch.no_grad()
@@ -411,7 +411,7 @@ def main(
         device_name = "gpu"
     f_name = (
         f"benchmark_v2_{device_name}_threads_{num_threads}_"
-        f"compiler_{compiler}_dtype_{dtype}final_minnewaka_nice.pkl"
+        f"compiler_{compiler}_dtype_{dtype}final_hector_nice-15.pkl"
     )
     with open(f_name, "wb") as handle:
         pickle.dump(compare, handle)
