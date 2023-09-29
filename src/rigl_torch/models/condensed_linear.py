@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from condensed_sparsity.models import CondNet
+from condensed_sparsity.superseded.models import CondNet
 from rigl_torch.models import ModelFactory
 
 
