@@ -42,6 +42,10 @@ Installation instructions are provided for virtual enviornments, Compute Canada 
         pip install --upgrade pip
         pip install poetry==1.6.1
         poetry install -vvv  # With install all dependency groups
+        git submodule update # Pull in cocoapi for detection / segmentation
+        cd ./src/cocoapi/PythonAPI
+        make & make install
+        cd ../../..  # back to workspace dir
         pre-commit install-hooks  # For development
 
 ## Docker
@@ -59,6 +63,7 @@ For development, we recommend using vscode's devcontainer functionality to build
 To get started, please complete the following steps before reopening the workspace in the devcontainer:
 * Copy the `.env.template` file to your own `.env` environiment file and edit it to add environmental variables. Without the `.env` file the dev container will not start.
 * Create a directory `/datasets` and place any datasets you want to use (except for CIFAR-10) in that location. Alternatively, edit the mount directories in `./.devcontainer/devcontainer.json`
+* Run `git submodue update` to pull from `cocoapi` third party repo. Migrate to ./src/cocoapi/PythonAPI and run `make && make install`
 
 ## Compute Canada
 Compute Canada pre-builds many python packages into wheels that are stored in a local wheelhouse. It is best practice to use these wheels rather than use package distributions from PyPI. Therefore, the dependencies pinned in `pyproject.toml` have been carefully selected to ensure that the project enviornment can be replicated using the Compute Canada wheels that will match a local enviornment using PyPI package distributions. 
