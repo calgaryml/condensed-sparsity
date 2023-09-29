@@ -40,7 +40,7 @@ class Checkpoint(object):
 
     def __post_init__(self) -> None:
         # TODO: Move this to explicit call only if creating a new ckpt
-        # self.checkpoint_dir = self._format_checkpoint_dir(self.checkpoint_dir)
+        self.checkpoint_dir = self._format_checkpoint_dir(self.checkpoint_dir)
         pass
 
     def _format_checkpoint_dir(
