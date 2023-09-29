@@ -47,36 +47,6 @@ def structured_condensed_conv2d_factory(
     return module
 
 
-# class StructuredCondensedConv2DFactory(nn.Module):
-#     __TARGET_TYPES: List[nn.Module] = [nn.Conv2d]
-
-#     def convert_conv2d()
-
-#     def __init__(
-#         self,
-#         module: nn.Module,
-#         weight_getter: Optional[Callable] = _default_weight_getter,
-#         dtype: Optional[torch.typename] = None,
-#     ):
-#         super().__init__()
-#         if dtype is None:
-#             dtype = module.weight.dtype
-#         with torch.no_grad():
-#             original_weight = weight_getter(module)
-#             active_neuron_idx = _get_active_neuron_idx(original_weight)
-#             module.weight = nn.Parameter(
-#                 torch.clone(original_weight[active_neuron_idx].detach().type(dtype))
-#             )
-#             if hasattr(module, "bias"):
-#                 module.bias = nn.Parameter(
-#                     torch.clone(
-#                         module.bias[active_neuron_idx].detach().type(dtype)
-#                     )
-#                 )
-
-#     def foward(self, )
-
-
 class CSRLinear(nn.Module):
     def __init__(
         self, module: nn.Module, dtype: torch.typename = torch.float32
@@ -106,14 +76,6 @@ class CondensedLinearStructured(nn.Module):
     # TODO: Going to need some functionality to capture weight getter,
     # maybe a callable/str union?
     # TODO: Type annotations may help speed up TorchScript
-    # __TARGET_TYPES = [nn.Linear, NonDynamicallyQuantizableLinear]
-    # __TARGET_TYPES: List[nn.Module] = [nn.Linear]
-    # __constants__ = ["active_neuron_idx", "fine_grained_idx"]
-    # in_features: int
-    # out_features: int
-    # active_neuron_idx: torch.Tensor
-    # fine_grained_idx: torch.Tensor
-    # weight: torch.Tensor
 
     def __init__(
         self, module: nn.Module, dtype: torch.typename = torch.float32
@@ -121,7 +83,6 @@ class CondensedLinearStructured(nn.Module):
         super().__init__()
         if dtype is None:
             dtype = module.weight.dtype
-        # self._register_idx(module)
         self.active_neuron_idx = module.weight.sum(dim=1) != 0
         self.fine_grained_idx = (module.weight[self.active_neuron_idx] != 0).to(
             torch.bool
@@ -131,23 +92,6 @@ class CondensedLinearStructured(nn.Module):
             shape=(module.weight[self.active_neuron_idx].shape[0], -1)
         )
         with torch.no_grad():
-            # self.weight = nn.Parameter(
-            #     module.weight[self.active_neuron_idx].contiguous()
-            # )
-            # self.condensed_weight = nn.Parameter(
-            #     self.weight[self.fine_grained_idx]
-            #     .reshape(shape=(self.weight.shape[0], -1))
-            #     .contiguous()
-            # )
-            # self.sparse_weight = nn.Parameter(
-            #     self.weight.to_sparse_csr()
-            # )
-            # if hasattr(module, "bias"):
-            #     self.bias = nn.Parameter(
-            #         module.bias[self.active_neuron_idx].contiguous()
-            #     )
-            # else:
-            #     self.register_parameter("bias", None)
             self.weight = nn.Parameter(
                 torch.clone(
                     module.weight[self.active_neuron_idx].detach().type(dtype)
@@ -175,8 +119,6 @@ class CondensedLinearStructured(nn.Module):
                 )
             else:
                 self.register_parameter("bias", None)
-        # self.in_features = module.in_features
-        # self.out_features=module.out_features
         self._clean_up_unused_params()
 
     def _clean_up_unused_params(self):
@@ -432,6 +374,8 @@ def forward_fast(
     bias: torch.Tensor,
     indx_seqs: torch.LongTensor,
 ) -> torch.Tensor:
+    # TODO: Remove control flow, conditionals will be set as constants after
+    # jit tracing
     return forward_neuron(weights, bias, indx_seqs)(input)
     # if number of neurons is greater than sparsity, vmap over neurons
     if weights.shape[0] > weights.shape[1]:
