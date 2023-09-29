@@ -65,12 +65,43 @@ def get_weighted_layers(
 
     for name, p in items:
         # TODO, switch to MHA module with target of in_proj_weight
-        if type(p) is NonDynamicallyQuantizableLinear:
+        # if type(p) is NonDynamicallyQuantizableLinear:
+        #     layer_names.append(name)
+        #     layers.append([p])
+        #     mha_layer_mask.append(1)
+        #     linear_layers_mask.append(0)
+        if type(p) is nn.MultiheadAttention:
+            # Parse in_proj
             layer_names.append(name)
             layers.append([p])
-            mha_layer_mask.append(1)
+            mha_layer_mask.append(1)  # will contain in_proj_weight and bias
             linear_layers_mask.append(0)
-        elif type(p) is torch.nn.Linear:
+
+            # Parse out_proj
+            (
+                _,
+                linear_layers_mask,
+                mha_layer_mask,
+                i,
+                layer_names,
+            ) = get_weighted_layers(
+                p,
+                i + 1,
+                layers,
+                linear_layers_mask,
+                mha_layer_mask,
+                layer_names,
+            )
+            # out_proj = p.out_proj # of type NonDynamicallyQuantizableLinear
+            # layer_names.append(name)
+            # layers.append([p])
+            # mha_layer_mask.append(1)  # will contain in_proj_weight and bias
+            # linear_layers_mask.append(0)
+
+        elif (
+            type(p) is torch.nn.Linear
+            or type(p) is NonDynamicallyQuantizableLinear
+        ):
             layer_names.append(name)
             layers.append([p])
             linear_layers_mask.append(1)
@@ -161,7 +192,10 @@ def calculate_fan_in_and_fan_out(
         Tuple[int]: Fan-in, fan out tuple
     """
     if isinstance(module, nn.Module):
-        tensor = module._parameters["weight"]
+        if "weight" in module._parameters:
+            tensor = module._parameters["weight"]
+        elif "in_proj_weight" in module._parameters:
+            tensor = module._parameters["in_proj_weight"]
     else:
         tensor = module
     dimensions = tensor.dim()
@@ -229,16 +263,6 @@ def get_T_end(
         int: Step number at which to terminate pruning / regrowth.
     """
     if cfg.training.max_steps is None or cfg.training.max_steps == 0:
-        # if cfg.compute.distributed:
-        #     # In distributed mode, len(train_loader) will be reduced by
-        #     # 1/world_size compared to single device
-        #     T_end = int(
-        #         0.75
-        #         * cfg.training.epochs
-        #         * len(train_loader)  # Dataset length // batch_size
-        #         * cfg.compute.world_size
-        #     )
-        # else:
         T_end = int(0.75 * cfg.training.epochs * len(train_loader))
         if cfg.training.simulated_batch_size is not None:
             # We need to correct T_end to account for sim bs / actual bs
