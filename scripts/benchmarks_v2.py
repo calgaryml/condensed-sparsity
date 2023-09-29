@@ -51,17 +51,10 @@ def main(
             f"using compilation strategy {compiler} "
             f"and dtype {dtype} on device {device}."
         )
-        # print(label)
+
         # Get condensed modules
         mod = mod.type(dtype)
         mod.eval()
-        # from condensed_sparsity.v2.condensed_linear import (
-        #     _get_active_neuron_idx,
-        # )
-
-        # active_neuron_index = _get_active_neuron_idx(mod.weight).sum()
-        # print(f"{active_neuron_index} sparsity {sparsity}")
-        # continue
         cl_struc = CondensedLinearStructured(deepcopy(mod), dtype=dtype).eval()
         cl_fine = CondensedLinearFineGrained(deepcopy(mod), dtype=dtype).eval()
         cl_vmap = VmapCondensed(deepcopy(mod), dtype=dtype).eval()
