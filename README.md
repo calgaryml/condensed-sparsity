@@ -14,54 +14,25 @@
 ```bash
 python ./train_rigl.py \
     dataset=imagenet \
-    model=resnet50 \
-    rigl.dense_allocation=0.01 \
-    rigl.delta=800 \
-    rigl.grad_accumulation_n=8 \
-    rigl.min_salient_weights_per_neuron=0.3 \
-    rigl.keep_first_layer_dense=True \
-    rigl.use_sparse_initialization=True \
-    rigl.init_method_str=grad_flow_init \
-    training.batch_size=512 \
-    training.max_steps=256000 \
-    training.weight_decay=0.0001 \
-    training.label_smoothing=0.1 \
-    training.lr=0.2 \
-    training.epochs=104 \
-    training.warm_up_steps=5 \
-    training.scheduler=step_lr_with_warm_up \
-    training.step_size=[30,70,90] \
-    training.gamma=0.1 \
-    compute.distributed=True \
-    compute.world_size=4
+    model=resnet50
 ```
 
 * Resnet18 trained on CIFAR-10:
 ```bash
 python ./train_rigl.py \
   dataset=cifar10 \
-  model=resnet18 \
-  rigl.dense_allocation=0.01 \
-  rigl.delta=100 \
-  rigl.grad_accumulation_n=1 \
-  rigl.min_salient_weights_per_neuron=0.05 \
-  rigl.use_sparse_initialization=True \
-  rigl.init_method_str=grad_flow_init \
-  training.batch_size=128 \
-  training.max_steps=null \
-  training.weight_decay=5.0e-4 \
-  training.label_smoothing=0 \
-  training.lr=0.1 \
-  training.epochs=250 \
-  training.warm_up_steps=0 \
-  training.scheduler=step_lr \
-  training.step_size=77 \
-  training.gamma=0.2 \
-  compute.distributed=False
+  model=resnet18
+```
+
+* ViT/B-16 trained on CIFAR-10:
+```bash
+python ./train_rigl.py \
+  dataset=imagenet \
+  model=vit
 ```
 
 ## Installation
-This project was developed using Python version >=3.10 and uses `poetry` to manage dependencies and build the project. 
+This project was developed using Python version >=3.10 and uses `poetry==1.6.1` to manage dependencies and build the project. 
 
 Installation instructions are provided for virtual enviornments, Compute Canada clusters, and Docker: 
 
@@ -69,7 +40,7 @@ Installation instructions are provided for virtual enviornments, Compute Canada 
         python -m venv .venv
         source .venv/bin/activate
         pip install --upgrade pip
-        pip install poetry==1.2.0
+        pip install poetry==1.6.1
         poetry install -vvv  # With install all dependency groups
         pre-commit install-hooks  # For development
 
@@ -85,7 +56,9 @@ For reproduction and instantiating replica's during training / inference, please
 ### Development Container
 For development, we recommend using vscode's devcontainer functionality to build and launch the development container. A `devcontainer.json` schema is provided in `./.devcontainer/` and if the project working directory is opened in vscode, the application will prompt the user to reopen in the development container. Please refer to the `devcontainer.json` schema and `Dockerfile.dev` for specifics on the development container environment and build process. 
 
-To get started, ensure you copy the `.env.template` file to your own `.env` environiment file and edit it to add environmental variables. Without the `.env` file the dev container will not start.
+To get started, please complete the following steps before reopening the workspace in the devcontainer:
+* Copy the `.env.template` file to your own `.env` environiment file and edit it to add environmental variables. Without the `.env` file the dev container will not start.
+* Create a directory `/datasets` and place any datasets you want to use (except for CIFAR-10) in that location. Alternatively, edit the mount directories in `./.devcontainer/devcontainer.json`
 
 ## Compute Canada
 Compute Canada pre-builds many python packages into wheels that are stored in a local wheelhouse. It is best practice to use these wheels rather than use package distributions from PyPI. Therefore, the dependencies pinned in `pyproject.toml` have been carefully selected to ensure that the project enviornment can be replicated using the Compute Canada wheels that will match a local enviornment using PyPI package distributions. 
