@@ -6,24 +6,13 @@ ARG WORKSPACE_DIR=/home/user/condensed-sparsity
 ARG USER_UID=1000003
 ARG USER_GID=1000001
 
-FROM pytorch/pytorch:1.13.1-cuda11.6-cudnn8-devel AS pytorch-base
+FROM pytorch/pytorch:2.0.1-cuda11.7-cudnn8-devel AS pytorch-base
 ARG USERNAME
 ARG WORKSPACE_DIR
 ARG USER_UID
 ARG USER_GID
 
 SHELL ["/bin/bash", "-c"]
-
-# Deal with nvidia GPG key issues
-# https://developer.nvidia.com/blog/updating-the-cuda-linux-gpg-repository-key/
-# ARG DISTRO=ubuntu1804
-# ARG ARCH=x86_64
-# RUN rm /etc/apt/sources.list.d/cuda.list
-# RUN rm /etc/apt/sources.list.d/nvidia-ml.list
-# RUN apt-key del 7fa2af80
-# RUN apt-get update && apt-get install -y wget
-# RUN wget https://developer.download.nvidia.com/compute/cuda/repos/$DISTRO/$ARCH/cuda-keyring_1.0-1_all.deb \
-#     && dpkg -i cuda-keyring_1.0-1_all.deb
 
 # Create the user
 RUN groupadd --gid $USER_GID ${USERNAME} \
@@ -47,7 +36,7 @@ ARG USERNAME
 ARG WORKSPACE_DIR
 ARG USER_UID
 ARG USER_GID
-ENV POETRY_VERSION="1.4.0" \
+ENV POETRY_VERSION="1.6.1" \
     POETRY_HOME="/home/${USERNAME}/poetry" \
     POETRY_NO_INTERACTION=1 \
     POETRY_VIRTUALENVS_IN_PROJECT=false \
@@ -74,7 +63,18 @@ USER user
 RUN python -m venv .venv && \ 
     source .venv/bin/activate && \
     pip install --upgrade pip && \
-    poetry install -vvv
+    poetry install -vvv && \
+    pip install sparseprop && \
+    echo "source ${VENV_PATH}/bin/activate" >> /home/$USERNAME/.bashrc
 
-RUN echo "source ${VENV_PATH}/bin/activate" >> /home/$USERNAME/.bashrc
+# Install TorchLib for cpp dependicies
+RUN wget https://download.pytorch.org/libtorch/cu118/libtorch-shared-with-deps-2.0.1%2Bcu118.zip && \
+    unzip ./libtorch-shared-with-deps-2.0.1+cu118.zip
+
+
+# Build coco API  TODO: Figure out why this wont build! 
+WORKDIR ${BUILD_PATH}/src/cocoapi/PythonAPI
+# RUN sudo ln -s ${VENV_PATH}/bin/python python && sudo make && sudo make install
+
+WORKDIR $WORKSPACE_DIR
 CMD bash
