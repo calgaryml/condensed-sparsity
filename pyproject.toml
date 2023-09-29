@@ -41,6 +41,7 @@ cython = "^3.0.0"
 jaxlib = {version="^0.4.16+cuda11.cudnn86", source="jax_repo"}
 jax = {version="^0.4.16", extras=["cuda11_pip"]}
 flax = "^0.7.4"
+seaborn = "^0.12.2"
 
 [[tool.poetry.source]]
 name="torch_repo"
@@ -101,7 +102,7 @@ pyflakes="2.2.0"
 pytest-cov="2.10.1"
 pytest="7.1.2"
 pyzmq="23.1.0"
-seaborn="0.11.2"
+seaborn="0.12.2"
 sentry-sdk="1.5.0"
 setuptools="63.2.0"
 shortuuid="1.0.1"
