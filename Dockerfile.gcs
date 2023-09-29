@@ -6,7 +6,7 @@ ARG WORKSPACE_DIR=/home/user/condensed-sparsity
 ARG USER_UID=1000003
 ARG USER_GID=1000001
 
-FROM pytorch/pytorch:1.13.1-cuda11.6-cudnn8-devel AS pytorch-base
+FROM pytorch/pytorch:2.0.1-cuda11.7-cudnn8-devel AS pytorch-base
 ARG USERNAME
 ARG WORKSPACE_DIR
 ARG USER_UID
@@ -42,7 +42,8 @@ ARG USERNAME
 ARG WORKSPACE_DIR
 ARG USER_UID
 ARG USER_GID
-ENV POETRY_VERSION="1.4.0" \
+USER ${USERNAME}}
+ENV POETRY_VERSION="1.6.1" \
     POETRY_HOME="/home/${USERNAME}/poetry" \
     POETRY_NO_INTERACTION=1 \
     POETRY_VIRTUALENVS_IN_PROJECT=false \
@@ -65,12 +66,22 @@ COPY --chown=${USER_UID}:${USER_GID} . ${WORKSPACE_DIR}
 RUN mkdir ${VENV_PATH}/ && \
     chown -R ${USER_UID}:${USER_GID} ${VENV_PATH} && \
     chmod -R a+rX ${VENV_PATH}
-USER user
+
 RUN python -m venv .venv && \ 
     source .venv/bin/activate && \
     pip install --upgrade pip && \
-    poetry install -vvv
+    poetry install -vvv && \
+    pip install sparseprop && \
+    echo "source ${VENV_PATH}/bin/activate" >> /home/$USERNAME/.bashrc
 
-RUN echo "source ${VENV_PATH}/bin/activate" >> /home/$USERNAME/.bashrc
+# Install TorchLib for cpp dependicies
+RUN wget https://download.pytorch.org/libtorch/cu118/libtorch-shared-with-deps-2.0.1%2Bcu118.zip && \
+    unzip ./libtorch-shared-with-deps-2.0.1+cu118.zip
+
+# Build coco API  TODO: Figure out why this wont build! 
+WORKDIR ${BUILD_PATH}/src/cocoapi/PythonAPI
+# RUN sudo ln -s ${VENV_PATH}/bin/python python && sudo make && sudo make install
+
+WORKDIR ${WORKSPACE_DIR}
 
 CMD python ./train_rigl.py
