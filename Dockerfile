@@ -27,7 +27,7 @@ ARG USER_GID
 
 # Install git/ssh/tmux
 RUN apt-get update \
-    && apt-get install -y git ssh curl
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y git ssh curl
 
 FROM dev-container-base AS poetry-base
 # Install poetry

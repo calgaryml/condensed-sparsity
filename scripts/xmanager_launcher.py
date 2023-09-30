@@ -24,8 +24,6 @@ from xmanager import xm_local
 _vit_args = [
     "model=vit",
     "dataset=imagenet",
-    "rigl.const_fan_in=False",
-    "experiment.comment=_uniform_spar",
 ]
 
 _x2_imagenet_args = [
