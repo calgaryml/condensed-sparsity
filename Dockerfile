@@ -27,7 +27,7 @@ ARG USER_GID
 
 # Install git/ssh/tmux
 RUN apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -y git ssh curl
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y git ssh curl unzip
 
 FROM dev-container-base AS poetry-base
 # Install poetry
@@ -36,6 +36,7 @@ ARG USERNAME
 ARG WORKSPACE_DIR
 ARG USER_UID
 ARG USER_GID
+USER ${USERNAME}
 ENV POETRY_VERSION="1.6.1" \
     POETRY_HOME="/home/${USERNAME}/poetry" \
     POETRY_NO_INTERACTION=1 \
@@ -59,7 +60,6 @@ COPY --chown=${USER_UID}:${USER_GID} . ${WORKSPACE_DIR}
 RUN mkdir ${VENV_PATH}/ && \
     chown -R ${USER_UID}:${USER_GID} ${VENV_PATH} && \
     chmod -R a+rX ${VENV_PATH}
-USER user
 RUN python -m venv .venv && \ 
     source .venv/bin/activate && \
     pip install --upgrade pip && \
