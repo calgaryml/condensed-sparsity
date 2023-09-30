@@ -82,6 +82,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
         cfg = checkpoint.cfg
         cfg.experiment.run_id = run_id
         cfg.experiment.resume_from_checkpoint = True
+        cfg.wandb.log_images = False
     else:
         run_id = None
         wandb_init_resume = None
