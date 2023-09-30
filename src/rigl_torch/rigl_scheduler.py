@@ -393,7 +393,7 @@ class RigLScheduler:
         n_dense_el, n_sparse_el, n_total_el = 0, 0, 0
         keep_dense = []
 
-        for i, (W, is_linear, is_mha) in enumerate(
+        for i, (w, is_linear, is_mha) in enumerate(
             zip(self.W, self._linear_layers_mask, self._mha_layers_mask)
         ):
             if i == 0 and self.keep_first_layer_dense and len(self.W) > 1:
@@ -410,7 +410,7 @@ class RigLScheduler:
             else:
                 keep_dense.append(False)
                 # sparsity_dist.append(1 - self.dense_allocation)
-            layer_el = torch.numel(self.W[i])
+            layer_el = torch.numel(w)
             if keep_dense[-1]:
                 n_dense_el += layer_el
             else:
@@ -420,6 +420,15 @@ class RigLScheduler:
         adjusted_uniform_sparsity = 1 - (
             (n_total_el * self.dense_allocation - n_dense_el) / n_sparse_el
         )
+        if adjusted_uniform_sparsity > 1:
+            self._logger.warn(
+                "After account for skipped linear, mha, and first layers, I "
+                "need to set adjustd sparsity to >1 "
+                f"({adjusted_uniform_sparsity}). Setting adjusted sparsity to "
+                f"{(1-self.dense_allocation)} instead for sparse targets!"
+            )
+            adjusted_uniform_sparsity = 1 - self.dense_allocation
+
         sparsity_dist = [
             adjusted_uniform_sparsity if not dense else 0
             for dense in keep_dense

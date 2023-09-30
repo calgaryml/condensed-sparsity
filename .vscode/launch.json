@@ -16,8 +16,10 @@
                 "model=maskrcnn",
                 "dataset=coco",
                 "compute.distributed=False",
-                "training.batch_size=2"
-                // "training.max_steps=1"
+                "training.batch_size=2",
+                "rigl.keep_first_layer_dense=True",
+                "rigl.ignore_mha_layers=True",
+                "training.max_steps=1"
             ]
         },
         {
@@ -35,9 +37,11 @@
                 "compute.distributed=False",
                 "rigl.sparsity_distribution=uniform",
                 "rigl.keep_first_layer_dense=True",
+                "rigl.ignore_mha_layers=True",
+                "rigl.dense_allocation=0.3",
                 "rigl.const_fan_in=True",
-                "model=maskrcnn",
-                "dataset=coco"
+                "model=vit",
+                "dataset=imagenet"
             ]
         },
         {
