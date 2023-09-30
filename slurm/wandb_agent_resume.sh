@@ -1,6 +1,6 @@
 #!/bin/bash
 # run_ids=("hkak5806" "p5n21r8q" "bbkeuxvr" "1hfmurvv")
-run_ids=("lx23b1mp") # "108mv65r")
+run_ids=("gnhxedv3" "w9y6rjgl")
 for id in ${run_ids[@]}
 do
     printf "Resuming run from ${id}\n"
