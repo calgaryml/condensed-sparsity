@@ -314,6 +314,7 @@ class RigLConstFanScheduler(RigLScheduler):
                     mask=self.backward_masks[idx],
                     weight=self.W[idx],
                     n_ones=n_ones,
+                    mod_name =name,
                 )
             self.dynamically_ablated_neuron_idx.append(neurons_to_ablate)
             # print(f"neurons to ablate = {neurons_to_ablate}")
@@ -372,6 +373,7 @@ class RigLConstFanScheduler(RigLScheduler):
         mask: torch.Tensor,
         weight: torch.Tensor,
         n_ones: int,
+        mod_name: str
     ) -> List[int]:
         """Return List of neuron indices to ablate.
 
@@ -447,7 +449,7 @@ class RigLConstFanScheduler(RigLScheduler):
             neurons_to_ablate = [
                 neuron_idx
                 for neuron_idx, neuron_sal in neuron_saliency_counts
-                if neuron_sal < _min_salient_weights_per_neuron
+                if neuron_sal <= _min_salient_weights_per_neuron
             ]
             fan_in = get_fan_in_after_ablation(
                 weight_tensor=saliency_mask,
@@ -456,9 +458,10 @@ class RigLConstFanScheduler(RigLScheduler):
             )
             if fan_in > math.prod(saliency_mask.shape[1:]):
                 self._logger.error(
-                    "New algo isssue with invalid fan in\n"
-                    f"fan in = {fan_in} "
-                    f"max fan in = {math.prod(saliency_mask.shape[1:])} "
+                    "New algo isssue with invalid fan in for module: "
+                    f"{mod_name}\n"
+                    f"fan in = {fan_in}\n"
+                    f"max fan in = {math.prod(saliency_mask.shape[1:])}\n"
                     f"min_sal per neuron = {_min_salient_weights_per_neuron} \n"
                     f"neuron scores = {neuron_saliency_counts} \n"
                     f"suggested ablation = {len(neurons_to_ablate)} \n"
