@@ -390,6 +390,8 @@ class RigLConstFanScheduler(RigLScheduler):
         Returns:
             List[int]: List of neuron indices that remain active.
         """
+        if mod_name =="self_attention":
+            pass
         if self.dynamic_ablation and self.min_salient_weights_per_neuron != 0:
             dense_fan_in = math.prod(weight.shape[1:])
             if n_ones % dense_fan_in == 0:
@@ -449,12 +451,12 @@ class RigLConstFanScheduler(RigLScheduler):
             neurons_to_ablate = [
                 neuron_idx
                 for neuron_idx, neuron_sal in neuron_saliency_counts
-                if neuron_sal <= _min_salient_weights_per_neuron
+                if neuron_sal < _min_salient_weights_per_neuron
             ]
             fan_in = get_fan_in_after_ablation(
                 weight_tensor=saliency_mask,
                 num_neurons_to_ablate=len(neurons_to_ablate),
-                sparsity=sparsity,
+                sparsity=sparsity,   # Replace with n_ones?
             )
             if fan_in > math.prod(saliency_mask.shape[1:]):
                 self._logger.error(
@@ -468,7 +470,13 @@ class RigLConstFanScheduler(RigLScheduler):
                     f"min neurons = {min_neurons} \n"
                     f"n_ones = {n_ones} \n"
                 )
-                raise InvalidAblatedNeuronException("Invalid fan in detected!")
+                # raise InvalidAblatedNeuronException("Invalid fan in detected!")
+                neurons_to_ablate = [n_idx for n_idx, _ in neuron_saliency_counts[min_neurons:]]
+                fan_in = get_fan_in_after_ablation(
+                    weight_tensor=saliency_mask,
+                    num_neurons_to_ablate=len(neurons_to_ablate),
+                    sparsity=sparsity,
+                )
             self._min_sal_per_layer.append(_min_salient_weights_per_neuron)
             return neurons_to_ablate
 
