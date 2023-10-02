@@ -30,18 +30,19 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                "training.simulated_batch_size=null",
-                "training.batch_size=32",
-                "rigl.grad_accumulation_n=1",
-                "training.dry_run=True",
-                "compute.distributed=False",
-                "rigl.sparsity_distribution=uniform",
+                // "training.simulated_batch_size=null",
+                // "training.batch_size=32",
+                // "rigl.grad_accumulation_n=1",
+                // "training.dry_run=True",
+                // "compute.distributed=False",
+                // "rigl.sparsity_distribution=uniform",
                 "rigl.keep_first_layer_dense=True",
-                "rigl.ignore_mha_layers=True",
+                "rigl.ignore_mha_layers=False",
                 "rigl.dense_allocation=0.3",
-                "rigl.const_fan_in=True",
-                "model=vit",
-                "dataset=imagenet"
+                "rigl.delta=1"
+                // "rigl.const_fan_in=True",
+                // "model=vit",
+                // "dataset=imagenet"
             ]
         },
         {
