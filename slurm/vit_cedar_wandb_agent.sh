@@ -23,8 +23,10 @@ cp $SCRATCH/ILSVRC2012_img_train.tar $SLURM_TMPDIR
 cp $SCRATCH/ILSVRC2012_img_val.tar $SLURM_TMPDIR
 
 ## SET ENV ##:
-module load python/3.10.2 cuda/11.8.0 cudnn
+module load python/3.10.2 cuda/11.7 cudnn
 source ${SLURM_TMPDIR}/.venv/bin/activate
 
 ## RUN SCRIPT ##
-wandb agent condensed-sparsity/condensed-rigl/eme0pwpl
+# wandb agent condensed-sparsity/condensed-rigl/iwrcbyyg
+python ./train_rigl.py rigl.ignore_mha_layers=True rigl.keep_first_layer_dense=False rigl.dense_allocation=0.3
+
