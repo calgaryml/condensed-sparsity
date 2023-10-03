@@ -325,10 +325,10 @@ def get_fan_in_after_ablation(
         remaining_non_zero_elements = int(
             weight_tensor.numel() * (1 - sparsity)
         )
-        n_ones = remaining_non_zero_elements // len(weight_tensor) * len(weight_tensor) 
-        # Get n_ones after const_fan_in allocation
-        # print(f"Remaining non-zero elements from get_fan_in_after_ablation: {remaining_non_zero_elements}")
-        return n_ones // active_neurons  # TODO: see what happens downstream?
+        # n_ones = remaining_non_zero_elements // len(weight_tensor) * len(weight_tensor)  # noqa
+        # # Get n_ones after const_fan_in allocation
+        # # print(f"Remaining non-zero elements from get_fan_in_after_ablation: {remaining_non_zero_elements}")  # noqa
+        # return n_ones // active_neurons  # TODO: see what happens downstream?
         fan_in_after_ablation = remaining_non_zero_elements // active_neurons
         if fan_in_after_ablation == 0:
             raise ValueError(
