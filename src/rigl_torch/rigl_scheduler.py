@@ -322,7 +322,7 @@ class RigLScheduler:
         )
         assert (
             self.grad_accumulation_n > 0
-            and self.grad_accumulation_n < self.delta_T
+            and self.grad_accumulation_n <= self.delta_T
         )
         assert (
             self.sparsity_distribution
