@@ -64,19 +64,22 @@ def initalize_main(cfg: omegaconf.DictConfig) -> None:
         del single_proc_cfg
         wandb.setup()
         _validate_distributed_cfg(cfg)
-        mp.spawn(
-            main,
-            args=(cfg,),
-            nprocs=cfg.compute.world_size,
-        )
+        if "RANK" in os.environ:
+            rank = int(os.environ["RANK"])
+            main(rank, cfg)
+        else:
+            mp.spawn(main, args=(cfg,), nprocs=cfg.compute.world_size)
     else:
         main(0, cfg)  # Single GPU
 
 
 def main(rank: int, cfg: omegaconf.DictConfig) -> None:
+    local_device_id = int(os.environ.get("LOCAL_RANK", rank))
+    world_size = int(os.environ.get("WORLD_SIZE", cfg.compute.world_size))
+
     logger = get_logger(cfg.paths.logs, __name__, rank)
     if cfg.experiment.resume_from_checkpoint:
-        checkpoint = get_checkpoint(cfg, rank, logger)
+        checkpoint = get_checkpoint(cfg, local_device_id, logger)
         wandb_init_resume = "must"
         run_id = checkpoint.run_id
         cfg = checkpoint.cfg
@@ -92,7 +95,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
     if cfg.compute.distributed:
         dist.init_process_group(
             backend=cfg.compute.dist_backend,
-            world_size=cfg.compute.world_size,
+            world_size=world_size,
             rank=rank,
         )
     run_id, optimizer_state, scheduler_state, pruner_state, model_state = (
@@ -126,7 +129,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
         )
 
     if cfg.compute.distributed:
-        device = torch.device(f"cuda:{rank}")
+        device = torch.device(f"cuda:{local_device_id}")
     else:
         device = torch.device("cuda" if use_cuda else "cpu")
     train_loader, test_loader = get_dataloaders(cfg)
@@ -135,8 +138,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
     )
     model.to(device)
     if cfg.compute.distributed:
-        model = DistributedDataParallel(model, device_ids=[rank])
-        # TODO: experiment with this line
+        model = DistributedDataParallel(model, device_ids=[local_device_id])
         model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
     if model_state is not None:
         model.load_state_dict(model_state)
@@ -356,7 +358,9 @@ def train(
                 world_size = (
                     1
                     if cfg.compute.distributed is False
-                    else cfg.compute.world_size
+                    else int(
+                        os.environ.get("WORLD_SIZE", cfg.compute.world_size)
+                    )
                 )
                 logger.info(
                     "Step: {} Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(  # noqa
@@ -514,11 +518,12 @@ def _validate_distributed_cfg(cfg: omegaconf.DictConfig) -> None:
         )
     if not torch.cuda.is_available():
         raise ValueError("torch.cuda.is_available() returned False!")
-    if cfg.compute.world_size > torch.cuda.device_count():
-        raise ValueError(
-            f"cfg.compute.world_size == {cfg.compute.world_size}"
-            f" but I only see {torch.cuda.device_count()} cuda devices!"
-        )
+    # local_world_size = os.environ.get("WORLD_SIZE", cfg.compute.world_size)
+    # if cfg.compute.world_size > torch.cuda.device_count():
+    #     raise ValueError(
+    #         f"cfg.compute.world_size == {cfg.compute.world_size}"
+    #         f" but I only see {torch.cuda.device_count()} cuda devices!"
+    #     )
     return
 
 

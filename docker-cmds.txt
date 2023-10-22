@@ -10,6 +10,63 @@
 
 gsutil -m cp -R gs://condensed_sparsity/artifacts/checkpoints ./
 
+louise
+100.90.128.40
+172.20.206.69
+
+torchrun \
+   --nnodes=2 \
+   --nproc-per-node=2 \
+   --max-restarts=1 \
+   --rdzv-id=100 \
+   --rdzv-backend=c10d \
+   --rdzv-endpoint=louise:29400 \
+   train_rigl.py training.dry_run=True
+
+torchrun \
+   --nnodes=2 \
+   --nproc-per-node=2 \
+   --max-restarts=1 \
+   --rdzv-id=100 \
+   --rdzv-backend=c10d \
+   --rdzv-endpoint=172.20.206.69:29400 \
+   train_rigl.py experiment.resume_from_checkpoint=True experiment.run_id=x3nse9y3
+
+
+#bow/moraine
+#bow
+NCCL_IB_DISABLE=1 NCCL_P2P_DISABLE=1 NCCL_DEBUG=INFO TORCH_CPP_LOG_LEVEL=INFO TORCH_DISTRIBUTED_DEBUG=INFO NCCL_SOCKET_IFNAME=enp130s0f0 \
+torchrun \
+  --nnodes=2 \
+  --nproc-per-node=2 \
+  --max-restarts=0 \
+  --rdzv-id=100 \
+  --rdzv-backend=c10d \
+  --rdzv-endpoint=localhost:29400 \
+  train_rigl.py experiment.resume_from_checkpoint=True experiment.run_id=2ccexxga
+
+# moraine
+NCCL_IB_DISABLE=1 NCCL_P2P_DISABLE=1 NCCL_SOCKET_IFNAME=enp130s0f0 torchrun \
+  --nnodes=2 \
+  --nproc-per-node=2 \
+  --max-restarts=0 \
+  --rdzv-id=100 \
+  --rdzv-backend=c10d \
+  --rdzv-endpoint=louise.local.calgaryml.com:29400 \
+  train_rigl.py experiment.resume_from_checkpoint=True experiment.run_id=2ccexxga
+  
+
+# Louise
+NCCL_IB_DISABLE=1 NCCL_P2P_DISABLE=1 NCCL_DEBUG=INFO TORCH_CPP_LOG_LEVEL=INFO TORCH_DISTRIBUTED_DEBUG=INFO NCCL_SOCKET_IFNAME=enp134s0f0np0 \
+torchrun \
+  --nnodes=2 \
+  --nproc-per-node=2 \
+  --max-restarts=0 \
+  --rdzv-id=100 \
+  --rdzv-backend=c10d \
+  --rdzv-endpoint=localhost:29400 \
+  train_rigl.py experiment.resume_from_checkpoint=True experiment.run_id=2ccexxga
+
 
 docker build --file ./Dockerfile.gcs -t mklasby/condensed-sparsity:rigl-gcs --shm-size=16gb .
 docker push mklasby/condensed-sparsity:rigl-gcs

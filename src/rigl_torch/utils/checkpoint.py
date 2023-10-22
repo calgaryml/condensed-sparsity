@@ -40,7 +40,7 @@ class Checkpoint(object):
 
     def __post_init__(self) -> None:
         # TODO: Move this to explicit call only if creating a new ckpt
-        self.checkpoint_dir = self._format_checkpoint_dir(self.checkpoint_dir)
+        # self.checkpoint_dir = self._format_checkpoint_dir(self.checkpoint_dir)
         pass
 
     def _format_checkpoint_dir(
@@ -56,7 +56,7 @@ class Checkpoint(object):
                 / "checkpoints"
                 / dir_name
             )
-        if type(checkpoint_dir) == str:
+        if type(checkpoint_dir) is str:
             checkpoint_dir = pathlib.Path(checkpoint_dir)
         if not checkpoint_dir.is_dir():
             checkpoint_dir.mkdir(parents=True, exist_ok=False)
@@ -157,7 +157,7 @@ class Checkpoint(object):
                 raise ValueError("Must provide checkpoint_dir or run_id!")
             checkpoint_dir = cls._get_checkpoint_dir_from_run_id(run_id)
         else:
-            if type(checkpoint_dir) == str:
+            if type(checkpoint_dir) is str:
                 checkpoint_dir = pathlib.Path(checkpoint_dir)
         if not checkpoint_dir.is_dir():
             raise ValueError(
