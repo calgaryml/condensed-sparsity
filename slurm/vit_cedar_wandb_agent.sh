@@ -27,4 +27,4 @@ module load python/3.10.2 cuda/11.7 cudnn
 source ${SLURM_TMPDIR}/.venv/bin/activate
 
 ## RUN SCRIPT ##
-wandb agent condensed-sparsity/condensed-rigl/g6d1qytu
+wandb agent --count 1 condensed-sparsity/condensed-rigl/g6d1qytu

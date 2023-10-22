@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, Union
 import pathlib
 import torch
+import os
 
 
 class ABCDataStem(ABC):
@@ -20,16 +21,16 @@ class ABCDataStem(ABC):
         )
         torch.manual_seed(self.cfg.training.seed)
         if self.cfg.compute.distributed:
+            world_size = int(
+                os.environ.get("WORLD_SIZE", self.cfg.compute.world_size)
+            )
             self.train_kwargs = {
-                "batch_size": int(
-                    self.cfg.training.batch_size / self.cfg.compute.world_size
-                ),
+                "batch_size": int(self.cfg.training.batch_size / world_size),
                 "shuffle": False,
             }
             self.test_kwargs = {
                 "batch_size": int(
-                    self.cfg.training.test_batch_size
-                    / self.cfg.compute.world_size
+                    self.cfg.training.test_batch_size / world_size
                 ),
             }
         else:
