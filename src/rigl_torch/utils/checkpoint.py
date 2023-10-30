@@ -146,6 +146,7 @@ class Checkpoint(object):
         else:
             map_location = "cpu"
         state = torch.load(checkpoint_path, map_location=map_location)
+        # use paths are currently defined in host in case checkpoint was moved
         state["checkpoint_dir"] = checkpoint_dir
         state["parent_dir"] = pathlib.Path(os.getenv("BASE_PATH"))
         return Checkpoint(**state)
