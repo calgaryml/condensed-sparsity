@@ -201,8 +201,16 @@ class CondensedLinearFineGrained(nn.Module):
                 self.register_parameter("bias", None)
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
+        # return (
+        #     torch.sum(self.condensed_weight * input[:, self.input_mask], dim=2)  # noqa
+        #     + self.bias
+        # )
+        # TODO: Test for 2-dim, benchmark 3 dim
         return (
-            torch.sum(self.condensed_weight * input[:, self.input_mask], dim=2)
+            torch.sum(
+                self.condensed_weight * input[..., self.input_mask],
+                dim=input.dim(),
+            )
             + self.bias
         )
 
