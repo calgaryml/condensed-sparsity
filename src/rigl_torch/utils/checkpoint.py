@@ -39,9 +39,11 @@ class Checkpoint(object):
     _RUN_ID_DELIMITER: str = "_"
 
     def __post_init__(self) -> None:
-        # TODO: Move this to explicit call only if creating a new ckpt
-        # self.checkpoint_dir = self._format_checkpoint_dir(self.checkpoint_dir)
-        pass
+        # If checkpoint dir is None or checkpoint_dir doesn't exist from ckpt
+        if not self.checkpoint_dir or not self.checkpoint_dir.is_dir():
+            self.checkpoint_dir = self._format_checkpoint_dir(
+                self.checkpoint_dir
+            )
 
     def _format_checkpoint_dir(
         self, checkpoint_dir: Optional[Union[pathlib.Path, str]]
@@ -144,6 +146,8 @@ class Checkpoint(object):
         else:
             map_location = "cpu"
         state = torch.load(checkpoint_path, map_location=map_location)
+        state["checkpoint_dir"] = checkpoint_dir
+        state["parent_dir"] = pathlib.Path(os.getenv("BASE_PATH"))
         return Checkpoint(**state)
 
     @classmethod
@@ -201,10 +205,12 @@ def get_checkpoint(cfg: omegaconf.DictConfig, rank: int, logger) -> Checkpoint:
             "Must provide wandb run_id when "
             "cfg.training.resume_from_checkpoint is True"
         )
+    this_host_paths = cfg.paths
     checkpoint = Checkpoint.load_last_checkpoint(
         run_id=run_id,
         parent_dir=cfg.paths.checkpoints,
         rank=rank,
     )
+    checkpoint.cfg.paths = this_host_paths
     logger.info(f"Resuming training with run_id: {cfg.experiment.run_id}")
     return checkpoint
