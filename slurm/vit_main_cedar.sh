@@ -5,7 +5,7 @@
 #SBATCH --job-name=imagenet_vit
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=16
+#SBATCH --cpus-per-task=32
 #SBATCH --gres=gpu:v100l:4
 #SBATCH --mem=125G    
 #SBATCH --time=7-00:00:00
@@ -27,13 +27,10 @@ module load singularity python/3.10.2 cuda/11.7 cudnn
 source ${SLURM_TMPDIR}/.venv/bin/activate
 
 ## RUN SCRIPT ##
-dense_alloc=$1
-printf "Starting run with dense alloc == ${dense_alloc}\n"
+# dense_alloc=$1
+# printf "Starting run with dense alloc == ${dense_alloc}\n"
 
 python3 ${WORKDIR}/train_rigl.py \
-dataset=imagenet \
-model=vit \
-rigl.dense_allocation=${dense_alloc} \
-compute.world_size=4 \
-rigl.min_salient_weights_per_neuron=0.99 \
-training.seed=5555
+experiment.resume_from_checkpoint=True \
+experiment.run_id=toffv5zr
+
