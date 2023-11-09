@@ -18,6 +18,7 @@ from condensed_sparsity.condensed_linear import (  # noqa
     CondensedLinearStructured,
     CondensedLinearFineGrained,
     VmapCondensed,
+    FixedFanInCuda,
     CondensedLinearFineGrainedSparseOp,  # noqa
 )
 
@@ -58,6 +59,8 @@ def main(
         cl_struc = CondensedLinearStructured(deepcopy(mod), dtype=dtype).eval()
         cl_fine = CondensedLinearFineGrained(deepcopy(mod), dtype=dtype).eval()
         cl_vmap = VmapCondensed(deepcopy(mod), dtype=dtype).eval()
+        ffi = FixedFanInCuda(deepcopy(mod), dtype=dtype, transpose=False, vectorize=True, index_dtype=torch.int16).eval()
+        ffi_tp = FixedFanInCuda(deepcopy(mod), dtype=dtype, transpose=True, vectorize=True, index_dtype=torch.int16).eval()
         if include_csr:
             cl_sparse_op = CondensedLinearFineGrainedSparseOp(
                 deepcopy(mod), dtype=dtype
@@ -280,6 +283,47 @@ def main(
                                 num_threads=num_threads,
                             ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
                         )
+
+                        # Structured
+                        _ = ffi(x)  # JIT warmup and caching
+                        results.append(
+                            benchmark.Timer(
+                                stmt="ffi(x)",
+                                setup="",
+                                globals={"x": x, "ffi": ffi},
+                                label=label,
+                                sub_label=sub_label,
+                                description=("FFI"),
+                                num_threads=num_threads,
+                            ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
+                        )
+
+                        _ = ffi_tp(x)  # JIT warmup and caching
+                        results.append(
+                            benchmark.Timer(
+                                stmt="ffi_tp(x)",
+                                setup="",
+                                globals={"x": x, "ffi_tp": ffi_tp},
+                                label=label,
+                                sub_label=sub_label,
+                                description=("FFI TP"),
+                                num_threads=num_threads,
+                            ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
+                        )
+
+                        _ = ffi_tp(x)  # JIT warmup and caching
+                        results.append(
+                            benchmark.Timer(
+                                stmt="ffi_tp(x)",
+                                setup="",
+                                globals={"x": x.transpose(0, 1).contiguous().transpose(0, 1), "ffi_tp": ffi_tp},
+                                label=label,
+                                sub_label=sub_label,
+                                description=("FFI TP (self)"),
+                                num_threads=num_threads,
+                            ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
+                        )
+
                         # Structured compiled
                         _ = cl_struct_compiled(x)  # JIT warmup and caching
                         results.append(
