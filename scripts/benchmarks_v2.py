@@ -13,7 +13,7 @@ import os
 import pathlib
 import gc
 
-from condensed_sparsity.v2.condensed_linear import (  # noqa
+from condensed_sparsity.condensed_linear import (  # noqa
     CSRLinear,
     CondensedLinearStructured,
     CondensedLinearFineGrained,
@@ -430,7 +430,6 @@ def get_mod(
             ],
         )
     dotenv.load_dotenv("../.env", override=True)
-    os.environ["IMAGE_NET_PATH"]
     checkpoint_dir = pathlib.Path(f"./artifacts/checkpoints/{run_id}")
     checkpoint = Checkpoint.load_best_checkpoint(checkpoint_dir=checkpoint_dir)
     model_state = checkpoint.model
