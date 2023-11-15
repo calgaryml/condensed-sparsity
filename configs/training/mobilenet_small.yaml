@@ -1,0 +1,36 @@
+# Training config group
+
+# batch size for training
+batch_size: 512 # 128 for cifar10, multiples of 256 for imagenet w/ scaled lr -> 512 with 2 v100s or 4 3090s -> 1024 with 4 v100s
+# Batch size to simulate by taking multiple steps per optimizer update (accumulate grads)
+simulated_batch_size: 1024 # Based on torchvision recipe of 128x8, check vram consumption may be able to use more
+# batch size for testing
+test_batch_size: 1000
+# number of epochs to train
+epochs: 600 # For imagenet, training will finish at ~ epoch 102.31, use 250 for cifar10 || imagenet x5 -> 515
+# max number of steps (will override epochs) -> Based on number of optimizer steps (ie., dataset len * epochs * simulated batch size)
+max_steps: null # 4096 * 32000 / 512 = 256000 from rigl paper || x5 -> 4096*32000/1024 = 640000
+
+## Optimization
+optimizer: rmsprop # "sgd", "adamw"
+# L2 Regularization for optimizer
+weight_decay: 0.00001 # 5.0e-4 -> cifar10   0.0001 -> imagenet
+# Momentum coefficient for SGD optimizer
+momentum: 0.9 # 0.9 -> rigl value
+# Label smoothing for cross entropy
+label_smoothing: 0.1 # 0.1 for imagenet, 0.0 for cifar
+# Gradient clipping, If null, no clipping is performed.
+clip_grad_norm: null
+#rmsprop smoothing alpha
+alpha: 0.9
+
+## Scheduler
+scheduler: step_lr # step_lr -> cifar # cosine_annealing_with_warm_up, step_lr_with_warm_up -> imagenet
+# Learning rate after warmup
+lr: 0.064 # 0.064 * 128 / 256 per original paper -> Use 1.6 for 4096 simulated batch size. 0.1 for ITOP
+# Number of epochs to warm up for linear warm ups
+warm_up_steps: 0
+# Learning rate step gamma
+gamma: 0.973 # 0.1 for imagenet, 0.2 for cifar
+# Step size to use in learning rate scheduler if StepLR is used. List[int] || int
+step_size: 2

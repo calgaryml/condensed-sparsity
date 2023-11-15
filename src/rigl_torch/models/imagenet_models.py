@@ -27,3 +27,7 @@ def get_imagenet_resnet18(*args, **kwargs):
 @ModelFactory.register_model_loader(model="resnet50", dataset="imagenet")
 def get_imagenet_resnet50(*args, **kwargs):
     return resnet50(num_classes=1000)
+
+
+if __name__ == "__main__":
+    print(get_imagenet_resnet50())
