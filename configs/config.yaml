@@ -1,7 +1,7 @@
 defaults:
   - _self_ # We default to values in this file if group settings below are null
   - dataset: imagenet
-  - model: vit
+  - model: mobilenet_large
   - rigl: ${model}
   - training: ${model}
   - compute: ${dataset}
@@ -10,7 +10,7 @@ experiment:
   comment: "" # Start with leading underscore
   name:
     "${model.name}_${dataset.name}_dense_alloc-${rigl.dense_allocation}_const_fan_in-${rigl.const_fan_in}\
-    _min_sal-${rigl.min_salient_weights_per_neuron}
+    _min_sal-${rigl.min_salient_weights_per_neuron}\
     ${experiment.comment}"
   resume_from_checkpoint: False
   run_id: null
@@ -32,7 +32,7 @@ paths:
 rigl:
   # percentage of dense parameters allowed. if null, pruning will not
   # be used. must be on the interval (0, 1]
-  dense_allocation: 0.2
+  dense_allocation: 0.1
   # number of steps between rigl pruning / regrow iterations
   delta: 800 # 4096 * 100 / 512 = 800 || 100 for cifar || x5 -> No change?
   # number of gradients to accumulate before scoring for rigl
@@ -132,6 +132,7 @@ compute:
   world_size: 4
   # Backend to use for distributed training, options: ["nccl", "gloo"]
   dist_backend: "nccl"
+  use_tf32: False
 
 wandb:
   log_to_wandb: True

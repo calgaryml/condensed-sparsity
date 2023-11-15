@@ -1,0 +1,26 @@
+program: train_rigl.py
+method: grid
+entity: condensed-sparsity
+project: condensed-rigl
+name: mobilenet_large
+metric:
+  goal: maximize
+  name: accuracy
+parameters:
+  model:
+    value: mobilenet_large
+  rigl.dense_allocation:
+    values: [0.1, 0.2, 0.05, 0.01]
+  rigl.const_fan_in:
+    values:
+      [True, False]
+      # percentage of dense parameters allowed. if None, pruning will not
+      # be used. must be on the interval (0, 1]
+  compute.use_tf32:
+    value: True
+
+command:
+  - ${env}
+  - python
+  - ${program}
+  - ${args_no_hyphens}
