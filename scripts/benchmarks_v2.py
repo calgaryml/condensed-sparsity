@@ -9,7 +9,8 @@ from hydra import initialize, compose
 from rigl_torch.models import ModelFactory
 from rigl_torch.utils.checkpoint import Checkpoint
 import dotenv
-import os
+
+# import os
 import pathlib
 import gc
 
@@ -59,8 +60,20 @@ def main(
         cl_struc = CondensedLinearStructured(deepcopy(mod), dtype=dtype).eval()
         cl_fine = CondensedLinearFineGrained(deepcopy(mod), dtype=dtype).eval()
         cl_vmap = VmapCondensed(deepcopy(mod), dtype=dtype).eval()
-        ffi = FixedFanInCuda(deepcopy(mod), dtype=dtype, transpose=False, vectorize=True, index_dtype=torch.int16).eval()
-        ffi_tp = FixedFanInCuda(deepcopy(mod), dtype=dtype, transpose=True, vectorize=True, index_dtype=torch.int16).eval()
+        ffi = FixedFanInCuda(
+            deepcopy(mod),
+            dtype=dtype,
+            transpose=False,
+            vectorize=True,
+            index_dtype=torch.int16,
+        ).eval()
+        ffi_tp = FixedFanInCuda(
+            deepcopy(mod),
+            dtype=dtype,
+            transpose=True,
+            vectorize=True,
+            index_dtype=torch.int16,
+        ).eval()
         if include_csr:
             cl_sparse_op = CondensedLinearFineGrainedSparseOp(
                 deepcopy(mod), dtype=dtype
@@ -316,7 +329,12 @@ def main(
                             benchmark.Timer(
                                 stmt="ffi_tp(x)",
                                 setup="",
-                                globals={"x": x.transpose(0, 1).contiguous().transpose(0, 1), "ffi_tp": ffi_tp},
+                                globals={
+                                    "x": x.transpose(0, 1)
+                                    .contiguous()
+                                    .transpose(0, 1),
+                                    "ffi_tp": ffi_tp,
+                                },  # noqa
                                 label=label,
                                 sub_label=sub_label,
                                 description=("FFI TP (self)"),
