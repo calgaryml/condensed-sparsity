@@ -3,14 +3,7 @@
 # number of steps between rigl pruning / regrow iterations
 delta: 100 # 4096 * 100 / 512 = 800 || 100 for cifar || x5 -> No change? | Try 100 for simulated batch of 4096
 # number of gradients to accumulate before scoring for rigl
-grad_accumulation_n: 2 # accumulated batch size / actual batch size ie., 1024 / 512 = 8
-# Custom topology to use for SkinnyResNet
-diet: null
-# keep first layer dense
-keep_first_layer_dense: False
-# Ignore multi-head attention layers
-ignore_mha_layers: False
-# Define layer-wise sparsity distribution. Options include `uniform` & `erk`
+grad_accumulation_n: 2 # accumulated batch size / actual batch size ie., 1024 / 512 = 2
 sparsity_distribution: erk
 # Param for minimum number of salient weights per neuron. If < this value, the neuron will be dynamically ablated.
 min_salient_weights_per_neuron: 0.3
