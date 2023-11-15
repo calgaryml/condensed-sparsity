@@ -33,9 +33,25 @@ torchrun \
    train_rigl.py experiment.resume_from_checkpoint=True experiment.run_id=x3nse9y3
 
 
+NCCL_IB_DISABLE=1 NCCL_P2P_DISABLE=1 
+
+# minne
+
+ens4f0
+
+NCCL_DEBUG=INFO TORCH_CPP_LOG_LEVEL=INFO TORCH_DISTRIBUTED_DEBUG=INFO NCCL_SOCKET_IFNAME=ens4f0 \
+torchrun \
+  --nnodes=1 \
+  --nproc-per-node=2 \
+  --max-restarts=0 \
+  --rdzv-id=100 \
+  --rdzv-backend=c10d \
+  --rdzv-endpoint=localhost:29400 \
+  train_rigl.py experiment.resume_from_checkpoint=True experiment.run_id=0y9hroig
+
 #bow/moraine
 #bow
-NCCL_IB_DISABLE=1 NCCL_P2P_DISABLE=1 NCCL_DEBUG=INFO TORCH_CPP_LOG_LEVEL=INFO TORCH_DISTRIBUTED_DEBUG=INFO NCCL_SOCKET_IFNAME=enp130s0f0 \
+NCCL_DEBUG=INFO TORCH_CPP_LOG_LEVEL=INFO TORCH_DISTRIBUTED_DEBUG=INFO NCCL_SOCKET_IFNAME=eno1np0 \
 torchrun \
   --nnodes=2 \
   --nproc-per-node=2 \
@@ -43,7 +59,7 @@ torchrun \
   --rdzv-id=100 \
   --rdzv-backend=c10d \
   --rdzv-endpoint=localhost:29400 \
-  train_rigl.py experiment.resume_from_checkpoint=True experiment.run_id=2ccexxga
+  train_rigl.py experiment.resume_from_checkpoint=True experiment.run_id=yt8arphp
 
 # moraine
 NCCL_SOCKET_IFNAME=enp134s0f1np1 torchrun \
@@ -57,14 +73,14 @@ NCCL_SOCKET_IFNAME=enp134s0f1np1 torchrun \
   
 
 # Louise
-NCCL_DEBUG=INFO TORCH_CPP_LOG_LEVEL=INFO TORCH_DISTRIBUTED_DEBUG=INFO NCCL_SOCKET_IFNAME=enp129s0f0 \
+NCCL_DEBUG=INFO TORCH_CPP_LOG_LEVEL=INFO TORCH_DISTRIBUTED_DEBUG=INFO NCCL_SOCKET_IFNAME=eno1np0 \
 torchrun \
   --nnodes=2 \
   --nproc-per-node=2 \
   --max-restarts=0 \
   --rdzv-id=100 \
   --rdzv-backend=c10d \
-  --rdzv-endpoint=localhost:29400 \
+  --rdzv-endpoint=bow.local.calgaryml.com:29400 \
   train_rigl.py experiment.resume_from_checkpoint=True experiment.run_id=yt8arphp
 
 
