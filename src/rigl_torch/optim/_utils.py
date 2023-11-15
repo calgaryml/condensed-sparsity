@@ -44,6 +44,15 @@ def get_optimizer(
             betas=cfg.training.betas,
             weight_decay=cfg.training.weight_decay,
         ),
+        "rmsprop": partial(
+            torch.optim.RMSprop,
+            params=model.parameters(),
+            lr=cfg.training.lr,
+            momentum=cfg.training.momentum,
+            weight_decay=cfg.training.weight_decay,
+            eps=0.0316,
+            alpha=cfg.training.alpha,
+        ),
     }
     if cfg.training.optimizer.lower() not in optimizers:
         raise ValueError(

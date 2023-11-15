@@ -10,8 +10,7 @@ experiment:
   comment: "" # Start with leading underscore
   name:
     "${model.name}_${dataset.name}_dense_alloc-${rigl.dense_allocation}_const_fan_in-${rigl.const_fan_in}\
-    _min_sal-${rigl.min_salient_weights_per_neuron}_conv_proj_dense-${rigl.keep_first_layer_dense}\
-    _mha-dense-${rigl.ignore_mha_layers}\
+    _min_sal-${rigl.min_salient_weights_per_neuron}
     ${experiment.comment}"
   resume_from_checkpoint: False
   run_id: null
@@ -105,6 +104,8 @@ training:
   betas: [0.9, 0.999]
   # Gradient clipping, If null, no clipping is performed.
   clip_grad_norm: null
+  #rmsprop smoothing alpha
+  alpha: 0.9
 
   ## Scheduler
   scheduler: step_lr_with_warm_up # step_lr -> cifar # cosine_annealing_with_warm_up, step_lr_with_warm_up -> imagenet
