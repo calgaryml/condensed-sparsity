@@ -45,9 +45,9 @@ def initalize_main(cfg: omegaconf.DictConfig) -> None:
     if "diet" not in cfg.rigl:
         with omegaconf.open_dict(cfg):
             cfg.rigl.diet = None
-    if "use_tf32" not in cfg.training:
+    if "use_tf32" not in cfg.compute:
         with omegaconf.open_dict(cfg):
-            cfg.training.use_tf32 = False
+            cfg.compute.use_tf32 = False
     if "keep_first_layer_dense" not in cfg.rigl:
         with omegaconf.open_dict(cfg):
             cfg.rigl.keep_first_layer_dense = False
@@ -77,13 +77,15 @@ def initalize_main(cfg: omegaconf.DictConfig) -> None:
 
 
 def main(rank: int, cfg: omegaconf.DictConfig) -> None:
-    if cfg.training.use_tf32:
-        torch.backends.matmul.allow_tf32 = True
+    logger = get_logger(cfg.paths.logs, __name__, rank)
+    if cfg.compute.use_tf32:
+        logger.warning(f"Using tf32 types. See compute.use_tf32")
+        torch.backends.cuda.matmul.allow_tf32 = True
         torch.backends.cudnn.allow_tf32 = True
     local_device_id = int(os.environ.get("LOCAL_RANK", rank))
     world_size = int(os.environ.get("WORLD_SIZE", cfg.compute.world_size))
 
-    logger = get_logger(cfg.paths.logs, __name__, rank)
+
     if cfg.experiment.resume_from_checkpoint:
         checkpoint = get_checkpoint(cfg, local_device_id, logger)
         wandb_init_resume = "must"
