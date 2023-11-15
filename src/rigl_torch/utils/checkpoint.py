@@ -40,6 +40,8 @@ class Checkpoint(object):
 
     def __post_init__(self) -> None:
         # If checkpoint dir is None or checkpoint_dir doesn't exist from ckpt
+        if type(self.checkpoint_dir) is str:
+            self.checkpoint_dir = pathlib.Path(self.checkpoint_dir)
         if not self.checkpoint_dir or not self.checkpoint_dir.is_dir():
             self.checkpoint_dir = self._format_checkpoint_dir(
                 self.checkpoint_dir
