@@ -217,8 +217,12 @@ class CondensedLinearFineGrained(nn.Module):
 
 class FixedFanInCuda(nn.Module):
     def __init__(
-            self, module: nn.Module, dtype: torch.typename = torch.float32,
-            transpose: bool = True, vectorize: bool = False, index_dtype: torch.typename = torch.int32
+        self,
+        module: nn.Module,
+        dtype: torch.typename = torch.float32,
+        transpose: bool = True,
+        vectorize: bool = False,
+        index_dtype: torch.typename = torch.int32,
     ):
         super().__init__()
         if dtype is None:
@@ -243,7 +247,9 @@ class FixedFanInCuda(nn.Module):
             )
             # padding to multiple of 4
             if vectorize:
-                pad = (self.input_mask.shape[1] + 3) // 4 * 4 - self.input_mask.shape[1]
+                pad = (
+                    self.input_mask.shape[1] + 3
+                ) // 4 * 4 - self.input_mask.shape[1]
                 self.input_mask = F.pad(self.input_mask, [0, pad])
                 weight = F.pad(weight, [0, pad])
 
@@ -263,8 +269,16 @@ class FixedFanInCuda(nn.Module):
                 self.register_parameter("bias", None)
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
+        # TODO: move to header and add cuda kernel to build
         from torch_sparse.ops import ffi_mul
-        return ffi_mul(input, self.condensed_weight, self.input_mask, self.bias, transpose=self.transpose)
+
+        return ffi_mul(
+            input,
+            self.condensed_weight,
+            self.input_mask,
+            self.bias,
+            transpose=self.transpose,
+        )
 
 
 class CondensedLinearFineGrainedSparseOp(nn.Module):
