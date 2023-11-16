@@ -16,7 +16,7 @@ parameters:
       [True, False]
       # percentage of dense parameters allowed. if None, pruning will not
       # be used. must be on the interval (0, 1]
-  compute.use_tf32:
+  training.use_amp:
     value: True
 
 command:

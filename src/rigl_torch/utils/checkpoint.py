@@ -3,6 +3,7 @@ from typing import Optional, Union, Dict, Any
 import pathlib
 import torch
 import torch.nn as nn
+from torch.cuda.amp.grad_scaler import GradScaler
 from dataclasses import dataclass
 from omegaconf import DictConfig
 import datetime
@@ -24,6 +25,7 @@ class Checkpoint(object):
     model: nn.Module
     optimizer: torch.optim.Optimizer
     scheduler: torch.optim.lr_scheduler._LRScheduler
+    scaler: GradScaler
     pruner: Optional[RigLScheduler] = None
     epoch: int = 0
     step: int = 0

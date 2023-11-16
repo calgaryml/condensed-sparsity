@@ -119,6 +119,8 @@ training:
   gamma: 0.1 # 0.1 for imagenet, 0.2 for cifar
   # Step size to use in learning rate scheduler if StepLR is used. List[int] || int
   step_size: [30, 70, 90] # Imagenet -> [30,70,90] For cifar 10 -> every 30,000 mini-batch steps ~= 77 epochs | [150, 350, 450] for x5 | [60, 140, 180] for x2
+  #use mixed precision
+  use_amp: False
 
 compute:
   # disables CUDA training",
@@ -132,6 +134,7 @@ compute:
   world_size: 4
   # Backend to use for distributed training, options: ["nccl", "gloo"]
   dist_backend: "nccl"
+  # Use tensor 32 bit floats
   use_tf32: False
 
 wandb:
