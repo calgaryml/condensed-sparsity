@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 import torch.multiprocessing as mp
 import torch.distributed as dist
+from torch.cuda.amp import GradScaler
 from torch.nn.parallel import DistributedDataParallel
 from torch.utils.tensorboard import SummaryWriter
 import pytorch_lightning as pl
@@ -17,6 +18,7 @@ import wandb
 import pathlib
 from typing import Optional
 from copy import deepcopy
+
 from rigl_torch.models.model_factory import ModelFactory
 from rigl_torch.rigl_scheduler import RigLScheduler
 from rigl_torch.rigl_constant_fan import RigLConstFanScheduler
@@ -48,6 +50,9 @@ def initalize_main(cfg: omegaconf.DictConfig) -> None:
     if "use_tf32" not in cfg.compute:
         with omegaconf.open_dict(cfg):
             cfg.compute.use_tf32 = False
+    if "use_amp" not in cfg.training:
+        with omegaconf.open_dict(cfg):
+            cfg.training.use_amp = False
     if "keep_first_layer_dense" not in cfg.rigl:
         with omegaconf.open_dict(cfg):
             cfg.rigl.keep_first_layer_dense = False
@@ -79,12 +84,13 @@ def initalize_main(cfg: omegaconf.DictConfig) -> None:
 def main(rank: int, cfg: omegaconf.DictConfig) -> None:
     logger = get_logger(cfg.paths.logs, __name__, rank)
     if cfg.compute.use_tf32:
-        logger.warning(f"Using tf32 types. See compute.use_tf32")
+        logger.warning("Using tf32 types. See compute.use_tf32")
         torch.backends.cuda.matmul.allow_tf32 = True
         torch.backends.cudnn.allow_tf32 = True
+    if cfg.training.use_amp:
+        logger.warning("Using mixed precision training, see training.use_amp")
     local_device_id = int(os.environ.get("LOCAL_RANK", rank))
     world_size = int(os.environ.get("WORLD_SIZE", cfg.compute.world_size))
-
 
     if cfg.experiment.resume_from_checkpoint:
         checkpoint = get_checkpoint(cfg, local_device_id, logger)
@@ -106,13 +112,12 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             world_size=world_size,
             rank=rank,
         )
-    run_id, optimizer_state, scheduler_state, pruner_state, model_state = (
-        None,
-        None,
-        None,
-        None,
-        None,
-    )
+    run_id = None
+    optimizer_state = None
+    scheduler_state = None
+    pruner_state = None
+    model_state = None
+    scaler_state = None
 
     if checkpoint is not None:
         run_id = checkpoint.run_id
@@ -120,6 +125,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
         scheduler_state = checkpoint.scheduler
         pruner_state = checkpoint.pruner
         model_state = checkpoint.model
+        scaler_state = checkpoint.scaler
         logger.info(f"Resuming training with run_id: {run_id}")
         cfg = checkpoint.cfg
 
@@ -154,8 +160,11 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
     scheduler = get_lr_scheduler(
         cfg, optimizer, state_dict=scheduler_state, logger=logger
     )
-    pruner = None
+    scaler = GradScaler(enabled=cfg.training.use_amp)
+    if scaler_state is not None:
+        scaler.load_state_dict(scaler_state)
 
+    pruner = None
     if cfg.rigl.dense_allocation is not None:
         if cfg.model.name == "skinny_resnet18":
             dense_allocation = (
@@ -220,6 +229,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
         )
     logger.info(f"Model Summary: {model}")
     training_meter = TrainingMeter()
+
     if not cfg.experiment.resume_from_checkpoint:
         step = 0
         if rank == 0:
@@ -237,6 +247,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
                 epoch=0,
                 step=step,
                 parent_dir=cfg.paths.checkpoints,
+                scaler=scaler,
             )
             if (pruner is not None) and (cfg.wandb.log_filter_stats):
                 # Log inital filter stats before pruning
@@ -248,6 +259,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
         checkpoint.optimizer = optimizer
         checkpoint.scheduler = scheduler
         checkpoint.pruner = pruner
+        checkpoint.scaler = scaler
         # Start at the next epoch after the last that successfully was saved
         epoch_start = checkpoint.epoch + 1
         step = checkpoint.step
@@ -266,6 +278,7 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             optimizer,
             epoch,
             pruner=pruner,
+            scaler=scaler,
             step=step,
             logger=logger,
             rank=rank,
@@ -318,6 +331,7 @@ def train(
     optimizer,
     epoch,
     pruner,
+    scaler,
     step,
     logger,
     rank,
@@ -327,36 +341,45 @@ def train(
         cfg.training.simulated_batch_size, cfg.training.batch_size
     )
     for batch_idx, (data, target) in enumerate(train_loader):
-        apply_grads = (
-            True
-            if steps_to_accumulate_grad == 1
-            or (
-                batch_idx != 0
-                and (batch_idx + 1) % steps_to_accumulate_grad == 0
+        with torch.autocast(
+            device_type="cpu" if cfg.compute.no_cuda else "cuda",
+            dtype=torch.float16,
+            enabled=cfg.training.use_amp,
+        ):
+            apply_grads = (
+                True
+                if steps_to_accumulate_grad == 1
+                or (
+                    batch_idx != 0
+                    and (batch_idx + 1) % steps_to_accumulate_grad == 0
+                )
+                else False
             )
-            else False
-        )
-        data, target = data.to(device), target.to(device)
-        logits = model(data)
-        loss = F.cross_entropy(
-            logits,
-            target,
-            label_smoothing=cfg.training.label_smoothing,
-        )
-        # Normalize loss for accumulated grad
-        loss = loss / steps_to_accumulate_grad
+            data, target = data.to(device), target.to(device)
+            logits = model(data)
+            loss = F.cross_entropy(
+                logits,
+                target,
+                label_smoothing=cfg.training.label_smoothing,
+            )
+            # Normalize loss for accumulated grad
+            loss = loss / steps_to_accumulate_grad
 
         # Will call backwards hooks on model and accumulate dense grads if
         # within cfg.rigl.grad_accumulation_n mini-batch steps from update
-        loss.backward()
+        scaler.scale(loss).backward()
 
         if apply_grads:  # If we apply grads, check for topology update and log
             if cfg.training.clip_grad_norm is not None:
+                # We must unscale optim params before clipping. See:
+                # pytorch.org/docs/stable/notes/amp_examples.html#gradient-clipping  # noqa
+                scaler.unscale_(optimizer)
                 nn.utils.clip_grad_norm_(
                     model.parameters(), max_norm=cfg.training.clip_grad_norm
                 )
             step += 1
-            optimizer.step()
+            scaler.step(optimizer)
+            scaler.update()  # we only update scale once optim step is taken
             if pruner is not None:
                 # pruner.__call__ returns False if rigl step taken
                 pruner_called = not pruner()

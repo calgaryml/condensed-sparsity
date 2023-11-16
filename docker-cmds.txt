@@ -12,6 +12,8 @@ gsutil -m cp -R gs://condensed_sparsity/artifacts/checkpoints ./
 
 CUDA_VISIBLE_DEVICES=1 wandb agent condensed-sparsity/condensed-rigl/g8huf3uq
 
+
+CUDA_VISIBLE_DEVICES=1 wandb agent condensed-sparsity/condensed-rigl/sh1xnjoz
 louise
 100.90.128.40
 172.20.206.69
