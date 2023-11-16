@@ -42,15 +42,21 @@ jaxlib = {version="^0.4.16+cuda11.cudnn86", source="jax_repo"}
 jax = {version="^0.4.16", extras=["cuda11_pip"]}
 flax = "^0.7.4"
 seaborn = "^0.12.2"
+torch-sparse = {version = "^0.0.4.dev147+cu117", source = "torch-sparse"}
 
 [[tool.poetry.source]]
-name="torch_repo"
+name = "torch_repo"
 url = "https://download.pytorch.org/whl/cu118"
 priority = "supplemental"
 
 [[tool.poetry.source]]
-name="jax_repo"
+name = "jax_repo"
 url = "https://storage.googleapis.com/jax-releases/jax_cuda_releases.html"
+priority = "supplemental"
+
+[[tool.poetry.source]]
+name = "torch-sparse"
+url = "https://version.aalto.fi/gitlab/api/v4/projects/30364/packages/pypi/simple"
 priority = "supplemental"
 
 [tool.poetry.group.dev.dependencies]

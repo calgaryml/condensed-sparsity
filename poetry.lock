@@ -5190,6 +5190,28 @@ url = "https://download.pytorch.org/whl/cu118"
 reference = "torch_repo"
 
 [[package]]
+name = "torch-sparse"
+version = "0.0.4.dev147+cu117"
+description = "Sparse operations for extreme classification in pyTorch"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "torch_sparse-0.0.4.dev147+cu117-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:6ae99b1ae82a98a98ad1effd53e2ba87b3e5f815138ad73757e79082f23ad40b"},
+    {file = "torch_sparse-0.0.4.dev147+cu117-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:ead11ac79005176327038b3ed5854f05b9c5e22f4ce51abd6a78bf85d52e6f0d"},
+    {file = "torch_sparse-0.0.4.dev147+cu117-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:de7cf8c9c10d778cdfe51776dcf990fa3ae13f3a0591a38f84f9a80d312c29b9"},
+    {file = "torch_sparse-0.0.4.dev147+cu117-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:18bf9de5bf4994caed4ca32bd38b13facd8fbe31134b1a94ef93223efae3b954"},
+]
+
+[package.dependencies]
+numpy = "*"
+torch = "2.0.1"
+
+[package.source]
+type = "legacy"
+url = "https://version.aalto.fi/gitlab/api/v4/projects/30364/packages/pypi/simple"
+reference = "torch-sparse"
+
+[[package]]
 name = "torchmetrics"
 version = "0.9.2"
 description = "PyTorch native Metrics"
@@ -5710,4 +5732,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.11"
-content-hash = "add06a577c300a739df210e7138432eeaaee1a38119615626264f4c53c9e0fe0"
+content-hash = "c52d079cb96c00a3826ffc9501cdac46a37756437b531d1dcc6d76ab09fbd460"
