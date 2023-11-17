@@ -975,30 +975,33 @@ class RigLScheduler:
         Args:
             step (int): Current global training mini-batch step count.
         """
-        if (
-            self._max_inactive_weights is not None
-        ):  # Only log this if we have taken an rigl step
-            for idx, meter in enumerate(self.meters):
-                if self.backward_hook_objects[idx] is None:
-                    dense_grad = self.W[idx].grad
-                else:
-                    dense_grad = self.backward_hook_objects[idx].dense_grad
-                meter.log_to_wandb(
-                    dense_grads=dense_grad,
-                    max_inactive_weights=self._max_inactive_weights,
-                    step=step,
-                )
-        total_neurons = sum([len(x) for x in self.W])
-        wandb.log(
-            {
-                "_TOTAL_ACTIVE_NEURONS": self.active_neuron_count,
-                "_TOTAL_PERCENTAGE_ACTIVE_NEURONS": self.active_neuron_count
-                / total_neurons
-                * 100,
-                "_PRUNING_RATE": self.cosine_annealing(),
-            },
-            step=step,
-        )
+        try:
+            if (
+                self._max_inactive_weights is not None
+            ):  # Only log this if we have taken an rigl step
+                for idx, meter in enumerate(self.meters):
+                    if self.backward_hook_objects[idx] is None:
+                        dense_grad = self.W[idx].grad
+                    else:
+                        dense_grad = self.backward_hook_objects[idx].dense_grad
+                    meter.log_to_wandb(
+                        dense_grads=dense_grad,
+                        max_inactive_weights=self._max_inactive_weights,
+                        step=step,
+                    )
+            total_neurons = sum([len(x) for x in self.W])
+            wandb.log(
+                {
+                    "_TOTAL_ACTIVE_NEURONS": self.active_neuron_count,
+                    "_TOTAL_PERCENTAGE_ACTIVE_NEURONS": self.active_neuron_count
+                    / total_neurons
+                    * 100,
+                    "_PRUNING_RATE": self.cosine_annealing(),
+                },
+                step=step,
+            )
+        except Exception as e:
+            self._logger.error(f"Error logging filter meters: {e.message}")
 
     def _get_new_weights(
         self,
