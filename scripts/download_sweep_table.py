@@ -9,6 +9,7 @@ _PROC_F_NAME = "./processed_results.csv"
 
 def parse_wandb_results(project_results_csv: str) -> pd.DataFrame:
     df = pd.read_csv(project_results_csv)
+    df = df.drop_duplicates(subset="id")
     df = df.set_index("id")
     config_df = df["config"].apply(
         lambda x: pd.json_normalize(ast.literal_eval(x))
