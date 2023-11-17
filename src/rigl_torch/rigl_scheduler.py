@@ -1001,7 +1001,7 @@ class RigLScheduler:
                 step=step,
             )
         except Exception as e:
-            self._logger.error(f"Error logging filter meters: {e.message}")
+            self._logger.error(f"Error logging filter meters: {e}")
 
     def _get_new_weights(
         self,
