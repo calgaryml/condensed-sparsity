@@ -14,6 +14,8 @@ louise
 100.90.128.40
 172.20.206.69
 
+sudo nice -n -15 /home/mike/condensed-sparsity/.venv/bin/python ./scripts/benchmarks_v2.py 2>&1 | tee out.txt
+
 torchrun \
    --nnodes=2 \
    --nproc-per-node=2 \
