@@ -561,7 +561,7 @@ class RigLScheduler:
             state_dict (Dict[str, Any])): State dict object.
         """
         for k, v in state_dict.items():
-            if type(v) == dict:
+            if type(v) is dict:
                 self.load_state_dict(v)
             setattr(self, k, v)
 
