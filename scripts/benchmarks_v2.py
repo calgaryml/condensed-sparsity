@@ -324,7 +324,9 @@ def main(
                             ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
                         )
 
-                        _ = ffi_tp(x)  # JIT warmup and caching
+                        _ = ffi_tp(
+                            x.transpose(0, 1).contiguous().transpose(0, 1)
+                        )  # JIT warmup and caching
                         results.append(
                             benchmark.Timer(
                                 stmt="ffi_tp(x)",
@@ -534,6 +536,12 @@ if __name__ == "__main__":
     # for dtype in [torch.float32, torch.bfloat16]:
     # for num_threads in [1, 40, 80]:
     __LAYER_NAME = "encoder.layers.encoder_layer_11.mlp.3"
+    # from rigl_torch.utils.rigl_utils import active_neuron_count_in_layer
+    # for sparsity, run_id in __RUN_IDS.items():
+    #     mod = get_mod(run_id, "cpu", __LAYER_NAME)
+    #     print(active_neuron_count_in_layer(mod.weight!=0))
+    # exit()
+
     for num_threads in [1, 2, 4, 8, 16]:
         for compiler in [
             "inductor",
@@ -541,8 +549,8 @@ if __name__ == "__main__":
             # "trace",
         ]:
             for d in [
-                "cpu",
-                # "gpu"
+                # "cpu",
+                "gpu"
             ]:  # NOTE: Need gpu runs for bf16 all threads
                 if d == "cpu":
                     device = torch.device("cpu")

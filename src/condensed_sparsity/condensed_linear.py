@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from torch.nn.modules.linear import NonDynamicallyQuantizableLinear  # noqa
 from typing import Any, Optional, Callable, List  # noqa
 from functools import partial  # noqa
+from torch_sparse.ops import ffi_mul
 
 
 # TODO Create factory methods for each type of condensed layer
@@ -269,9 +270,6 @@ class FixedFanInCuda(nn.Module):
                 self.register_parameter("bias", None)
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        # TODO: move to header and add cuda kernel to build
-        from torch_sparse.ops import ffi_mul
-
         return ffi_mul(
             input,
             self.condensed_weight,
