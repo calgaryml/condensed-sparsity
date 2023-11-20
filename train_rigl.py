@@ -160,7 +160,13 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
     scheduler = get_lr_scheduler(
         cfg, optimizer, state_dict=scheduler_state, logger=logger
     )
-    scaler = GradScaler(enabled=cfg.training.use_amp)
+    if "use_amp" in cfg.training:
+        enabled = cfg.training.use_amp
+    else:
+        enabled = False
+        with omegaconf.open_dict(cfg):
+            cfg.training.use_amp = False
+    scaler = GradScaler(enabled=enabled)
     if scaler_state is not None:
         scaler.load_state_dict(scaler_state)
 
