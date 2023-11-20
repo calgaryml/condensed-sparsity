@@ -203,3 +203,5 @@ python_subproc_tests.py
 .docker/*
 
 3dim_out.txt
+
+**.onnx

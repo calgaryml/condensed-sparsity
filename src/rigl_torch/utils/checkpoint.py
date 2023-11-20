@@ -153,6 +153,8 @@ class Checkpoint(object):
         # use paths are currently defined in host in case checkpoint was moved
         state["checkpoint_dir"] = checkpoint_dir
         state["parent_dir"] = pathlib.Path(os.getenv("BASE_PATH"))
+        if "scaler" not in state:
+            state["scaler"] = torch.cuda.amp.GradScaler(enabled=False)
         return Checkpoint(**state)
 
     @classmethod
