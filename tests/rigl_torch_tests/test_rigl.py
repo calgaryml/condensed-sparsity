@@ -285,6 +285,7 @@ class TestRigLScheduler:
         pruner = get_new_scheduler(model=model)
         optimizer = get_optimizer(cfg, pruner.model, state_dict=None)
         scheduler = get_lr_scheduler(cfg, optimizer, state_dict=None)
+        scaler = torch.cuda.amp.GradScaler(enabled=False)
 
         ckpt = Checkpoint(
             run_id="test_ckpt_id",
@@ -294,6 +295,7 @@ class TestRigLScheduler:
             scheduler=scheduler,
             pruner=pruner,
             checkpoint_dir="test_ckpt",
+            scaler=scaler,
         )
         ckpt.save_checkpoint()
         global _CKPT_MODEL
