@@ -27,17 +27,18 @@ from condensed_sparsity.condensed_linear import (  # noqa
 __MIN_RUN_TIME = 2
 
 
-def get_deepsparse_mod(mod, f_name, dtype, batch_size, input_shape):
+def get_deepsparse_mod(mod, f_name, dtype, batch_size, input_shape, thread):
     mod = deepcopy(mod).type(dtype)
     sample_input = torch.rand(size=(batch_size, input_shape))
     torch.onnx.export(mod, sample_input, f_name)
-    compiled_mod = Engine(f_name, batch_size=batch_size)
+    compiled_mod = Engine(f_name, batch_size=batch_size, num_cores=thread)
     return compiled_mod
 
 
 @torch.no_grad()
 def main(
     mods: List[nn.Module],
+    rigl_mods: List[nn.Module],
     sparsities: List[float],
     device,
     cuda,
@@ -53,11 +54,11 @@ def main(
     # NOTE: tvm has issues with NoneType resolution from index slice operator in
     # fine-grain condensed. Unknown issue in onnxrt.
 
-    batch_sizes = [2**x for x in range(11, -1, -1)]
+    # batch_sizes = [2**x for x in range(11, -1, -1)]
     batch_sizes = [1]
     results = []
     counter = 0
-    for mod, sparsity in zip(mods, sparsities):
+    for mod, rigl_mod, sparsity in zip(mods, rigl_mods, sparsities):
         label = (
             f"Sparsity {sparsity} with {num_threads} threads "
             f"using compilation strategy {compiler} "
@@ -66,9 +67,14 @@ def main(
 
         # Get condensed modules
         mod = mod.type(dtype)
+        rigl_mod = rigl_mod.type(dtype)
         mod.eval()
+        rigl_mod.eval()
         cl_struc = CondensedLinearStructured(deepcopy(mod), dtype=dtype).eval()
         cl_fine = CondensedLinearFineGrained(deepcopy(mod), dtype=dtype).eval()
+        cl_fine_q = torch.ao.quantization.quantize_dynamic(
+            cl_fine, dtype=torch.qint8
+        ).eval()
         cl_vmap = VmapCondensed(deepcopy(mod), dtype=dtype).eval()
         ffi = FixedFanInCuda(
             deepcopy(mod),
@@ -95,8 +101,21 @@ def main(
             csr_linear = None
 
         for batch_size in batch_sizes:
-            deepsparse_unstructured = get_deepsparse_mod(
-                mod, "dense_mod.onnx", dtype, batch_size, mod.weight.shape[1]
+            deepsparse_unstructured_rigl = get_deepsparse_mod(
+                rigl_mod,
+                "dense_mod.onnx",
+                dtype,
+                batch_size,
+                mod.weight.shape[1],
+                num_threads,
+            )
+            deepsparse_unstructured_srigl = get_deepsparse_mod(
+                mod,
+                "dense_mod.onnx",
+                dtype,
+                batch_size,
+                mod.weight.shape[1],
+                num_threads,
             )
             deepsparse_structured = get_deepsparse_mod(
                 cl_struc,
@@ -104,6 +123,7 @@ def main(
                 dtype,
                 batch_size,
                 mod.weight.shape[1],
+                num_threads,
             )
             deepsparse_srigl = get_deepsparse_mod(
                 cl_fine,
@@ -111,9 +131,15 @@ def main(
                 dtype,
                 batch_size,
                 mod.weight.shape[1],
+                num_threads,
             )
             deepsparse_vmap = get_deepsparse_mod(
-                cl_vmap, "vmap_mod.onnx", dtype, batch_size, mod.weight.shape[1]
+                cl_vmap,
+                "vmap_mod.onnx",
+                dtype,
+                batch_size,
+                mod.weight.shape[1],
+                num_threads,
             )
 
             sub_label = f"{batch_size:<6} x {num_features:<4}"
@@ -235,7 +261,7 @@ def main(
                     if compiler == "trace":
                         cl_struct_compiled = torch.jit.trace(cl_struc, x)
                         cl_fine_compiled = torch.jit.trace(cl_fine, x)
-                        mod_compiled = torch.jit.trace(mod, x)
+                        mod_compiled = torch.jit.trace(rigl_mod, x)
                         # vmap_compiled = torch.jit.trace(cl_vmap, x)
                         if include_csr:
                             cl_sparse_op_compiled = torch.jit.trace(
@@ -251,7 +277,7 @@ def main(
                             torch.jit.freeze(torch.jit.script(cl_fine, x))
                         )
                         mod_compiled = torch.jit.optimize_for_inference(
-                            torch.jit.freeze(torch.jit.script(mod, x))
+                            torch.jit.freeze(torch.jit.script(rigl_mod, x))
                         )
                         # vmap_compiled = torch.jit.optimize_for_inference(
                         #     torch.jit.script(cl_vmap, x)
@@ -279,8 +305,11 @@ def main(
                         cl_fine_compiled = torch.compile(
                             cl_fine, backend=backend, **compiler_kwargs
                         )
+                        cl_fine_q_compiled = torch.compile(
+                            cl_fine_q, backend=backend, **compiler_kwargs
+                        )
                         mod_compiled = torch.compile(
-                            mod, backend=backend, **compiler_kwargs
+                            rigl_mod, backend=backend, **compiler_kwargs
                         )
                         # vmap_compiled = torch.compile(
                         #     cl_vmap, backend=backend, **compiler_kwargs
@@ -399,20 +428,41 @@ def main(
                         # DeepSparse
                         ds_x = [x.numpy()]
 
-                        _ = deepsparse_unstructured(
+                        _ = deepsparse_unstructured_rigl(
                             ds_x
                         )  # JIT warmup and caching
                         results.append(
                             benchmark.Timer(
-                                stmt="deepsparse_unstructured(ds_x)",
+                                stmt="deepsparse_unstructured_rigl(ds_x)",
                                 setup="",
                                 globals={
                                     "ds_x": ds_x,
-                                    "deepsparse_unstructured": deepsparse_unstructured,  # noqa
+                                    "deepsparse_unstructured_rigl": deepsparse_unstructured_rigl,  # noqa
                                 },
                                 label=label,
                                 sub_label=sub_label,
-                                description=("DeepSparse - Unstructured"),
+                                description=(
+                                    "DeepSparse - Unstructured - RigL"
+                                ),
+                                num_threads=num_threads,
+                            ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
+                        )
+                        _ = deepsparse_unstructured_srigl(
+                            ds_x
+                        )  # JIT warmup and caching
+                        results.append(
+                            benchmark.Timer(
+                                stmt="deepsparse_unstructured_srigl(ds_x)",
+                                setup="",
+                                globals={
+                                    "ds_x": ds_x,
+                                    "deepsparse_unstructured_srigl": deepsparse_unstructured_srigl,  # noqa
+                                },
+                                label=label,
+                                sub_label=sub_label,
+                                description=(
+                                    "DeepSparse - Unstructured - SRigL"
+                                ),
                                 num_threads=num_threads,
                             ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
                         )
@@ -521,6 +571,25 @@ def main(
                                 num_threads=num_threads,
                             ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
                         )
+                        # quantized fine grained
+                        _ = cl_fine_q_compiled(x)
+                        results.append(
+                            benchmark.Timer(
+                                stmt="cl_fine_q_compiled(x)",
+                                setup="",
+                                globals={
+                                    "x": x,
+                                    "cl_fine_q_compiled": cl_fine_q_compiled,
+                                },
+                                label=label,
+                                sub_label=sub_label,
+                                description=(
+                                    "Fine-grained + structured + quantized with"
+                                    f" backend {backend}"
+                                ),
+                                num_threads=num_threads,
+                            ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
+                        )
                         # Vmap benchmarks
                         # _ = vmap_compiled(x)
                         # results.append(
@@ -569,7 +638,8 @@ def main(
         device_name = "gpu"
     f_name = (
         f"benchmark_v2_{device_name}_threads_{num_threads}_"
-        f"compiler_{compiler}_dtype_{dtype}-deepsparse-final_hector_nice-15.pkl"
+        f"compiler_{compiler}_dtype_{dtype}-deepsparse-bs1-90-2-"
+        "final_hector_nice-15.pkl"
     )
     with open(f_name, "wb") as handle:
         pickle.dump(compare, handle)
@@ -629,10 +699,10 @@ if __name__ == "__main__":
     #     True
     # )  # seems like we need this to use inductor on gpu
     __RUN_IDS = {
-        99: "20230911_3f1ffqmr",
-        95: "20230911_1mxhel1q",
+        # 99: "20230911_3f1ffqmr",
+        # 95: "20230911_1mxhel1q",
         90: "20230601_nrblbn15",
-        80: "20230601_0p0wrlb0",
+        # 80: "20230601_0p0wrlb0",
     }
 
     __RIGL_IDS = {
@@ -667,13 +737,18 @@ if __name__ == "__main__":
                 else:
                     device = torch.device("cuda")
                     cuda = True
-                mods, sparsities = [], []
+                mods, rigl_mods, sparsities = [], [], []
 
                 # for sparsity, run_id in __RIGL_IDS.items():
                 for sparsity, run_id in __RUN_IDS.items():
                     mod = get_mod(run_id, device, __LAYER_NAME)
+                    rigl_mod = get_mod(
+                        __RIGL_IDS[sparsity], device, __LAYER_NAME
+                    )
                     mod.to(device)
+                    rigl_mod.to(device)
                     mods.append(mod)
+                    rigl_mods.append(rigl_mod)
                     sparsities.append(sparsity)
                     num_features = mod.weight.shape[1]
                     dtype = (
@@ -691,6 +766,7 @@ if __name__ == "__main__":
                         include_csr = True
                 results = main(
                     mods,
+                    rigl_mods,
                     sparsities,
                     device,
                     cuda,
