@@ -8,7 +8,7 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --gres=gpu:v100l:4
 #SBATCH --mem=125G    
-#SBATCH --time=7-00:00:00
+#SBATCH --time=3-00:00:00
 #SBATCH --mail-user=mklasby@ucalgary.ca
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --account=def-yani
@@ -27,10 +27,10 @@ module load singularity python/3.10.2 cuda/11.7 cudnn
 source ${SLURM_TMPDIR}/.venv/bin/activate
 
 ## RUN SCRIPT ##
-# dense_alloc=$1
-# printf "Starting run with dense alloc == ${dense_alloc}\n"
+run_id=$1
+printf "Starting run with run_id == ${run_id}\n"
 
 python3 ${WORKDIR}/train_rigl.py \
 experiment.resume_from_checkpoint=True \
-experiment.run_id=toffv5zr
+experiment.run_id=${run_id}
 
