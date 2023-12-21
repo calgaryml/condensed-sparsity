@@ -1,3 +1,4 @@
+import omegaconf
 import torch
 from omegaconf import DictConfig, OmegaConf
 from functools import partial
@@ -13,6 +14,7 @@ from .step_lr_with_linear_warm_up import StepLrWithLinearWarmUp
 def get_optimizer(
     cfg: OmegaConf, model, state_dict: Optional[Dict[str, Any]] = None
 ) -> torch.optim.Optimizer:
+    cfg = _check_config(cfg)
     optimizers = {
         "sgd": partial(
             torch.optim.SGD,
@@ -64,6 +66,13 @@ def get_optimizer(
         if state_dict is not None:
             optim.load_state_dict(state_dict)
         return optim
+
+
+def _check_config(cfg):
+    if "alpha" not in cfg.training:
+        with omegaconf.open_dict(cfg):
+            cfg.training.alpha = 0.9
+    return cfg
 
 
 def get_lr_scheduler(
