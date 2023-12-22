@@ -23,16 +23,17 @@ cp $SCRATCH/ILSVRC2012_img_train.tar $SLURM_TMPDIR
 cp $SCRATCH/ILSVRC2012_img_val.tar $SLURM_TMPDIR
 
 ## SET ENV ##:
-module load singularity python/3.10.2 cuda/11.7 cudnn
+module load python/3.10.2 cuda/11.7 cudnn
 source ${SLURM_TMPDIR}/.venv/bin/activate
 
 ## RUN SCRIPT ##
-dense_alloc=$1
-printf "Starting run with dense alloc == ${dense_alloc}\n"
+min_sal=$1
+printf "Starting run with min_sal == ${min_sal}\n"
 
 python3 ${WORKDIR}/train_rigl.py \
 dataset=imagenet \
 model=vit \
-rigl.dense_allocation=${dense_alloc} \
+rigl.dense_allocation=0.3 \
 compute.world_size=4 \
-rigl.min_salient_weights_per_neuron=0.95
+rigl.min_salient_weights_per_neuron=${min_sal} \
+rigl.ignore_mha_layers=True
