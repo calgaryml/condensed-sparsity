@@ -112,7 +112,6 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
             world_size=world_size,
             rank=rank,
         )
-    run_id = None
     optimizer_state = None
     scheduler_state = None
     pruner_state = None
@@ -132,6 +131,9 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
     if rank == 0:
         wandb_init_kwargs = dict(resume=wandb_init_resume, id=run_id)
         run = init_wandb(cfg, wandb_init_kwargs)
+        if run_id is None:
+            wandb.config["experiment"].update({"run_id": run.id})
+            wandb.config.update({"experiment": wandb.config["experiment"]})
 
     cfg = set_seed(cfg)
     use_cuda = not cfg.compute.no_cuda and torch.cuda.is_available()

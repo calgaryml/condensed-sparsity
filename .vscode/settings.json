@@ -8,6 +8,10 @@
     "--line-length",
     "80"
   ],
+  "black-formatter.importStrategy": "fromEnvironment",
+  "black-formatter.path": [
+    "black"
+  ],
   "editor.rulers": [
     80,
   ],
@@ -20,7 +24,6 @@
   "python.testing.unittestEnabled": false,
   "python.testing.pytestEnabled": true,
   "python.formatting.provider": "none",
-  "black-formatter.importStrategy": "fromEnvironment",
   "files.associations": {
     "*.html": "html",
     "*.py.example": "python",

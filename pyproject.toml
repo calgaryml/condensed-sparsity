@@ -43,6 +43,7 @@ jax = {version="^0.4.16", extras=["cuda11_pip"]}
 flax = "^0.7.4"
 seaborn = "^0.12.2"
 torch-sparse = {version = "^0.0.4.dev147+cu117", source = "torch-sparse"}
+typing-extensions = "4.8.0"
 
 [[tool.poetry.source]]
 name = "torch_repo"
