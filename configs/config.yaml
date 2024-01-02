@@ -7,7 +7,7 @@ defaults:
   - compute: ${dataset}
 
 experiment:
-  comment: "" # Start with leading underscore
+  comment: "_dynamic_ablation-${rigl.dynamic_ablation}" # Start with leading underscore
   name:
     "${model.name}_${dataset.name}_dense_alloc-${rigl.dense_allocation}_const_fan_in-${rigl.const_fan_in}\
     _min_sal-${rigl.min_salient_weights_per_neuron}\
