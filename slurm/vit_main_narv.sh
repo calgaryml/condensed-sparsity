@@ -27,13 +27,14 @@ module load python/3.10.2 cuda/11.7 cudnn
 source ${SLURM_TMPDIR}/.venv/bin/activate
 
 ## RUN SCRIPT ##
-min_sal=$1
-printf "Starting run with min_sal == ${min_sal}\n"
+dense_alloc=$1
+printf "Starting run with dense_alloc == ${dense_alloc}\n"
 
 python3 ${WORKDIR}/train_rigl.py \
 dataset=imagenet \
 model=vit \
-rigl.dense_allocation=0.3 \
+rigl.dense_allocation=${dense_alloc} \
 compute.world_size=4 \
-rigl.min_salient_weights_per_neuron=${min_sal} \
-rigl.ignore_mha_layers=True
+rigl.min_salient_weights_per_neuron=0.0 \
+rigl.dense_allocation=False \
+rigl.ignore_mha_layers=True # False
