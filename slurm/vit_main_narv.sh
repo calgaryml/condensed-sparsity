@@ -36,5 +36,5 @@ model=vit \
 rigl.dense_allocation=${dense_alloc} \
 compute.world_size=4 \
 rigl.min_salient_weights_per_neuron=0.0 \
-rigl.dense_allocation=False \
+rigl.dynamic_ablation=False \
 rigl.ignore_mha_layers=True # False
