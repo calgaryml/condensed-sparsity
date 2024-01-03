@@ -8,7 +8,7 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --gres=gpu:v100l:4
 #SBATCH --mem=125G    
-#SBATCH --time=3-00:00:00
+#SBATCH --time=7-00:00:00
 #SBATCH --mail-user=mklasby@ucalgary.ca
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --account=def-yani
@@ -27,10 +27,14 @@ module load singularity python/3.10.2 cuda/11.7 cudnn
 source ${SLURM_TMPDIR}/.venv/bin/activate
 
 ## RUN SCRIPT ##
-run_id=$1
-printf "Starting run with run_id == ${run_id}\n"
+dense_alloc=$1
+printf "Starting run with dense_alloc == ${dense_alloc}\n"
 
 python3 ${WORKDIR}/train_rigl.py \
-experiment.resume_from_checkpoint=True \
-experiment.run_id=${run_id}
-
+dataset=imagenet \
+model=vit \
+rigl.dense_allocation=${dense_alloc} \
+compute.world_size=4 \
+rigl.min_salient_weights_per_neuron=0.0 \
+rigl.dense_allocation=False \
+rigl.ignore_mha_layers=False
