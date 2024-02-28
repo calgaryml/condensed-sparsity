@@ -105,13 +105,13 @@ def main(
                 batch_size,
                 mod.weight.shape[1],
             )
-            deepsparse_srigl = get_deepsparse_mod(
-                cl_fine,
-                "srigl_mod.onnx",
-                dtype,
-                batch_size,
-                mod.weight.shape[1],
-            )
+            # deepsparse_srigl = get_deepsparse_mod(
+            #     cl_fine,
+            #     "srigl_mod.onnx",
+            #     dtype,
+            #     batch_size,
+            #     mod.weight.shape[1],
+            # )
             deepsparse_vmap = get_deepsparse_mod(
                 cl_vmap, "vmap_mod.onnx", dtype, batch_size, mod.weight.shape[1]
             )
@@ -433,21 +433,21 @@ def main(
                                 num_threads=num_threads,
                             ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
                         )
-                        _ = deepsparse_srigl(ds_x)  # JIT warmup and caching
-                        results.append(
-                            benchmark.Timer(
-                                stmt="deepsparse_srigl(ds_x)",
-                                setup="",
-                                globals={
-                                    "ds_x": ds_x,
-                                    "deepsparse_srigl": deepsparse_srigl,
-                                },
-                                label=label,
-                                sub_label=sub_label,
-                                description=("DeepSparse - SRigL"),
-                                num_threads=num_threads,
-                            ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
-                        )
+                        # _ = deepsparse_srigl(ds_x)  # JIT warmup and caching
+                        # results.append(
+                        #     benchmark.Timer(
+                        #         stmt="deepsparse_srigl(ds_x)",
+                        #         setup="",
+                        #         globals={
+                        #             "ds_x": ds_x,
+                        #             "deepsparse_srigl": deepsparse_srigl,
+                        #         },
+                        #         label=label,
+                        #         sub_label=sub_label,
+                        #         description=("DeepSparse - SRigL"),
+                        #         num_threads=num_threads,
+                        #     ).blocked_autorange(min_run_time=__MIN_RUN_TIME)
+                        # )
                         _ = deepsparse_vmap(ds_x)
                         results.append(
                             benchmark.Timer(
@@ -569,7 +569,7 @@ def main(
         device_name = "gpu"
     f_name = (
         f"benchmark_v2_{device_name}_threads_{num_threads}_"
-        f"compiler_{compiler}_dtype_{dtype}-deepsparse-final_hector_nice-15.pkl"
+        f"compiler_{compiler}_dtype_{dtype}-deepsparse-final_hector_nice-15_int16_idx_v3.pkl"  # noqa
     )
     with open(f_name, "wb") as handle:
         pickle.dump(compare, handle)
@@ -625,9 +625,9 @@ if __name__ == "__main__":
     }
     # torch.set_float32_matmul_precision("high")
     # NOTE: Below results in errors during compilation
-    # torch.jit.enable_onednn_fusion(
-    #     True
-    # )  # seems like we need this to use inductor on gpu
+    torch.jit.enable_onednn_fusion(
+        True
+    )  # seems like we need this to use inductor on gpu
     __RUN_IDS = {
         99: "20230911_3f1ffqmr",
         95: "20230911_1mxhel1q",
