@@ -2,8 +2,6 @@ import math
 import numpy as np
 from torch.optim.lr_scheduler import _LRScheduler
 
-# TODO: Refactor for calling once per epoch
-
 
 class CosineAnnealingWithLinearWarmUp(_LRScheduler):
     def __init__(

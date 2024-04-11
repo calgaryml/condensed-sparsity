@@ -21,23 +21,6 @@
 			},
 		}
 	},
-	// "extensions": [
-	// 	"ms-python.python",
-	// 	"njpwerner.autodocstring",
-	// ],
-	// "settings": {
-	// 	"terminal.integrated.defaultProfile.linux": "bash",
-	// },
-	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	// "forwardPorts": [],
-	// Uncomment the next line to run commands after the container is created - for example installing curl.
-	// "postCreateCommand": "git config --global --add safe.directory /home/condensed-sparsity",
-	// Uncomment when using a ptrace-based debugger like C++, Go, and Rust
-	// "runArgs": [ "--cap-add=SYS_PTRACE", "--security-opt", "seccomp=unconfined" ],
-	// Uncomment to use the Docker CLI from inside the container. See https://aka.ms/vscode-remote/samples/docker-from-docker.
-	// "mounts": [ "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind" ],
-	// Uncomment to connect as a non-root user if you've added one. See https://aka.ms/vscode-remote/containers/non-root.
-	// "remoteUser": "dev",
 	// We need to mount current directory to a location that we can use to install rigl-torch from in the dockerfile 
 	"workspaceMount": "source=${localWorkspaceFolder}/,target=/home/user/condensed-sparsity,type=bind",
 	"workspaceFolder": "/home/user/condensed-sparsity",

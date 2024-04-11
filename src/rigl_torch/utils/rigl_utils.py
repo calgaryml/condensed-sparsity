@@ -64,19 +64,12 @@ def get_weighted_layers(
         items = [(None, model)]
 
     for name, p in items:
-        # TODO, switch to MHA module with target of in_proj_weight
-        # if type(p) is NonDynamicallyQuantizableLinear:
-        #     layer_names.append(name)
-        #     layers.append([p])
-        #     mha_layer_mask.append(1)
-        #     linear_layers_mask.append(0)
         if type(p) is nn.MultiheadAttention:
             # Parse in_proj
             layer_names.append(name)
             layers.append([p])
             mha_layer_mask.append(1)  # will contain in_proj_weight and bias
             linear_layers_mask.append(0)
-
             # Parse out_proj
             (
                 _,
@@ -92,12 +85,6 @@ def get_weighted_layers(
                 mha_layer_mask,
                 layer_names,
             )
-            # out_proj = p.out_proj # of type NonDynamicallyQuantizableLinear
-            # layer_names.append(name)
-            # layers.append([p])
-            # mha_layer_mask.append(1)  # will contain in_proj_weight and bias
-            # linear_layers_mask.append(0)
-
         elif (
             type(p) is torch.nn.Linear
             or type(p) is NonDynamicallyQuantizableLinear
@@ -388,8 +375,3 @@ if __name__ == "__main__":
     active_n = 16
     t[:active_n] = True
     assert active_n == active_neuron_count_in_layer(None, w)
-    # from rigl_torch.models import ModelFactory
-
-    # vit = ModelFactory.load_model(model="vit", dataset="imagenet")
-    # n, w = get_names_and_W(vit)
-    # W = get_W(vit)

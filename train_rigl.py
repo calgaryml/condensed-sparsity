@@ -37,29 +37,6 @@ from rigl_torch.utils.logging_utils import get_logger
 
 @hydra.main(config_path="configs/", config_name="config", version_base="1.2")
 def initalize_main(cfg: omegaconf.DictConfig) -> None:
-    use_cuda = not cfg.compute.no_cuda and torch.cuda.is_available()
-    if not use_cuda:
-        raise SystemError("GPU has stopped responding...waiting to die!")
-    if cfg.training.max_steps in ["None", "null"]:
-        cfg.training.max_steps = None
-    if cfg.rigl.dense_allocation in ["None", "null"]:
-        cfg.rigl.dense_allocation = None
-    if "diet" not in cfg.rigl:
-        with omegaconf.open_dict(cfg):
-            cfg.rigl.diet = None
-    if "use_tf32" not in cfg.compute:
-        with omegaconf.open_dict(cfg):
-            cfg.compute.use_tf32 = False
-    if "use_amp" not in cfg.training:
-        with omegaconf.open_dict(cfg):
-            cfg.training.use_amp = False
-    if "keep_first_layer_dense" not in cfg.rigl:
-        with omegaconf.open_dict(cfg):
-            cfg.rigl.keep_first_layer_dense = False
-    if "initialize_grown_weights" not in cfg.rigl:
-        with omegaconf.open_dict(cfg):
-            cfg.rigl.initialize_grown_weights = 0.0
-
     if cfg.compute.distributed:
         # We initalize train and val loaders here to ensure .tar balls have
         # been decompressed before parallel workers try and write the same
@@ -72,6 +49,7 @@ def initalize_main(cfg: omegaconf.DictConfig) -> None:
         del single_proc_cfg
         wandb.setup()
         _validate_distributed_cfg(cfg)
+        # Assumes that script is launched using torchrun!
         if "RANK" in os.environ:
             rank = int(os.environ["RANK"])
             main(rank, cfg)
@@ -131,14 +109,10 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
     if rank == 0:
         wandb_init_kwargs = dict(resume=wandb_init_resume, id=run_id)
         run = init_wandb(cfg, wandb_init_kwargs)
-        if run_id is None:
-            wandb.config["experiment"].update({"run_id": run.id})
-            wandb.config.update({"experiment": wandb.config["experiment"]})
 
     cfg = set_seed(cfg)
     use_cuda = not cfg.compute.no_cuda and torch.cuda.is_available()
     if not use_cuda:
-        raise SystemError("GPU has stopped responding...waiting to die!")
         logger.warning(
             "Using CPU! Verify cfg.compute.no_cuda and "
             "torch.cuda.is_available() are properly set if this is unexpected"
@@ -162,13 +136,8 @@ def main(rank: int, cfg: omegaconf.DictConfig) -> None:
     scheduler = get_lr_scheduler(
         cfg, optimizer, state_dict=scheduler_state, logger=logger
     )
-    if "use_amp" in cfg.training:
-        enabled = cfg.training.use_amp
-    else:
-        enabled = False
-        with omegaconf.open_dict(cfg):
-            cfg.training.use_amp = False
-    scaler = GradScaler(enabled=enabled)
+
+    scaler = GradScaler(enabled=cfg.training.use_amp)
     if scaler_state is not None:
         scaler.load_state_dict(scaler_state)
 
@@ -543,8 +512,6 @@ def set_seed(cfg: omegaconf.DictConfig) -> omegaconf.DictConfig:
         logger.info(
             f"No seed set in config! Generated random seed: {cfg.training.seed}"
         )
-    # pl.utilities.seed.seed_everything(cfg.training.seed)
-
     # Updated API
     pl.seed_everything(cfg.training.seed)
     return cfg
@@ -557,12 +524,6 @@ def _validate_distributed_cfg(cfg: omegaconf.DictConfig) -> None:
         )
     if not torch.cuda.is_available():
         raise ValueError("torch.cuda.is_available() returned False!")
-    # local_world_size = os.environ.get("WORLD_SIZE", cfg.compute.world_size)
-    # if cfg.compute.world_size > torch.cuda.device_count():
-    #     raise ValueError(
-    #         f"cfg.compute.world_size == {cfg.compute.world_size}"
-    #         f" but I only see {torch.cuda.device_count()} cuda devices!"
-    #     )
     return
 
 

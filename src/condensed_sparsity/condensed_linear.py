@@ -7,9 +7,6 @@ from functools import partial  # noqa
 from torch_sparse.ops import ffi_mul
 
 
-# TODO Create factory methods for each type of condensed layer
-
-
 def _get_active_neuron_idx(weight: torch.Tensor) -> torch.Tensor:
     # We find all-zero rows in first dimension of weight tensor
     return weight.sum(dim=list(range(1, weight.dim()))) != 0
@@ -73,11 +70,6 @@ class CSRLinear(nn.Module):
 
 
 class CondensedLinearStructured(nn.Module):
-    # TODO: Experiment with __constants__ and __final__
-    # TODO: Going to need some functionality to capture weight getter,
-    # maybe a callable/str union?
-    # TODO: Type annotations may help speed up TorchScript
-
     def __init__(
         self, module: nn.Module, dtype: torch.typename = torch.float32
     ):
@@ -148,21 +140,6 @@ class CondensedLinearStructured(nn.Module):
         return "in_features={}, out_features={}, bias={}".format(
             in_features, out_features, self.bias is not None
         )
-
-    # @classmethod
-    # def convert_condensed_linear(cls, module):
-    #     # Based on convert_sync_batchnorm
-    #     module_output = module
-    #     if type(module) in cls.__TARGET_TYPES:
-    #         # Introspection to determine subclass
-    #         module_output = cls.__new__(module)
-    #         # TODO: Move cls method to each condensed class
-    #         if hasattr(module, "qconfig"):
-    #             module_output.qconfig = module.qconfig
-    #     for name, child in module.named_children():
-    #         module_output.add_module(name, cls.convert_condensed_linear(child))  # noqa
-    #     del module
-    #     return module_output
 
 
 class CondensedLinearFineGrained(nn.Module):
@@ -451,37 +428,3 @@ def forward_fast(
     # otherwise vmap over sparsity
     else:
         return forward_sparsity(input, weights, bias, indx_seqs)
-
-
-## TODO: Can use these with torch.compile, but not TorchScript. See: https://pytorch.org/docs/stable/jit_language_reference.html#:~:text=No%20support%20for%20inheritance%20or%20any%20other%20polymorphism%20strategy%2C%20except%20for%20inheriting%20from%20object%20to%20specify%20a%20new%2Dstyle%20class.  # noqa
-# class CondensedLinearFineGrained(CondensedLinearStructured):
-#     def __init__(self, *args, **kwargs):
-#         super().__init__(*args, **kwargs)
-
-#     def _clean_up_unused_params(self):
-#         del self.weight
-#         del self.active_neuron_idx
-#         del self.fine_grained_idx
-#         del self.sparse_weight
-
-# def forward(self, input: torch.Tensor) -> torch.Tensor:
-#     return (
-#         torch.sum(
-#             self.condensed_weight * input[:, self.input_mask], axis=2)
-#         + self.bias
-#     )
-
-
-# class CondensedLinearFineGrainedSparseOp(CondensedLinearStructured):
-#     def __init__(self, *args, **kwargs):
-#         super().__init__(*args, **kwargs)
-
-#     def _clean_up_unused_params(self):
-#         del self.weight
-#         del self.input_mask
-#         del self.active_neuron_idx
-#         del self.fine_grained_idx
-#         del self.condensed_weight
-
-#     def forward(self, input: torch.Tensor) -> torch.Tensor:
-#         return F.linear(input, self.sparse_weight, self.bias)

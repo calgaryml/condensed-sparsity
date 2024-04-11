@@ -1,7 +1,7 @@
 defaults:
   - _self_ # We default to values in this file if group settings below are null
-  - dataset: imagenet
-  - model: vit
+  - dataset: mnist
+  - model: mnist
   - rigl: ${model}
   - training: ${model}
   - compute: ${dataset}
@@ -139,9 +139,11 @@ compute:
   use_tf32: False
 
 wandb:
-  log_to_wandb: True
-  project: condensed-rigl
-  entity: condensed-sparsity
+  log_to_wandb: False
+  project: sparsimony
+  # project: condensed-rigl
+  entity: mklasby
+  # entity: condensed-sparsity
   start_method: thread
   log_images: False
   watch_model_grad_and_weights: False
