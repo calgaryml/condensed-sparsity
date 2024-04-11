@@ -182,9 +182,6 @@ class CondensedLinearFineGrained(nn.Module):
                 shape=(module.weight[active_neuron_idx].shape[0], -1)
             )
             self.input_mask = self.input_mask.to(torch.int32)
-            # self.input_mask = self.input_mask.reshape(
-            #     shape=(module.weight[active_neuron_idx].shape[0], -1)
-            # )
             weight = module.weight[active_neuron_idx].detach().type(dtype)
             self.condensed_weight = nn.Parameter(
                 torch.clone(
