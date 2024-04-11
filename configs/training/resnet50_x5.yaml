@@ -7,7 +7,7 @@ epochs: 515  # For imagenet, training will finish at ~ epoch 102.31, use 250 for
 # Batch size to simulate by taking multiple steps per optimizer update (accumulate grads)
 simulated_batch_size: 4096
 # max number of steps (will override epochs)
-max_steps: 160000  # 4096 * 32000 / 512 = 256000 from rigl paper || x5 -> 4096*32000/1024 = 640000
+max_steps: 160000  # 32000*5
 
 ## Optimization
 optimizer: sgd # "sgd", "adamw"
