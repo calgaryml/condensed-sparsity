@@ -172,7 +172,7 @@ class RigLConstFanScheduler(RigLScheduler):
                     for _ in range(w.shape[0])
                 ]
             )
-            for filter_idx in range(mask.shape[0]):  # TODO: vectorize?
+            for filter_idx in range(mask.shape[0]):
                 mask[filter_idx][perm[filter_idx]] = 0
             mask = mask.reshape(w.shape).to(device=w.device)
             # Ablate top n neurons according to filter sparsity criterion
@@ -260,7 +260,6 @@ class RigLConstFanScheduler(RigLScheduler):
 
             # Set ablated filter drop scores to min of score_grow to avoid
             # pruning already inactive weights
-            # TODO: Remove inital ablated filtering.
             score_drop[
                 : self.static_ablated_filters[idx]
             ] = score_drop.min().item()
@@ -597,9 +596,7 @@ class RigLConstFanScheduler(RigLScheduler):
                 grow_mask_filter = grow_mask_filter.flatten()
                 grow_mask_filter[idx_to_grow] = True
                 grow_mask[idx] = grow_mask_filter.reshape(drop_mask[idx].shape)
-            elif (
-                drop_mask_filter.sum() > n_fan_in
-            ):  # TODO: Should handle this case in drop mask
+            elif drop_mask_filter.sum() > n_fan_in:
                 self._logger.error(
                     get_fan_in_tensor(
                         drop_mask[self.static_ablated_filters[idx] :]  # noqa
@@ -609,7 +606,6 @@ class RigLConstFanScheduler(RigLScheduler):
                     f"Filter with {drop_mask_filter.sum()} fan in > than ",
                     "n_fan_in ({n_fan_in})",
                 )
-        # TODO need inverse select
         should_be_active_neurons = [
             i for i in range(len(grow_mask)) if i not in neurons_to_ablate
         ]

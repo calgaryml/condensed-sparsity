@@ -4,9 +4,11 @@
 
 
 ## Repository Structure
-* ./src/rigl_torch contains the source code for SRigL. 
-* ./src/condensed_sparsity contains the source code for our naive pytorch GEMM implementation that leverages the constant fan-in structure learned by SRigL. 
-* ./configs/config.yaml contains the settings for the various hyperparameters and runtime options. 
+* `./src/rigl_torch` contains the source code for SRigL. 
+  * `./src/rigl_torch/rigl_scheduler.py` contains source code for `RigLScheduler`, an implementation of `RigL` in pytorch.
+  * `./src/rigl_torch/rigl_constant_fan.py` contains the source code for `RigLConstFanScheduler` aka: `SRigL`.
+* `./src/condensed_sparsity/condensed_linear.py` contains the source code for our naive pytorch GEMM implementation that leverages the constant fan-in structure learned by SRigL. 
+* `./configs/config.yaml` contains the settings for the various hyperparameters and runtime options. 
 
 ## Example Commands
 * ResNet50 trained on Imagenet using 4-GPUs on a single node:
@@ -64,6 +66,9 @@ To get started, please complete the following steps before reopening the workspa
 * Copy the `.env.template` file to your own `.env` environiment file and edit it to add environmental variables. Without the `.env` file the dev container will not start.
 * Create a directory `/datasets` and place any datasets you want to use (except for CIFAR-10) in that location. Alternatively, edit the mount directories in `./.devcontainer/devcontainer.json`
 * Run `git submodue update` to pull from `cocoapi` third party repo. Migrate to ./src/cocoapi/PythonAPI and run `make && make install`
+
+## Pretrained Model Checkpoints:
+A variety of model's pretrained with SRigL are available on huggingface at: ...
 
 ## Compute Canada
 Compute Canada pre-builds many python packages into wheels that are stored in a local wheelhouse. It is best practice to use these wheels rather than use package distributions from PyPI. Therefore, the dependencies pinned in `pyproject.toml` have been carefully selected to ensure that the project enviornment can be replicated using the Compute Canada wheels that will match a local enviornment using PyPI package distributions. 

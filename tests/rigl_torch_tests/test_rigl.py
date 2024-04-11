@@ -124,8 +124,6 @@ def get_new_scheduler(
             model, device_ids=_CUDA_RANKS
         )
     # # TODO: Decomission the data parallel code
-    # elif torch.cuda.is_available() and torch.cuda.device_count() > 1:
-    #     model = torch.nn.DataParallel(model, device_ids=_CUDA_RANKS)
     optimizer = torch.optim.SGD(model.parameters(), 0.1, momentum=0.9)
     scheduler = RigLScheduler(
         model,

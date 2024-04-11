@@ -5,8 +5,6 @@ import logging
 
 class ModelFactory(object):
     registered_models = {}
-    # Nested dictionary in form {dataset: {model: Callable}}
-    # TODO -> Check above for interaction with hydra-core
     __logger = logging.getLogger(__file__)
 
     @classmethod
