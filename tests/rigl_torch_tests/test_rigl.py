@@ -271,6 +271,9 @@ class TestRigLScheduler:
         assert_actual_sparsity_is_valid(scheduler)
 
     def test_checkpoint_saving(self):
+        import dotenv
+
+        dotenv.load_dotenv(pathlib.Path.cwd() / ".env", override=True)
         cfg_args = [
             "paths.checkpoints=test_ckp",
         ]

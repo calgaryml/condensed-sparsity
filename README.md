@@ -68,7 +68,7 @@ To get started, please complete the following steps before reopening the workspa
 * Run `git submodue update` to pull from `cocoapi` third party repo. Migrate to ./src/cocoapi/PythonAPI and run `make && make install`
 
 ## Pretrained Model Checkpoints:
-A variety of model's pretrained with SRigL are available on huggingface at: ...
+A variety of model's pretrained with SRigL are available on [huggingface](https://huggingface.co/mklasby/srigl).
 
 ## Compute Canada
 Compute Canada pre-builds many python packages into wheels that are stored in a local wheelhouse. It is best practice to use these wheels rather than use package distributions from PyPI. Therefore, the dependencies pinned in `pyproject.toml` have been carefully selected to ensure that the project enviornment can be replicated using the Compute Canada wheels that will match a local enviornment using PyPI package distributions. 
