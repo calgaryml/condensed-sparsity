@@ -23,12 +23,6 @@ paths:
   logs: ${paths.base}/logs
   checkpoints: ${paths.artifacts}/checkpoints
   graphs: ${paths.base}/graphs
-  # base: ${oc.env:BASE_PATH}
-  # data_folder: ${oc.env:SLURM_TMPDIR}/data
-  # artifacts: ${oc.env:SLURM_TMPDIR}/output/artifacts
-  # logs: ${oc.env:SLURM_TMPDIR}/output/logs
-  # checkpoints: ${oc.env:SLURM_TMPDIR}/output/checkpoints
-  # graphs: ${oc.env:SLURM_TMPDIR}/output/graphs
 
 rigl:
   # percentage of dense parameters allowed. if null, pruning will not

@@ -2,11 +2,26 @@
 ![CI Pipeline](https://github.com/calgaryml/condensed-sparsity/actions/workflows/ci.yaml/badge.svg)
 ![CD Pipeline](https://github.com/calgaryml/condensed-sparsity/actions/workflows/cd.yaml/badge.svg)
 
+## Getting Started
+This repository contains the source code for the Structured RigL (`SRigL`) a dynamic sparse training (DST) algorithm based on [RigL](https://arxiv.org/abs/1911.11134). `SRigL` learns a sparse neural network with a hybrid fine-grained and structured (neuron) sparse topology. The fine-grained structure is obtained by enforcing a constant fan-in constraint for each layer in the neural network and is a particular case of N:M sparsity. The representation learned by `SRigL` is not only memory and parameter efficient, it also is amenable to acceleration on commodity hardware. 
+
 ![Constant fan-in](./fig/constantfanin.svg) 
+
+`SRigL` maintains generalization performance comparable with RigL and other unstructured sparse DST algorithms up to a high sparsity level. A key innovation required to match unstructured sparse performance is to enable *neuron ablation*; i.e., we fully mask select neurons based on the aggregated salience of its constituent weights. 
+
 ![Neuron ablation](./fig/ablationvsnoablation.svg) 
 
+We currently support the following dataset/model pairs:
+* CIFAR-10:
+  * Wide ResNet-22
+  * ResNet-18, modified for CIFAR-10
+* ImageNet
+  * ResNet-50
+  * MobileNet, Large and Small
+  * ViT-B-16
 
 ## Repository Structure
+* `./train_rigl.py` is the main training script. We currently support trainin Wide ResNet-22 and
 * `./src/rigl_torch` contains the source code for SRigL. 
   * `./src/rigl_torch/rigl_scheduler.py` contains source code for `RigLScheduler`, an implementation of `RigL` in pytorch.
   * `./src/rigl_torch/rigl_constant_fan.py` contains the source code for `RigLConstFanScheduler` aka: `SRigL`.
