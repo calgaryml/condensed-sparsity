@@ -12,6 +12,8 @@ This repository contains the source code for the Structured RigL (`SRigL`) a dyn
 ![Neuron ablation](./fig/ablationvsnoablation.svg) 
 
 We currently support the following dataset/model pairs:
+* MNIST
+  * Small four layer model w/ two convolutional layers and two fully connected. 
 * CIFAR-10:
   * Wide ResNet-22
   * ResNet-18, modified for CIFAR-10
@@ -21,7 +23,8 @@ We currently support the following dataset/model pairs:
   * ViT-B-16
 
 ## Repository Structure
-* `./train_rigl.py` is the main training script. We currently support trainin Wide ResNet-22 and
+* `/configs/*` configuation `.yaml` files for running each of the dataset/model paris above. We use `hydra` to parse the configs in our main script. 
+* `./train_rigl.py` is the main training script.
 * `./src/rigl_torch` contains the source code for SRigL. 
   * `./src/rigl_torch/rigl_scheduler.py` contains source code for `RigLScheduler`, an implementation of `RigL` in pytorch.
   * `./src/rigl_torch/rigl_constant_fan.py` contains the source code for `RigLConstFanScheduler` aka: `SRigL`.
@@ -54,7 +57,7 @@ python ./train_rigl.py \
 ## Installation
 This project was developed using Python version >=3.10 and uses `poetry==1.6.1` to manage dependencies and build the project. 
 
-Installation instructions are provided for virtual enviornments, Compute Canada clusters, and Docker: 
+Installation instructions are provided for virtual environments, Compute Canada clusters, and Docker: 
 
 ## Virtual Env
         python -m venv .venv

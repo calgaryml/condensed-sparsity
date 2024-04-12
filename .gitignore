@@ -201,7 +201,4 @@ python_subproc_tests.py
 
 # Exclude vscode dev container docker files
 .docker/*
-
-3dim_out.txt
-
 **.onnx
