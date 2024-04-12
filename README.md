@@ -2,6 +2,9 @@
 ![CI Pipeline](https://github.com/calgaryml/condensed-sparsity/actions/workflows/ci.yaml/badge.svg)
 ![CD Pipeline](https://github.com/calgaryml/condensed-sparsity/actions/workflows/cd.yaml/badge.svg)
 
+![Constant fan-in](./fig/constantfanin.svg) 
+![Neuron ablation](./fig/ablationvsnoablation.svg) 
+
 
 ## Repository Structure
 * `./src/rigl_torch` contains the source code for SRigL. 
